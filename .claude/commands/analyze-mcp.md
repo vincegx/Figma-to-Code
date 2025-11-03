@@ -44,11 +44,11 @@ Paramètres communs pour tous :
 - `nodeId: {nodeId parsé}`
 - `clientLanguages: "javascript,typescript"`
 - `clientFrameworks: "react"`
-- **`dirForAssetWrites: src/generated/tests/node-{nodeId}`** (racine du dossier test, PAS temp)
+- **`dirForAssetWrites: /tmp/figma-assets`** (tmp car problème permissions direct)
 
 1. **`mcp__figma-desktop__get_design_context`**
    - `forceCode: true`
-   - `dirForAssetWrites` → Écrit images directement dans test directory
+   - `dirForAssetWrites: /tmp/figma-assets` → Écrit assets dans tmp
    - → Code React + Tailwind complet
 
 2. **`mcp__figma-desktop__get_screenshot`**
@@ -61,6 +61,12 @@ Paramètres communs pour tous :
    - → Structure XML (hiérarchie)
 
 **IMPORTANT:** Appelle ces 4 tools **en parallèle** dans UN SEUL message.
+
+#### 1.2b Copier les assets depuis /tmp
+
+```bash
+cp -r /tmp/figma-assets/* src/generated/tests/node-{nodeId}/ 2>/dev/null || true
+```
 
 **Si get_design_context échoue (>25k tokens) - MODE CHUNKING:**
 

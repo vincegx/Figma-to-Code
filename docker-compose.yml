@@ -21,6 +21,7 @@ services:
       - ./src:/app/src
       - ./scripts:/app/scripts
       - ./.claude:/app/.claude
+      - ./vite.config.js:/app/vite.config.js
 
       # Fichiers générés (accessibles depuis l'host)
       - ./src/generated:/app/src/generated

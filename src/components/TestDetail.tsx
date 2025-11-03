@@ -280,6 +280,22 @@ function PreviewTab({ testId, componentName }: PreviewTabProps) {
     loadComponent()
   }, [testId])
 
+  // Charger le CSS du composant généré
+  useEffect(() => {
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = `/src/generated/tests/${testId}/Component-fixed.css`
+    link.id = `test-css-${testId}`
+    document.head.appendChild(link)
+
+    return () => {
+      const existingLink = document.getElementById(`test-css-${testId}`)
+      if (existingLink) {
+        document.head.removeChild(existingLink)
+      }
+    }
+  }, [testId])
+
   // Sync customInput with viewportWidth when changed by presets or slider
   useEffect(() => {
     setCustomInput(viewportWidth.toString())
