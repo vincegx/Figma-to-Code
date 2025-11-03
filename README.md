@@ -34,7 +34,7 @@
 
 ## ⚠️ Project Status - MVP
 
-> **This is a Minimum Viable Product (MVP)** in active development. While it delivers excellent results for many designs, we're continuously improving the codebase.
+> **This is a Minimum Viable Product (MVP)** in active development. I will continuously improve the codebase.
 
 ### 🚀 What Works Great
 - ✅ Basic to complex Figma layouts
