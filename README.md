@@ -32,6 +32,38 @@
 
 ---
 
+## ⚠️ Project Status - MVP
+
+> **This is a Minimum Viable Product (MVP)** in active development. While it delivers excellent results for many designs, we're continuously improving the codebase.
+
+### 🚀 What Works Great
+- ✅ Basic to complex Figma layouts
+- ✅ Gradients, shadows, and blend modes
+- ✅ Design token extraction
+- ✅ Visual validation pipeline
+- ✅ MCP integration with Claude Code
+
+### 🔧 Known Limitations & Future Improvements
+- ⚠️ Some edge cases in complex nested components
+- ⚠️ Advanced Figma features (variants, auto-layout edge cases)
+- ⚠️ Animation and interaction states
+- ⚠️ Component library mapping
+
+### 🤝 We Welcome Contributions!
+
+This project is **open-source** and we'd love your help to make it better! Whether you're fixing bugs, adding features, improving documentation, or reporting issues - **all contributions are welcome**.
+
+**Ways to contribute:**
+- 🐛 Report bugs and edge cases you encounter
+- 💡 Suggest new features or improvements
+- 🔨 Submit pull requests with fixes or enhancements
+- 📚 Improve documentation and examples
+- ⭐ Star the repo if you find it useful!
+
+**Join us in building the best Figma-to-code tool!** Check the [Contributing](#-contributing) section for more details.
+
+---
+
 ## 🌟 Features
 
 ### 🎯 Pixel-Perfect Conversion
@@ -267,7 +299,7 @@ npm run dev
 └─────────────────────────────────────────────────────────────────┘
 
     ┌─────────────┐
-    │   PHASE 1   │  EXTRACTION
+    │   PHASE 1   │  EXTRACTION MCP SERVER (Local MCP)
     │  📥 Figma   │
     └──────┬──────┘
            │
@@ -279,7 +311,7 @@ npm run dev
            ▼
     ┌─────────────┐
     │   PHASE 2   │  PROCESSING
-    │  ⚙️  AST     │
+    │  ⚙️  AST    │
     └──────┬──────┘
            │
            ├─► organize-images       → img/ folder with Figma names
@@ -348,41 +380,66 @@ Ensures 100% fidelity by:
 
 **This is the easiest and most powerful way to use this tool.**
 
-If you've completed the [First-Time Setup with Claude Code](#-first-time-setup-with-claude-code), simply run:
+#### Prerequisites
+1. Complete the [First-Time Setup with Claude Code](#-first-time-setup-with-claude-code)
+2. Ensure Docker is running: `docker-compose up` (in a separate terminal)
+3. Make sure the Figma Desktop app is running with MCP server on port 3845
+
+#### Using the `/analyze-mcp` Command
+
+Once you're in Claude Code (launched with `claude` in the project directory), simply run:
 
 ```bash
-# Inside Claude Code
+# Slash command method (recommended)
 /analyze-mcp https://www.figma.com/design/YOUR_FILE?node-id=X-Y
 ```
 
 **Or use natural language:**
 ```bash
+# Natural language method
 > Analyze this Figma design: https://www.figma.com/design/YOUR_FILE?node-id=X-Y
 ```
 
-This automatically runs the entire 4-phase pipeline (extraction, processing, validation, output) and generates:
-- ✅ Production-ready React component
-- ✅ Optimized CSS with design tokens
-- ✅ Visual validation reports
-- ✅ Technical documentation
-- ✅ Side-by-side screenshot comparison
+#### What Happens During Analysis
 
-### Method 2: Manual Analysis
+Claude Code will automatically:
 
-1. **Open the Dashboard**
-   ```
-   http://localhost:5173
-   ```
+1. **🔌 Connect to MCP** - Verifies connection to Figma Desktop MCP server
+2. **📥 Extract Design** (Phase 1) - Fetches React code, screenshot, variables, and metadata via MCP
+3. **⚙️ Process Code** (Phase 2) - Organizes images, runs AST transformations, fixes CSS variables
+4. **✅ Validate** (Phase 3) - Captures web screenshot and compares with Figma design
+5. **📦 Generate Output** (Phase 4) - Creates all files and reports
 
-2. **Follow the instructions** on the homepage to analyze a Figma URL
+#### What You Get
 
-3. **View Results** - Click on any test card to see:
-   - 🎨 **Preview Tab**: Interactive component with responsive testing
-   - 💻 **Code Tab**: Syntax-highlighted source code
-   - 📊 **Report Tab**: HTML fidelity report with metrics
-   - 🔧 **Technical Analysis**: Detailed markdown documentation
+After analysis completes, you'll have a complete test folder with:
 
-### Method 3: CLI (Advanced)
+- ✅ **Component-fixed.tsx** - Production-ready React component
+- ✅ **Component-fixed.css** - Optimized CSS with Google Fonts + design tokens
+- ✅ **img/** folder - All images organized with Figma layer names
+- ✅ **metadata.json** - Test metadata for dashboard
+- ✅ **analysis.md** - Technical documentation (transformations applied)
+- ✅ **report.html** - Visual fidelity report with metrics
+- ✅ **figma-render.png** - Figma screenshot (reference)
+- ✅ **web-render.png** - Web screenshot (validation)
+
+#### Viewing the Result
+
+Once the analysis is complete, open the dashboard:
+
+```bash
+# The dashboard should already be running (docker-compose up)
+# Open in your browser:
+http://localhost:5173
+```
+
+Click on your test to see:
+- 🎨 **Preview Tab** - Live component with responsive testing
+- 💻 **Code Tab** - Syntax-highlighted source code
+- 📊 **Report Tab** - HTML fidelity report
+- 🔧 **Technical Tab** - Detailed analysis markdown
+
+### Method 2: CLI (Advanced)
 
 Execute the processing pipeline manually:
 
