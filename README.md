@@ -63,6 +63,7 @@
 ## 📋 Table of Contents
 
 - [Prerequisites](#-prerequisites)
+- [First-Time Setup with Claude Code](#-first-time-setup-with-claude-code)
 - [Quick Start](#-quick-start)
 - [How It Works](#-how-it-works)
 - [Usage](#-usage)
@@ -93,11 +94,131 @@ The MCP Figma Desktop server must be running on port 3845:
 
 ```bash
 # Install MCP Figma Desktop
-# Follow instructions at: https://github.com/anthropics/mcp-figma
+# Follow instructions at: https://developers.figma.com/docs/figma-mcp-server/local-server-installation/
 
 # Start the server
 # The server should be accessible at http://localhost:3845
 ```
+
+---
+
+## 🎯 First-Time Setup with Claude Code
+
+**If you're setting up this repository for the first time**, follow these steps to use the powerful `/analyze-mcp` command with Claude Code.
+
+### 1. Install Claude Code
+
+Claude Code is Anthropic's official CLI for Claude that enables seamless integration with this project.
+
+```bash
+# Install Claude Code
+npm install -g @anthropic-ai/claude-code
+
+# Or with Homebrew (macOS/Linux)
+brew install claude-code
+```
+
+📚 **Full installation guide**: [Claude Code Documentation](https://docs.claude.com/en/docs/claude-code)
+
+### 2. Launch Claude Code
+
+You should launch Claude Code in this repository directory:
+
+```bash
+# Navigate to the project root
+cd /path/to/mcp-figma-to-code
+
+# Launch Claude Code
+claude
+```
+
+Claude Code will start an interactive session in your terminal. You can now chat with Claude and use slash commands.
+
+### 3. Configure MCP Server
+
+Before using the `/analyze-mcp` command, you need to add the Figma MCP server to Claude Code.
+
+#### Check if MCP Server is Already Configured
+
+```bash
+# Inside Claude Code, list configured MCP servers
+claude mcp list
+```
+
+#### Add Figma Desktop MCP Server (if not present)
+
+If you don't see `figma-desktop` in the list, add it:
+
+```bash
+# Add the Figma Desktop MCP server
+claude mcp add --transport http figma-desktop http://127.0.0.1:3845/mcp
+```
+
+This connects Claude Code to the Figma MCP server running on your local machine (port 3845).
+
+📚 **Learn more about MCP**: [Figma MCP Server Documentation](https://developers.figma.com/docs/figma-mcp-server/local-server-installation/)
+
+### 4. Verify MCP Connection
+
+Once configured, Claude Code will display the connection status:
+
+```
+✓ MCP Connected: figma-desktop
+```
+
+If you see `❌ MCP Disconnected`, ensure:
+- The Figma Desktop app is running
+- The MCP server is running on port 3845
+- No firewall is blocking localhost connections
+
+### 5. Use the `/analyze-mcp` Command
+
+Now you're ready to analyze Figma designs! 🎉
+
+```bash
+# In Claude Code, use the slash command
+/analyze-mcp https://www.figma.com/design/YOUR_FILE_ID?node-id=X-Y
+```
+
+**What happens next:**
+1. 🎨 **Phase 1: Extraction** - Claude fetches design data, screenshot, variables, and metadata from Figma via MCP
+2. ⚙️ **Phase 2: Processing** - Organizes images, applies AST transformations, fixes CSS variables
+3. ✅ **Phase 3: Validation** - Captures web screenshot and compares with Figma design
+4. 📦 **Phase 4: Output** - Generates React component, CSS file, reports, and metadata
+
+### Example Workflow
+
+```bash
+# 1. Launch Claude Code in the project directory
+cd /path/to/mcp-figma-to-code
+claude
+
+# 2. Analyze a Figma design
+> /analyze-mcp https://www.figma.com/design/ABC123?node-id=104-13741
+
+# Claude will process the design and generate:
+# ✅ src/generated/tests/node-104-13741/Component-fixed.tsx
+# ✅ src/generated/tests/node-104-13741/Component-fixed.css
+# ✅ src/generated/tests/node-104-13741/img/ (organized images)
+# ✅ src/generated/tests/node-104-13741/metadata.json
+# ✅ src/generated/tests/node-104-13741/analysis.md
+# ✅ src/generated/tests/node-104-13741/report.html
+# ✅ src/generated/tests/node-104-13741/figma-render.png
+# ✅ src/generated/tests/node-104-13741/web-render.png
+
+# 3. View the result in the dashboard
+# Open http://localhost:5173 (if Docker is running)
+```
+
+### Alternative: Natural Language Commands
+
+You can also use natural language instead of the slash command:
+
+```bash
+> Analyze this Figma URL: https://www.figma.com/design/ABC123?node-id=104-13741
+```
+
+Claude will automatically detect the Figma URL and trigger the `/analyze-mcp` workflow.
 
 ---
 
@@ -223,15 +344,28 @@ Ensures 100% fidelity by:
 
 ## 💻 Usage
 
-### Method 1: Claude Code Slash Command (Recommended)
+### Method 1: Claude Code Slash Command (Recommended) ⭐
 
-If you're using Claude Code, use the built-in slash command:
+**This is the easiest and most powerful way to use this tool.**
+
+If you've completed the [First-Time Setup with Claude Code](#-first-time-setup-with-claude-code), simply run:
 
 ```bash
+# Inside Claude Code
 /analyze-mcp https://www.figma.com/design/YOUR_FILE?node-id=X-Y
 ```
 
-This automatically runs the entire 4-phase pipeline and validates the output.
+**Or use natural language:**
+```bash
+> Analyze this Figma design: https://www.figma.com/design/YOUR_FILE?node-id=X-Y
+```
+
+This automatically runs the entire 4-phase pipeline (extraction, processing, validation, output) and generates:
+- ✅ Production-ready React component
+- ✅ Optimized CSS with design tokens
+- ✅ Visual validation reports
+- ✅ Technical documentation
+- ✅ Side-by-side screenshot comparison
 
 ### Method 2: Manual Analysis
 
