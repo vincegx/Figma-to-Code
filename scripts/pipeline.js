@@ -9,18 +9,24 @@ import generate from '@babel/generator'
 
 // Import all transforms
 import * as fontDetection from './transformations/font-detection.js'
+import * as autoLayout from './transformations/auto-layout.js'
 import * as astCleaning from './transformations/ast-cleaning.js'
 import * as svgIconFixes from './transformations/svg-icon-fixes.js'
 import * as postFixes from './transformations/post-fixes.js'
+import * as positionFixes from './transformations/position-fixes.js'
+import * as strokeAlignment from './transformations/stroke-alignment.js'
 import * as cssVars from './transformations/css-vars.js'
 import * as tailwindOptimizer from './transformations/tailwind-optimizer.js'
 
 // Register all transforms
 const ALL_TRANSFORMS = [
   fontDetection,
+  autoLayout,
   astCleaning,
   svgIconFixes,
   postFixes,
+  positionFixes,
+  strokeAlignment,
   cssVars,
   tailwindOptimizer
 ]

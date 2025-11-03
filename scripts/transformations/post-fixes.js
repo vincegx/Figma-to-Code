@@ -6,6 +6,8 @@
  * - Radial gradients
  * - SVG shapes (rectangle, ellipse, line, star, polygon)
  * - Blend modes verification
+ * - Shadow fixes (order, spread, visibility)
+ * - Text transform (textCase)
  */
 
 import * as t from '@babel/types'
@@ -117,13 +119,190 @@ export function fixShapesContainer(path, attributes, fixes) {
 }
 
 /**
+ * Fix shadow properties
+ * Handles order (inner before drop), spread values, and invisible shadows
+ */
+export function fixShadows(path, attributes, fixes, context) {
+  const styleAttr = attributes.find(
+    attr => attr.name && attr.name.name === 'style'
+  )
+
+  if (!styleAttr || !t.isJSXExpressionContainer(styleAttr.value)) {
+    return false
+  }
+
+  const expression = styleAttr.value.expression
+  if (!t.isObjectExpression(expression)) {
+    return false
+  }
+
+  // Find boxShadow property
+  const boxShadowProp = expression.properties.find(
+    prop => t.isObjectProperty(prop) &&
+           t.isIdentifier(prop.key) &&
+           prop.key.name === 'boxShadow'
+  )
+
+  if (!boxShadowProp || !t.isStringLiteral(boxShadowProp.value)) {
+    return false
+  }
+
+  const originalShadow = boxShadowProp.value.value
+
+  // Parse shadows
+  const shadows = originalShadow.split(/,(?![^(]*\))/).map(s => s.trim())
+
+  // Separate and fix shadows
+  const innerShadows = []
+  const dropShadows = []
+
+  shadows.forEach(shadow => {
+    // Skip invisible shadows (opacity 0 or transparent)
+    if (shadow.includes('rgba(') && shadow.includes(', 0)')) {
+      fixes.invisibleShadowsRemoved++
+      return
+    }
+
+    // Fix spread value (ensure 4 values before color)
+    const shadowParts = shadow.split(' ').filter(p => p)
+    const isInset = shadowParts[0] === 'inset'
+
+    // Ensure spread value exists
+    if (isInset) {
+      // inset x y blur [spread] color
+      if (shadowParts.length === 5) {
+        // Missing spread, add it
+        shadowParts.splice(4, 0, '0px')
+        fixes.spreadAdded++
+      }
+    } else {
+      // x y blur [spread] color
+      if (shadowParts.length === 4) {
+        // Missing spread, add it
+        shadowParts.splice(3, 0, '0px')
+        fixes.spreadAdded++
+      }
+    }
+
+    const fixedShadow = shadowParts.join(' ')
+
+    if (isInset) {
+      innerShadows.push(fixedShadow)
+    } else {
+      dropShadows.push(fixedShadow)
+    }
+  })
+
+  // Correct order: inner shadows BEFORE drop shadows
+  const correctedShadows = [...innerShadows, ...dropShadows]
+
+  if (correctedShadows.length > 0) {
+    const newShadow = correctedShadows.join(', ')
+
+    if (newShadow !== originalShadow) {
+      boxShadowProp.value = t.stringLiteral(newShadow)
+      fixes.shadowsFixed++
+      return true
+    }
+  } else {
+    // Remove boxShadow if no visible shadows
+    const index = expression.properties.indexOf(boxShadowProp)
+    expression.properties.splice(index, 1)
+    fixes.shadowsFixed++
+    return true
+  }
+
+  return false
+}
+
+/**
+ * Add text transform based on textCase
+ */
+export function addTextTransform(path, attributes, fixes) {
+  // Check for data-text-case attribute
+  const textCaseAttr = attributes.find(
+    attr => attr.name && attr.name.name === 'data-text-case'
+  )
+
+  if (!textCaseAttr || !t.isStringLiteral(textCaseAttr.value)) {
+    return false
+  }
+
+  const textCase = textCaseAttr.value.value
+
+  // Map Figma textCase to CSS text-transform
+  const transformMap = {
+    'UPPER': 'uppercase',
+    'LOWER': 'lowercase',
+    'TITLE': 'capitalize',
+    'ORIGINAL': 'none'
+  }
+
+  const textTransform = transformMap[textCase]
+
+  if (!textTransform || textTransform === 'none') {
+    return false
+  }
+
+  // Add to style attribute
+  const styleAttr = attributes.find(
+    attr => attr.name && attr.name.name === 'style'
+  )
+
+  if (styleAttr && t.isJSXExpressionContainer(styleAttr.value)) {
+    const expression = styleAttr.value.expression
+    if (t.isObjectExpression(expression)) {
+      // Check if textTransform already exists
+      const hasTextTransform = expression.properties.some(
+        prop => t.isObjectProperty(prop) &&
+               t.isIdentifier(prop.key) &&
+               prop.key.name === 'textTransform'
+      )
+
+      if (!hasTextTransform) {
+        expression.properties.push(
+          t.objectProperty(
+            t.identifier('textTransform'),
+            t.stringLiteral(textTransform)
+          )
+        )
+        fixes.textTransformAdded++
+        return true
+      }
+    }
+  } else {
+    // Create new style attribute
+    const styleObj = t.objectExpression([
+      t.objectProperty(
+        t.identifier('textTransform'),
+        t.stringLiteral(textTransform)
+      )
+    ])
+    attributes.push(
+      t.jsxAttribute(
+        t.jsxIdentifier('style'),
+        t.jsxExpressionContainer(styleObj)
+      )
+    )
+    fixes.textTransformAdded++
+    return true
+  }
+
+  return false
+}
+
+/**
  * Main execution function for post-fixes
  */
 export function execute(ast, context) {
   const fixes = {
     gradientsFixed: 0,
     shapesFixed: 0,
-    blendModesVerified: 0
+    blendModesVerified: 0,
+    shadowsFixed: 0,
+    spreadAdded: 0,
+    invisibleShadowsRemoved: 0,
+    textTransformAdded: 0
   }
 
   traverse.default(ast, {
@@ -141,6 +320,12 @@ export function execute(ast, context) {
 
       // Verify blend modes
       verifyBlendMode(path, attributes, fixes)
+
+      // Fix shadows (NEW)
+      fixShadows(path, attributes, fixes, context)
+
+      // Add text transform (NEW)
+      addTextTransform(path, attributes, fixes)
     }
   })
 

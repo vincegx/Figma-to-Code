@@ -100,10 +100,13 @@ scripts/
 ├── config.js                      # Transform configuration (enable/disable)
 │
 ├── transformations/               # AST transformations (1 file = 1 transform)
-│   ├── font-detection.js          # Priority 0: Convert font-[...] to inline styles
+│   ├── font-detection.js          # Priority 0: Convert font-[...] to inline styles + fontPostScriptName
+│   ├── auto-layout.js             # Priority 5: Fix missing gap, alignments, sizing (NEW)
 │   ├── ast-cleaning.js            # Priority 10: Clean invalid classes, add utilities
 │   ├── svg-icon-fixes.js          # Priority 20: Flatten and inline SVG composites
-│   ├── post-fixes.js              # Priority 25: Fix gradients, shapes, blend modes
+│   ├── post-fixes.js              # Priority 25: Fix gradients, blend modes, shadows, text-transform
+│   ├── position-fixes.js          # Priority 28: Convert absolute to relative (NEW)
+│   ├── stroke-alignment.js        # Priority 29: Handle INSIDE/OUTSIDE strokes (NEW)
 │   ├── css-vars.js                # Priority 30: Convert CSS variables to values
 │   └── tailwind-optimizer.js      # Priority 40: Optimize Tailwind (runs last)
 │
@@ -127,7 +130,16 @@ scripts/
 
 1. **Parse AST** (Babel parser)
 2. **Sort transforms** by priority (0 → 40)
-3. **Execute each transform** (font detection → ast cleaning → svg fixes → post-fixes → css vars → tailwind optimizer)
+3. **Execute each transform**:
+   - Priority 0: `font-detection` (enhanced with fontPostScriptName)
+   - Priority 5: `auto-layout` (fix missing gap, alignments - NEW, disabled by default)
+   - Priority 10: `ast-cleaning` (clean invalid classes)
+   - Priority 20: `svg-icon-fixes` (flatten and inline SVG)
+   - Priority 25: `post-fixes` (gradients, shadows, text-transform)
+   - Priority 28: `position-fixes` (absolute → relative - NEW, disabled by default)
+   - Priority 29: `stroke-alignment` (INSIDE/OUTSIDE - NEW, disabled by default)
+   - Priority 30: `css-vars` (convert variables)
+   - Priority 40: `tailwind-optimizer` (optimize classes)
 4. **Generate code** (Babel generator)
 5. **Safety net** (regex catch-all for remaining CSS vars)
 6. **CSS generation** (fonts + variables + custom classes)
@@ -202,13 +214,28 @@ Tests are stored in `src/generated/tests/node-{nodeId}-{timestamp}/` where:
 
 ### AST Transformations
 
-- **Simple architecture**: 8 files total (transformations/ + pipeline.js + config.js + unified-processor.js)
-- **Single-pass traversal**: All transformations run in one AST parse (performance: ~33ms)
+- **Simple architecture**: 11 files total (9 transformations + pipeline.js + config.js + unified-processor.js)
+- **Single-pass traversal**: All transformations run in one AST parse (performance: ~33-40ms)
 - **Priority-based execution**: Transforms run in order: 0 (font-detection) → 40 (tailwind-optimizer)
 - **Order matters**: Font detection (priority 0) MUST run BEFORE ast-cleaning (priority 10) which removes font-[...] classes
 - **Shared state**: Context object passed to all transforms, `customCSSClasses` Map cleared between runs
 - **Safety net**: Regex catch-all runs after pipeline to catch edge cases
 - **Each transform**: Simple pattern with `export const meta = { name, priority }` + `export function execute(ast, context)`
+
+**New Transformations (v2.0):**
+- **auto-layout.js**: Fixes missing Figma Auto Layout properties (gap, alignments, sizing)
+- **position-fixes.js**: Converts absolute positioning to relative/flex for responsive layouts
+- **stroke-alignment.js**: Handles INSIDE/OUTSIDE stroke alignment (CSS workarounds)
+- **Enhanced font-detection**: Now parses fontPostScriptName and textStyleId for accurate weights
+- **Enhanced post-fixes**: Added shadow fixes (order, spread, visibility) and text-transform
+
+**Enable/Disable Transformations:**
+Edit `scripts/config.js` to control which transformations run:
+```javascript
+'auto-layout': { enabled: true },      // Enable to fix Auto Layout issues
+'position-fixes': { enabled: true },   // Enable to fix absolute positioning
+'stroke-alignment': { enabled: true }  // Enable to fix stroke alignment
+```
 
 ### Chunking Large Designs
 

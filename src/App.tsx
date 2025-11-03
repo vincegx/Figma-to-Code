@@ -68,7 +68,11 @@ function PreviewMode({ testId }: { testId: string }) {
     return <div>Loading...</div>
   }
 
-  return <Component />
+  return (
+    <div style={{ width: '390px', height: '715px', margin: '0 auto' }}>
+      <Component />
+    </div>
+  )
 }
 
 export default App

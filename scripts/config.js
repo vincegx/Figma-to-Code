@@ -8,7 +8,15 @@
 export const defaultConfig = {
   // Enable/disable individual transforms
   'font-detection': {
-    enabled: true
+    enabled: true,
+    usePostScriptName: true,  // Use fontPostScriptName for accurate weight
+    useTextStyleId: true      // Use textStyleId for design system styles
+  },
+  'auto-layout': {
+    enabled: false,  // NEW - Disabled by default for testing
+    fixMissingGap: true,
+    fixMissingAlignments: true,
+    fixSizing: true
   },
   'ast-cleaning': {
     enabled: true
@@ -17,7 +25,19 @@ export const defaultConfig = {
     enabled: true
   },
   'post-fixes': {
-    enabled: true
+    enabled: true,
+    fixShadows: true,         // Fix shadow order, spread, visibility
+    fixTextTransform: true    // Add text-transform from textCase
+  },
+  'position-fixes': {
+    enabled: false,  // NEW - Disabled by default for testing
+    convertAbsoluteToRelative: true,
+    skipOverlays: true
+  },
+  'stroke-alignment': {
+    enabled: false,  // NEW - Disabled by default for testing
+    useBoxShadowForInside: true,
+    useOutlineForOutside: true
   },
   'css-vars': {
     enabled: true
