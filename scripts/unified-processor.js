@@ -212,10 +212,22 @@ console.log('\n🔄 Running transform pipeline...')
 // Pre-count nodes and images (simple regex-based counting)
 const totalNodes = (sourceCode.match(/<\w+/g) || []).length  // Count all JSX opening tags
 
-// Count images: ES6 imports + <img tags
-const es6ImageImports = (sourceCode.match(/^import\s+\w+\s+from\s+["']\.\/.*\.(png|jpg|jpeg|svg|gif|webp)["'];?$/gm) || []).length
-const imgTags = (sourceCode.match(/<img\s/g) || []).length
-const imagesCount = es6ImageImports + imgTags
+// Count images: Option B - Count files in img/ directory
+const imgDir = path.join(inputDir, 'img')
+let imagesCount = 0
+
+if (fs.existsSync(imgDir)) {
+  // Primary method: count actual image files on disk
+  const imgFiles = fs.readdirSync(imgDir)
+  imagesCount = imgFiles.filter(f => /\.(png|jpg|jpeg|svg|gif|webp)$/i.test(f)).length
+  console.log(`   Images in img/ directory: ${imagesCount}`)
+} else {
+  // Fallback: count const declarations if img/ doesn't exist yet
+  const constImages = (sourceCode.match(/^const\s+\w+\s*=\s*["'].*\.(png|jpg|jpeg|svg|gif|webp)["'];?$/gm) || []).length
+  const imgTags = (sourceCode.match(/<img\s/g) || []).length
+  imagesCount = constImages + imgTags
+  console.log(`   Images via const declarations: ${constImages}, img tags: ${imgTags}`)
+}
 
 let result
 try {

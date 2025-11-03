@@ -72,6 +72,26 @@ Paramètres communs pour tous :
 #### 1.2b Copier les assets depuis /tmp
 
 ```bash
+# Compter combien d'images on attend depuis Component.tsx
+expected_count=$(grep -o '/tmp/figma-assets/[^"]*\.\(png\|svg\|jpg\|jpeg\|gif\|webp\)' \
+  src/generated/tests/node-{nodeId}-{timestamp}/Component.tsx | sort -u | wc -l)
+
+echo "⏳ Attente de $expected_count images MCP..."
+
+# Attendre CE nombre précis d'images (max 30s)
+for i in {1..30}; do
+  actual_count=$(ls /tmp/figma-assets/*.{png,svg,jpg,jpeg,gif,webp} 2>/dev/null | wc -l)
+  if [ "$actual_count" -ge "$expected_count" ]; then
+    echo "   ✅ $actual_count/$expected_count images détectées après ${i}s"
+    break
+  fi
+  if [ "$i" -eq 30 ]; then
+    echo "   ⚠️ Timeout: seulement $actual_count/$expected_count images après 30s"
+  fi
+  sleep 1
+done
+
+# Copier dans la racine (organize-images.js les déplacera vers img/)
 cp -r /tmp/figma-assets/* src/generated/tests/node-{nodeId}-{timestamp}/ 2>/dev/null || true
 ```
 
@@ -108,8 +128,20 @@ echo "✅ Phase 1 terminée"
 
 #### 2.1 Organiser les images (FIRST)
 
+**IMPORTANT:** Vérifier que les images sont bien dans la racine avant de lancer organize-images.js.
+
 ```bash
-docker exec mcp-figma-v1 node scripts/post-processing/organize-images.js src/generated/tests/node-{nodeId}-{timestamp}
+# Vérifier que les images sont présentes dans la racine du test
+test_dir="src/generated/tests/node-{nodeId}-{timestamp}"
+image_count=$(ls "$test_dir"/*.{png,svg,jpg,jpeg,gif,webp} 2>/dev/null | wc -l)
+
+if [ "$image_count" -gt 0 ]; then
+  echo "✅ $image_count images trouvées dans la racine, lancement de organize-images.js"
+  docker exec mcp-figma-v1 node scripts/post-processing/organize-images.js "$test_dir"
+else
+  echo "⚠️  Aucune image trouvée dans $test_dir - organize-images.js non lancé"
+  echo "   Vérifiez que la copie depuis /tmp/figma-assets/ s'est bien passée"
+fi
 ```
 
 Crée `img/`, déplace images, renomme avec noms Figma, convertit en imports ES6.

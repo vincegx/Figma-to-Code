@@ -175,6 +175,11 @@ export function execute(ast, context) {
         )
       }
 
+      // Remove the font-[...] class from className after conversion
+      // This prevents ast-cleaning from removing it later
+      const newClassName = classNameAttr.value.value.replace(/font-\['[^']+',sans-serif\]\s*/g, '').trim()
+      classNameAttr.value = t.stringLiteral(newClassName)
+
       fontsConverted++
     }
   })
