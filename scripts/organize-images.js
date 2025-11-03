@@ -166,7 +166,7 @@ for (const file of filesToProcess) {
   // In normal mode: Component.tsx needs ./img/
   const imgRelativePath = isChunkingMode ? '../img/' : './img/'
 
-  // Example: /Users/vincegx/.../test-123/image.png → ./img/image.png or ../img/image.png
+  // Example: /Users/username/.../test-123/image.png → ./img/image.png or ../img/image.png
   const absolutePathRegex = new RegExp(
     `["\`]/[^"\`]*/${testDirName}/([^/"\`]+\\.(png|jpg|jpeg|svg|gif|webp))["\`]`,
     'gi'

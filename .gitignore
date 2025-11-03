@@ -3,3 +3,6 @@ dist
 .DS_Store
 src/generated
 *.log
+
+# Claude Code local settings
+.claude/settings.local.json

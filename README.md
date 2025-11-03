@@ -6,20 +6,19 @@
 
 ```ascii
 
-           ╭─────╮                  ███╗   ███╗  ██████╗██████╗
-           │ 🔴  │                  ████╗ ████║ ██╔════╝██╔══██╗
-           ╰─────╯                  ██╔████╔██║ ██║     ██████╔╝
-        ╭─────╮╭─────╮              ██║╚██╔╝██║ ██║     ██╔═══╝
-        │ 🟣  ││ 🟢  │              ██║ ╚═╝ ██║ ╚██████╗██║
-        ├─────┤╰─────╯              ╚═╝     ╚═╝  ╚═════╝╚═╝
-        │ 🔵  │╭─────╮
-        ╰─────╯│ 🟠  │             Model Context Protocol
-           ╭───┴─────╯             ━━━━━━━━━━━━━━━━━━━━━━━━━━
-           │  🔵   │                🎨  Figma Design
-           ╰───────╯                 ⚡ AST Processing
-                                      ⚛️  React + Tailwind
-         F  I  G  M  A                📦 Production Code
-                                      ✨ 100% Fidelity
+    ███████╗ ██╗  ██████╗  ███╗   ███╗  █████╗        ███╗   ███╗  ██████╗██████╗
+    ██╔════╝ ██║ ██╔════╝  ████╗ ████║ ██╔══██╗       ████╗ ████║ ██╔════╝██╔══██╗
+    █████╗   ██║ ██║  ███╗ ██╔████╔██║ ███████║       ██╔████╔██║ ██║     ██████╔╝
+    ██╔══╝   ██║ ██║   ██║ ██║╚██╔╝██║ ██╔══██║       ██║╚██╔╝██║ ██║     ██╔═══╝
+    ██║      ██║ ╚██████╔╝ ██║ ╚═╝ ██║ ██║  ██║       ██║ ╚═╝ ██║ ╚██████╗██║
+    ╚═╝      ╚═╝  ╚═════╝  ╚═╝     ╚═╝ ╚═╝  ╚═╝       ╚═╝     ╚═╝  ╚═════╝╚═╝
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    🔴 Design       🟣 Components      🟢 Variants      🔵 Auto Layout    🟠 Tokens
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                         Model Context Protocol
+                    🎨  Figma Design  →  ⚡ AST Processing
+                    ⚛️  React + Tailwind  →  📦 Production Code
+                              ✨ 100% Visual Fidelity
 
 ```
 
@@ -279,8 +278,8 @@ Claude will automatically detect the Figma URL and trigger the `/analyze-mcp` wo
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/mcp-figma-to-code.git
-cd mcp-figma-to-code
+git clone https://github.com/vincegx/Figma-to-Code---MCP-tools.git
+cd Figma-to-Code---MCP-tools
 
 # 2. Start the application
 docker-compose up --build
@@ -295,8 +294,8 @@ That's it! 🎉 The dashboard is now running.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/mcp-figma-to-code.git
-cd mcp-figma-to-code
+git clone https://github.com/vincegx/Figma-to-Code---MCP-tools.git
+cd Figma-to-Code---MCP-tools
 
 # 2. Install dependencies
 npm install
@@ -848,10 +847,8 @@ in the Software without restriction...
 
 ## 📞 Support
 
-- 🐛 **Issues**: [GitHub Issues](https://github.com/yourusername/mcp-figma-to-code/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/yourusername/mcp-figma-to-code/discussions)
-- 📧 **Email**: your.email@example.com
-- 🐦 **Twitter**: [@yourhandle](https://twitter.com/yourhandle)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/vincegx/Figma-to-Code---MCP-tools/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/vincegx/Figma-to-Code---MCP-tools/discussions)
 
 ---
 
