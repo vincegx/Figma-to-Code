@@ -1,6 +1,6 @@
 # 🎨 MCP Figma to Code
 
-> Transform your Figma designs into pixel-perfect React + Tailwind components with **100% visual fidelity**
+> Transform your Figma designs into pixel-perfect React + Tailwind components with **Figma to code visual fidelity**
 
 <div align="center">
 
@@ -14,7 +14,7 @@
 ║          │  1. Extract via MCP (Chunk Mode)           │           ║
 ║          │  2. AST Processing Pipeline                │           ║
 ║          │  3. Visual Validation                      │           ║
-║          └────────── 100% Fidelity ─────────────────> ┘           ║
+║          └────────── Code Fidelity ─────────────────> ┘           ║
 ║                                                                   ║
 ╚═══════════════════════════════════════════════════════════════════╝
 ```
@@ -74,7 +74,7 @@ This project is **open-source** and I'd love your help to make it better! Whethe
 ## 🌟 Features
 
 ### 🎯 Pixel-Perfect Conversion
-- **100% Visual Fidelity** - Automated visual validation ensures generated code matches Figma exactly
+- **Visual Fidelity** - Automated visual validation ensures generated code matches Figma exactly
 - **Smart Chunking System** - Automatically splits large designs into manageable pieces
 - **Advanced AST Processing** - 10 specialized Babel transforms optimize the generated code
 - **Gradient & Shape Support** - Handles complex gradients, radial gradients, and custom shapes
@@ -354,7 +354,7 @@ All designs are processed in chunk mode for consistency:
 - Removes CSS imports from individual chunks
 
 #### 4. **Visual Validation**
-Ensures 100% fidelity by:
+Ensures fidelity by:
 - Capturing Figma's official screenshot (via MCP)
 - Rendering the component in Puppeteer with exact dimensions
 - Visual side-by-side comparison in report.html
