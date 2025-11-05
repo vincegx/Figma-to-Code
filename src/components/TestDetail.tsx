@@ -16,12 +16,21 @@ type Tab = 'preview' | 'code' | 'report' | 'technical'
 
 interface Metadata {
   fileName?: string
+  layerName?: string
   timestamp?: string | number  // Peut être une string ISO ou un nombre (secondes Unix)
   figmaUrl?: string
+  figmaNodeId?: string
   componentName?: string
   dimensions?: {
     width: number
     height: number
+  }
+  stats?: {
+    totalNodes?: number
+    imagesOrganized?: number
+    totalFixes?: number
+    classesOptimized?: number
+    fontsConverted?: number
   }
 }
 
@@ -64,7 +73,21 @@ export default function TestDetail({ testId, onBack }: TestDetailProps) {
 
       // Load metadata
       const metadataModule = await import(`../generated/tests/${testId}/metadata.json`)
-      setMetadata(metadataModule.default)
+      let metadata = metadataModule.default
+
+      // Load layerName from metadata.xml
+      try {
+        const xmlModule = await import(`../generated/tests/${testId}/metadata.xml?raw`)
+        const xmlContent = xmlModule.default
+        const frameMatch = xmlContent.match(/<frame[^>]+name="([^"]+)"/)
+        if (frameMatch) {
+          metadata = { ...metadata, layerName: frameMatch[1] }
+        }
+      } catch (e) {
+        console.warn('Could not load metadata.xml')
+      }
+
+      setMetadata(metadata)
 
       // Load analysis markdown
       const analysisModule = await import(`../generated/tests/${testId}/analysis.md?raw`)
@@ -135,29 +158,57 @@ export default function TestDetail({ testId, onBack }: TestDetailProps) {
     )
   }
 
+  // Extract nodeId from testId for display
+  const nodeIdDisplay = (() => {
+    const match = testId?.match(/^node-(.+)-\d+$/)
+    return match ? match[1] : testId?.replace('node-', '')
+  })()
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+      <header className="bg-gradient-to-br from-slate-100 via-gray-100 to-slate-50 border-b border-slate-300">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          {/* Back button + Title row */}
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-start gap-4">
               <button
                 onClick={onBack}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="mt-1 p-2.5 hover:bg-white bg-white/70 backdrop-blur-sm rounded-xl transition-all shadow-sm hover:shadow border border-slate-200"
                 title="Retour"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {metadata?.fileName || 'Test'}
-                </h1>
-                <p className="text-sm text-gray-500">
-                  {metadata?.timestamp && formatDate(metadata.timestamp)}
-                </p>
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-3xl font-bold text-gray-900">
+                    {metadata?.layerName || metadata?.fileName || 'Test'}
+                  </h1>
+                  {metadata?.figmaNodeId && (
+                    <span className="px-3 py-1 bg-black/70 backdrop-blur-sm text-white text-xs rounded-lg font-mono">
+                      #{nodeIdDisplay}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 text-sm text-gray-600">
+                  <span className="flex items-center gap-1.5">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {metadata?.timestamp && formatDate(metadata.timestamp)}
+                  </span>
+                  {metadata?.dimensions && (
+                    <span className="flex items-center gap-1.5">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                      </svg>
+                      {metadata.dimensions.width} × {metadata.dimensions.height}
+                    </span>
+                  )}
+                  <span className="text-[10px] text-gray-400 font-mono ml-2">{testId}</span>
+                </div>
               </div>
             </div>
 
@@ -166,28 +217,63 @@ export default function TestDetail({ testId, onBack }: TestDetailProps) {
                 href={`http://localhost:5173/?preview=true&test=${testId}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2 shadow-sm"
+                className="px-4 py-2.5 text-sm font-medium bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition-all flex items-center gap-2 shadow-md hover:shadow-lg"
               >
-                <span className="text-lg">⚛️</span>
-                Preview
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
+                Preview
               </a>
               <a
                 href={metadata?.figmaUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2 text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2 shadow-sm"
+                className="px-4 py-2.5 text-sm font-medium bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-xl transition-all flex items-center gap-2 shadow-md hover:shadow-lg"
               >
-                <span className="text-lg">🎨</span>
-                Ouvrir dans Figma
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
+                Figma
               </a>
             </div>
           </div>
+
+          {/* Stats bar */}
+          {metadata?.stats && (
+            <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-300/50">
+              {metadata.stats.totalNodes !== undefined && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-white/80 backdrop-blur-sm rounded-lg border border-slate-200 shadow-sm">
+                  <span className="text-gray-400">📦</span>
+                  <span className="text-sm font-medium text-gray-700">{metadata.stats.totalNodes}</span>
+                  <span className="text-xs text-gray-500">nodes</span>
+                </div>
+              )}
+              {metadata.stats.imagesOrganized !== undefined && metadata.stats.imagesOrganized > 0 && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-white/80 backdrop-blur-sm rounded-lg border border-slate-200 shadow-sm">
+                  <span className="text-gray-400">🖼️</span>
+                  <span className="text-sm font-medium text-gray-700">{metadata.stats.imagesOrganized}</span>
+                  <span className="text-xs text-gray-500">images</span>
+                </div>
+              )}
+              {metadata.stats.fontsConverted !== undefined && metadata.stats.fontsConverted > 0 && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-white/80 backdrop-blur-sm rounded-lg border border-slate-200 shadow-sm">
+                  <span className="text-gray-400">🔤</span>
+                  <span className="text-sm font-medium text-gray-700">{metadata.stats.fontsConverted}</span>
+                  <span className="text-xs text-gray-500">fonts</span>
+                </div>
+              )}
+              {(metadata.stats.totalFixes !== undefined || metadata.stats.classesOptimized !== undefined) && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-white/80 backdrop-blur-sm rounded-lg border border-slate-200 shadow-sm">
+                  <span className="text-gray-400">⚡</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    {metadata.stats.totalFixes || metadata.stats.classesOptimized || 0}
+                  </span>
+                  <span className="text-xs text-gray-500">fixes</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </header>
 

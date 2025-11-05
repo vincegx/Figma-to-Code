@@ -3,10 +3,12 @@
  */
 
 import { useState, useEffect } from 'react'
+import AnalysisForm from './AnalysisForm'
 
 interface Test {
   testId: string
   fileName?: string
+  layerName?: string  // Nom du layer extrait de metadata.xml
   timestamp: string | number  // Peut être une string ISO ou un nombre (secondes Unix)
   nodeId: string
   stats?: {
@@ -47,11 +49,16 @@ function formatDate(timestamp: string | number) {
   })
 }
 
+type ViewMode = 'grid' | 'list'
+type SortOption = 'date-desc' | 'date-asc' | 'name-asc' | 'name-desc'
+
 export default function HomePage({ onSelectTest }: HomePageProps) {
   const [tests, setTests] = useState<Test[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [mcpConnected, setMcpConnected] = useState<boolean>(false)
   const [mcpChecking, setMcpChecking] = useState<boolean>(true)
+  const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const [sortOption, setSortOption] = useState<SortOption>('date-desc')
 
   useEffect(() => {
     loadTests()
@@ -90,19 +97,28 @@ export default function HomePage({ onSelectTest }: HomePageProps) {
   const loadTests = async () => {
     try {
       // Récupérer la liste des tests depuis src/generated/tests/
-      // Pour l'instant on va créer un système simple avec import.meta.glob
       const testModules = import.meta.glob<{ default: any }>('../generated/tests/*/metadata.json', { eager: true })
+      const xmlModules = import.meta.glob<string>('../generated/tests/*/metadata.xml', { eager: true, as: 'raw' })
 
       const loadedTests = Object.entries(testModules).map(([path, module]) => {
         const testId = path.split('/')[3] // Extract test-{timestamp}
+
+        // Extraire le nom du layer depuis metadata.xml si disponible
+        const xmlPath = path.replace('metadata.json', 'metadata.xml')
+        let layerName = null
+
+        if (xmlModules[xmlPath]) {
+          const xmlContent = xmlModules[xmlPath]
+          const frameMatch = xmlContent.match(/<frame[^>]+name="([^"]+)"/)
+          layerName = frameMatch ? frameMatch[1] : null
+        }
+
         return {
           ...module.default,
-          testId
+          testId,
+          layerName
         } as Test
       })
-
-      // Trier par date (plus récent en premier)
-      loadedTests.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
       setTests(loadedTests)
       setLoading(false)
@@ -112,6 +128,32 @@ export default function HomePage({ onSelectTest }: HomePageProps) {
       setLoading(false)
     }
   }
+
+  // Fonction de tri des tests
+  const sortTests = (testsToSort: Test[]): Test[] => {
+    const sorted = [...testsToSort]
+
+    switch (sortOption) {
+      case 'date-desc':
+        sorted.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        break
+      case 'date-asc':
+        sorted.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+        break
+      case 'name-asc':
+        sorted.sort((a, b) => (a.layerName || a.fileName || '').localeCompare(b.layerName || b.fileName || ''))
+        break
+      case 'name-desc':
+        sorted.sort((a, b) => (b.layerName || b.fileName || '').localeCompare(a.layerName || a.fileName || ''))
+        break
+      default:
+        break
+    }
+
+    return sorted
+  }
+
+  const sortedTests = sortTests(tests)
 
   if (loading) {
     return (
@@ -127,64 +169,158 @@ export default function HomePage({ onSelectTest }: HomePageProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                🎨 MCP Figma Analyzer
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Analyses Figma → React + Tailwind avec rapports détaillés
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
+      <header className="relative bg-gradient-to-br from-purple-600 via-purple-700 to-blue-700 overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-grid-white/10 bg-[size:20px_20px]"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+
+        <div className="relative max-w-7xl mx-auto px-6 py-12">
+          {/* Status Bar */}
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
               {mcpChecking ? (
-                <div className="px-3 py-1 bg-gray-100 text-gray-600 text-sm font-medium rounded-full">
-                  <span className="animate-pulse">⏳ Vérification...</span>
+                <div className="px-4 py-2 bg-white/10 backdrop-blur-sm text-white text-sm font-medium rounded-xl border border-white/20">
+                  <span className="animate-pulse flex items-center gap-2">
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Vérification MCP...
+                  </span>
                 </div>
               ) : mcpConnected ? (
-                <div className="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-                  ✓ MCP Connected
+                <div className="px-4 py-2 bg-green-500/20 backdrop-blur-sm text-white text-sm font-medium rounded-xl border border-green-400/30 flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400"></span>
+                  </span>
+                  MCP Connected
                 </div>
               ) : (
-                <div className="px-3 py-1 bg-red-100 text-red-800 text-sm font-medium rounded-full">
-                  ✗ MCP Disconnected
+                <div className="px-4 py-2 bg-red-500/20 backdrop-blur-sm text-white text-sm font-medium rounded-xl border border-red-400/30 flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-400"></span>
+                  </span>
+                  MCP Disconnected
                 </div>
               )}
-              <div className="text-sm text-gray-500">
+            </div>
+
+            <div className="px-4 py-2 bg-white/10 backdrop-blur-sm text-white text-sm font-medium rounded-xl border border-white/20">
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
                 {tests.length} test{tests.length !== 1 ? 's' : ''}
-              </div>
+              </span>
             </div>
           </div>
+
+          {/* Main Title */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-3 mb-4">
+              <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/20 shadow-xl">
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                </svg>
+              </div>
+            </div>
+
+            <h1 className="text-5xl font-bold text-white mb-3 tracking-tight">
+              MCP Figma Analyzer
+            </h1>
+            <p className="text-xl text-purple-100 max-w-2xl mx-auto">
+              Transformez vos designs Figma en composants React + Tailwind
+              <span className="block text-base mt-2 text-purple-200">
+                avec validation visuelle 100% et rapports détaillés
+              </span>
+            </p>
+          </div>
+
+          {/* Stats Cards */}
+          {tests.length > 0 && (
+            <div className="grid grid-cols-3 gap-4 max-w-3xl mx-auto">
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                <div className="text-3xl font-bold text-white mb-1">
+                  {tests.reduce((acc, test) => acc + (test.stats?.totalNodes || 0), 0)}
+                </div>
+                <div className="text-sm text-purple-100">Total Nodes</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                <div className="text-3xl font-bold text-white mb-1">
+                  {tests.reduce((acc, test) => acc + (test.stats?.imagesOrganized || 0), 0)}
+                </div>
+                <div className="text-sm text-purple-100">Images</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                <div className="text-3xl font-bold text-white mb-1">
+                  {tests.reduce((acc, test) => acc + (test.stats?.totalFixes || test.stats?.classesOptimized || 0), 0)}
+                </div>
+                <div className="text-sm text-purple-100">Total Fixes</div>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Instructions */}
-        <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-6 mb-8">
-          <h2 className="text-lg font-semibold text-purple-900 mb-3">
-            💡 Comment lancer une nouvelle analyse
-          </h2>
-          <div className="space-y-2 text-sm text-purple-800">
-            <p>
-              <span className="font-semibold">Option 1 - Slash Command :</span>
-              {' '}Utilise{' '}
-              <code className="bg-purple-100 px-2 py-0.5 rounded font-mono">
-                /analyze-mcp URL_FIGMA
-              </code>
-              {' '}dans Claude Code
-            </p>
-            <p>
-              <span className="font-semibold">Option 2 - Demande directe :</span>
-              {' '}"Analyse cette URL Figma en suivant MCP_ANALYSIS_PROCESS.md : URL"
-            </p>
+        {/* Analysis Form - Remplace le bloc "💡 Comment lancer" */}
+        <AnalysisForm onAnalysisComplete={loadTests} />
+
+        {/* Controls Bar */}
+        {tests.length > 0 && (
+          <div className="mb-6 flex items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600 font-medium">Vue :</span>
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                    viewMode === 'grid'
+                      ? 'bg-white text-purple-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                    viewMode === 'list'
+                      ? 'bg-white text-purple-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Sort Options */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600 font-medium">Trier par :</span>
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as SortOption)}
+                className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+              >
+                <option value="date-desc">Date (plus récent)</option>
+                <option value="date-asc">Date (plus ancien)</option>
+                <option value="name-asc">Nom (A → Z)</option>
+                <option value="name-desc">Nom (Z → A)</option>
+              </select>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Tests List */}
-        {tests.length === 0 ? (
+        {sortedTests.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
             <div className="text-6xl mb-4">📭</div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -199,10 +335,20 @@ export default function HomePage({ onSelectTest }: HomePageProps) {
               </code>
             </div>
           </div>
-        ) : (
+        ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {tests.map((test) => (
+            {sortedTests.map((test) => (
               <TestCard
+                key={test.testId}
+                test={test}
+                onSelect={() => onSelectTest(test.testId)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {sortedTests.map((test) => (
+              <TestCardList
                 key={test.testId}
                 test={test}
                 onSelect={() => onSelectTest(test.testId)}
@@ -216,7 +362,7 @@ export default function HomePage({ onSelectTest }: HomePageProps) {
 }
 
 /**
- * TestCard Component
+ * TestCard Component (Grid View)
  */
 interface TestCardProps {
   test: Test
@@ -224,6 +370,8 @@ interface TestCardProps {
 }
 
 function TestCard({ test, onSelect }: TestCardProps) {
+  const [isDeleting, setIsDeleting] = useState(false)
+
   const handleOpenPreview = (e: React.MouseEvent) => {
     e.stopPropagation()
     const previewUrl = `http://localhost:5173/?preview=true&test=${test.testId}`
@@ -234,26 +382,54 @@ function TestCard({ test, onSelect }: TestCardProps) {
     onSelect()
   }
 
-  const handleDetailsClick = (e: React.MouseEvent) => {
+  const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    onSelect()
+
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce test ?')) {
+      return
+    }
+
+    setIsDeleting(true)
+
+    try {
+      const response = await fetch(`/api/tests/${test.testId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        // Reload the page to refresh the list
+        window.location.reload()
+      } else {
+        alert('Erreur lors de la suppression du test')
+        setIsDeleting(false)
+      }
+    } catch (error) {
+      alert('Erreur lors de la suppression du test')
+      setIsDeleting(false)
+    }
   }
 
   // Chemin vers la miniature
   const thumbnailPath = `/src/generated/tests/${test.testId}/web-render.png`
 
+  // Extract nodeId from testId: node-9-2654-1735689600 → 9-2654
+  const nodeIdDisplay = (() => {
+    const match = test.testId?.match(/^node-(.+)-\d+$/)
+    return match ? match[1] : test.testId?.replace('node-', '')
+  })()
+
   return (
     <div
       onClick={handleCardClick}
-      className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-purple-300 transition-all overflow-hidden group cursor-pointer">
+      className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-purple-300 transition-all overflow-hidden group cursor-pointer relative">
+
       {/* Thumbnail Preview */}
-      <div className="relative w-full h-48 bg-gradient-to-br from-purple-100 to-blue-100 overflow-hidden">
+      <div className="relative w-full h-52 bg-gradient-to-br from-purple-100 to-blue-100 overflow-hidden">
         <img
           src={thumbnailPath}
-          alt={test.fileName || 'Preview'}
+          alt={test.layerName || test.fileName || 'Preview'}
           className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-300"
           onError={(e) => {
-            // Fallback si l'image n'existe pas
             e.currentTarget.style.display = 'none'
             e.currentTarget.nextElementSibling?.classList.remove('hidden')
           }}
@@ -261,81 +437,246 @@ function TestCard({ test, onSelect }: TestCardProps) {
         <div className="hidden absolute inset-0 flex items-center justify-center text-6xl">
           🎨
         </div>
-        {/* Badge ID */}
-        <div className="absolute top-2 right-2 px-2 py-1 bg-black/50 backdrop-blur-sm text-white text-xs rounded font-mono">
-          {(() => {
-            // Extract nodeId from testId: node-9-2654-1735689600 → 9-2654
-            const match = test.testId?.match(/^node-(.+)-\d+$/)
-            return match ? match[1] : test.testId?.replace('node-', '')
-          })()}
-        </div>
-      </div>
 
-      {/* Card Content */}
-      <div className="p-6">
-        {/* Test Info */}
-        <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-purple-600 transition-colors">
-          {test.fileName || 'Sans titre'}
-        </h3>
-
-      <div className="space-y-2 text-sm text-gray-600 mb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-gray-400">📅</span>
-          <span>{formatDate(test.timestamp)}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-gray-400">🔗</span>
-          <span className="truncate">Node {test.nodeId}</span>
-        </div>
-      </div>
-
-      {/* Stats Preview - Affichage dynamique */}
-      {test.stats && (
-        <div className="flex gap-2 pt-4 border-t border-gray-100 flex-wrap">
-          {test.stats.totalNodes !== undefined && (
-            <div className="px-2 py-1 bg-purple-50 text-purple-700 text-xs rounded font-medium">
-              📦 {test.stats.totalNodes} nodes
-            </div>
-          )}
-          {test.stats.imagesOrganized !== undefined && (
-            <div className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded font-medium">
-              🖼️ {test.stats.imagesOrganized} images
-            </div>
-          )}
-          {(test.stats.totalFixes !== undefined || test.stats.classesOptimized !== undefined) && (
-            <div className="px-2 py-1 bg-amber-50 text-amber-700 text-xs rounded font-medium">
-              ⚡ {test.stats.totalFixes || test.stats.classesOptimized || 0} fixes
-            </div>
-          )}
-          {test.stats.sectionsDetected !== undefined && (
-            <div className="px-2 py-1 bg-green-50 text-green-700 text-xs rounded font-medium">
-              📋 {test.stats.sectionsDetected} sections
-            </div>
-          )}
-        </div>
-      )}
-
-        {/* Action Buttons */}
-        <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
+        {/* Top Actions Bar */}
+        <div className="absolute top-0 left-0 right-0 p-3 flex items-start justify-between bg-gradient-to-b from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Preview Button */}
           <button
             onClick={handleOpenPreview}
-            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="p-2 bg-white/90 backdrop-blur-sm hover:bg-white rounded-lg transition-all shadow-sm"
+            title="Ouvrir preview"
           >
-            <span>Preview</span>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
             </svg>
           </button>
+
+          {/* Delete Button */}
           <button
-            onClick={handleDetailsClick}
-            className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="p-2 bg-white/90 backdrop-blur-sm hover:bg-red-500 hover:text-white rounded-lg transition-all shadow-sm disabled:opacity-50"
+            title="Supprimer"
           >
-            <span>Détails</span>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            {isDeleting ? (
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            )}
           </button>
         </div>
+
+        {/* Node ID Badge - Bottom left */}
+        <div className="absolute bottom-3 left-3 px-2.5 py-1 bg-black/70 backdrop-blur-sm text-white text-[11px] rounded-md font-mono whitespace-nowrap">
+          #{nodeIdDisplay}
+        </div>
+      </div>
+
+      {/* Card Content - Simplifié */}
+      <div className="p-5">
+        {/* Title */}
+        <h3 className="text-base font-semibold text-gray-900 mb-2 group-hover:text-purple-600 transition-colors truncate">
+          {test.layerName || test.fileName || 'Sans titre'}
+        </h3>
+
+        {/* Date + Stats inline */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col">
+            <span className="text-xs text-gray-500">{formatDate(test.timestamp)}</span>
+            <span className="text-[9px] text-gray-400 font-mono mt-0.5">{test.testId}</span>
+          </div>
+
+          {/* Mini stats */}
+          {test.stats && (
+            <div className="flex gap-1.5">
+              {test.stats.totalNodes !== undefined && (
+                <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded font-medium" title="Nodes">
+                  {test.stats.totalNodes}
+                </span>
+              )}
+              {test.stats.imagesOrganized !== undefined && (
+                <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] rounded font-medium" title="Images">
+                  {test.stats.imagesOrganized}
+                </span>
+              )}
+              {(test.stats.totalFixes !== undefined || test.stats.classesOptimized !== undefined) && (
+                <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-[10px] rounded font-medium" title="Fixes">
+                  {test.stats.totalFixes || test.stats.classesOptimized || 0}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Single Primary Action Button */}
+        <button
+          onClick={handleCardClick}
+          className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm"
+        >
+          <span>Voir les détails</span>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * TestCardList Component (List View)
+ */
+interface TestCardListProps {
+  test: Test
+  onSelect: () => void
+}
+
+function TestCardList({ test, onSelect }: TestCardListProps) {
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleOpenPreview = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const previewUrl = `http://localhost:5173/?preview=true&test=${test.testId}`
+    window.open(previewUrl, '_blank')
+  }
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce test ?')) {
+      return
+    }
+
+    setIsDeleting(true)
+
+    try {
+      const response = await fetch(`/api/tests/${test.testId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        window.location.reload()
+      } else {
+        alert('Erreur lors de la suppression du test')
+        setIsDeleting(false)
+      }
+    } catch (error) {
+      alert('Erreur lors de la suppression du test')
+      setIsDeleting(false)
+    }
+  }
+
+  // Chemin vers la miniature
+  const thumbnailPath = `/src/generated/tests/${test.testId}/web-render.png`
+
+  const nodeIdDisplay = (() => {
+    const match = test.testId?.match(/^node-(.+)-\d+$/)
+    return match ? match[1] : test.testId?.replace('node-', '')
+  })()
+
+  return (
+    <div
+      onClick={() => onSelect()}
+      className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-purple-300 transition-all overflow-hidden group cursor-pointer flex items-center p-4 gap-4"
+    >
+      {/* Thumbnail */}
+      <div className="relative w-32 h-24 flex-shrink-0 bg-gradient-to-br from-purple-100 to-blue-100 rounded-lg overflow-hidden">
+        <img
+          src={thumbnailPath}
+          alt={test.layerName || test.fileName || 'Preview'}
+          className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-300"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none'
+            e.currentTarget.nextElementSibling?.classList.remove('hidden')
+          }}
+        />
+        <div className="hidden absolute inset-0 flex items-center justify-center text-4xl">
+          🎨
+        </div>
+
+        {/* Node ID Badge */}
+        <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/70 backdrop-blur-sm text-white text-[10px] rounded font-mono whitespace-nowrap">
+          #{nodeIdDisplay}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <h3 className="text-base font-semibold text-gray-900 group-hover:text-purple-600 transition-colors truncate mb-1">
+          {test.layerName || test.fileName || 'Sans titre'}
+        </h3>
+        <div className="flex items-center gap-4 text-xs text-gray-500">
+          <div className="flex flex-col">
+            <span>{formatDate(test.timestamp)}</span>
+            <span className="text-[9px] text-gray-400 font-mono">{test.testId}</span>
+          </div>
+          {test.stats && (
+            <>
+              {test.stats.totalNodes !== undefined && (
+                <span className="flex items-center gap-1">
+                  <span className="text-gray-400">📦</span>
+                  {test.stats.totalNodes} nodes
+                </span>
+              )}
+              {test.stats.imagesOrganized !== undefined && (
+                <span className="flex items-center gap-1">
+                  <span className="text-gray-400">🖼️</span>
+                  {test.stats.imagesOrganized} images
+                </span>
+              )}
+              {(test.stats.totalFixes !== undefined || test.stats.classesOptimized !== undefined) && (
+                <span className="flex items-center gap-1">
+                  <span className="text-gray-400">⚡</span>
+                  {test.stats.totalFixes || test.stats.classesOptimized || 0} fixes
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <button
+          onClick={handleOpenPreview}
+          className="p-2 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-all"
+          title="Ouvrir preview"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={isDeleting}
+          className="p-2 bg-gray-50 hover:bg-red-50 hover:text-red-600 rounded-lg transition-all disabled:opacity-50"
+          title="Supprimer"
+        >
+          {isDeleting ? (
+            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          ) : (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          )}
+        </button>
+        <button
+          onClick={() => onSelect()}
+          className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-sm font-medium rounded-lg transition-all flex items-center gap-2"
+        >
+          <span>Détails</span>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
     </div>
   )
