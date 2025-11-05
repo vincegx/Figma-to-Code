@@ -59,6 +59,8 @@ export default function HomePage({ onSelectTest }: HomePageProps) {
   const [mcpChecking, setMcpChecking] = useState<boolean>(true)
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [sortOption, setSortOption] = useState<SortOption>('date-desc')
+  const [currentPage, setCurrentPage] = useState<number>(1)
+  const [itemsPerPage, setItemsPerPage] = useState<number>(9)
 
   useEffect(() => {
     loadTests()
@@ -154,6 +156,17 @@ export default function HomePage({ onSelectTest }: HomePageProps) {
   }
 
   const sortedTests = sortTests(tests)
+
+  // Pagination logic
+  const totalPages = Math.ceil(sortedTests.length / itemsPerPage)
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentTests = sortedTests.slice(indexOfFirstItem, indexOfLastItem)
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [sortOption, viewMode])
 
   if (loading) {
     return (
@@ -270,8 +283,8 @@ export default function HomePage({ onSelectTest }: HomePageProps) {
 
         {/* Controls Bar */}
         {tests.length > 0 && (
-          <div className="mb-6 flex items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            {/* View Mode Toggle */}
+          <div className="mb-6 flex flex-wrap items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 p-4 gap-4">
+            {/* Left: View Mode Toggle */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600 font-medium">Vue :</span>
               <div className="flex bg-gray-100 rounded-lg p-1">
@@ -302,19 +315,39 @@ export default function HomePage({ onSelectTest }: HomePageProps) {
               </div>
             </div>
 
-            {/* Sort Options */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600 font-medium">Trier par :</span>
-              <select
-                value={sortOption}
-                onChange={(e) => setSortOption(e.target.value as SortOption)}
-                className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-              >
-                <option value="date-desc">Date (plus récent)</option>
-                <option value="date-asc">Date (plus ancien)</option>
-                <option value="name-asc">Nom (A → Z)</option>
-                <option value="name-desc">Nom (Z → A)</option>
-              </select>
+            {/* Right: Sort Options + Items per page */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 font-medium">Trier par :</span>
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value as SortOption)}
+                  className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                >
+                  <option value="date-desc">Date (plus récent)</option>
+                  <option value="date-asc">Date (plus ancien)</option>
+                  <option value="name-asc">Nom (A → Z)</option>
+                  <option value="name-desc">Nom (Z → A)</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 font-medium">Par page :</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value))
+                    setCurrentPage(1)
+                  }}
+                  className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                >
+                  <option value="6">6</option>
+                  <option value="9">9</option>
+                  <option value="12">12</option>
+                  <option value="18">18</option>
+                  <option value="24">24</option>
+                </select>
+              </div>
             </div>
           </div>
         )}
@@ -335,26 +368,126 @@ export default function HomePage({ onSelectTest }: HomePageProps) {
               </code>
             </div>
           </div>
-        ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortedTests.map((test) => (
-              <TestCard
-                key={test.testId}
-                test={test}
-                onSelect={() => onSelectTest(test.testId)}
-              />
-            ))}
-          </div>
         ) : (
-          <div className="space-y-3">
-            {sortedTests.map((test) => (
-              <TestCardList
-                key={test.testId}
-                test={test}
-                onSelect={() => onSelectTest(test.testId)}
-              />
-            ))}
-          </div>
+          <>
+            {viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {currentTests.map((test) => (
+                  <TestCard
+                    key={test.testId}
+                    test={test}
+                    onSelect={() => onSelectTest(test.testId)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {currentTests.map((test) => (
+                  <TestCardList
+                    key={test.testId}
+                    test={test}
+                    onSelect={() => onSelectTest(test.testId)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-8 flex items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4">
+                {/* Left: Info */}
+                <div className="text-sm text-gray-600">
+                  Affichage de <span className="font-medium text-gray-900">{indexOfFirstItem + 1}</span> à{' '}
+                  <span className="font-medium text-gray-900">{Math.min(indexOfLastItem, sortedTests.length)}</span> sur{' '}
+                  <span className="font-medium text-gray-900">{sortedTests.length}</span> test{sortedTests.length > 1 ? 's' : ''}
+                </div>
+
+                {/* Center: Page Numbers */}
+                <div className="flex items-center gap-2">
+                  {/* Previous Button */}
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 disabled:hover:bg-transparent"
+                    title="Page précédente"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+
+                  {/* Page Numbers */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                      // Show first page, last page, current page, and pages around current
+                      const showPage =
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+
+                      // Show ellipsis
+                      const showEllipsisBefore = page === currentPage - 2 && currentPage > 3
+                      const showEllipsisAfter = page === currentPage + 2 && currentPage < totalPages - 2
+
+                      if (showEllipsisBefore || showEllipsisAfter) {
+                        return (
+                          <span key={page} className="px-2 text-gray-400">
+                            ...
+                          </span>
+                        )
+                      }
+
+                      if (!showPage) return null
+
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`min-w-[40px] px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                            currentPage === page
+                              ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-sm'
+                              : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Next Button */}
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 disabled:hover:bg-transparent"
+                    title="Page suivante"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Right: Quick jump */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Aller à :</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max={totalPages}
+                    value={currentPage}
+                    onChange={(e) => {
+                      const page = parseInt(e.target.value)
+                      if (page >= 1 && page <= totalPages) {
+                        setCurrentPage(page)
+                      }
+                    }}
+                    className="w-16 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 text-center focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  />
+                </div>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
