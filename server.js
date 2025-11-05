@@ -269,6 +269,63 @@ app.get('/api/mcp/health', async (req, res) => {
 })
 
 /**
+ * GET /api/download/:testId
+ * Télécharge un test complet en archive ZIP
+ */
+app.get('/api/download/:testId', async (req, res) => {
+  const { testId } = req.params
+
+  if (!testId || !testId.startsWith('node-')) {
+    return res.status(400).json({ error: 'Test ID invalide' })
+  }
+
+  try {
+    const { default: archiver } = await import('archiver')
+    const fs = await import('fs')
+    const testPath = path.join(__dirname, 'src', 'generated', 'tests', testId)
+
+    // Vérifier que le dossier existe
+    if (!fs.existsSync(testPath)) {
+      return res.status(404).json({ error: 'Test non trouvé' })
+    }
+
+    // Créer l'archive
+    const archive = archiver('zip', {
+      zlib: { level: 9 } // Niveau de compression maximum
+    })
+
+    // Gérer les erreurs de l'archive
+    archive.on('error', (err) => {
+      console.error('Erreur lors de la création du ZIP:', err)
+      res.status(500).json({ error: 'Erreur lors de la création de l\'archive' })
+    })
+
+    // Configuration des headers pour le téléchargement
+    res.attachment(`${testId}.zip`)
+    res.setHeader('Content-Type', 'application/zip')
+
+    // Pipe l'archive vers la réponse
+    archive.pipe(res)
+
+    // Ajouter tout le contenu du dossier au ZIP
+    archive.directory(testPath, false)
+
+    // Finaliser l'archive
+    await archive.finalize()
+
+    console.log(`✓ Archive ${testId}.zip créée et envoyée`)
+  } catch (error) {
+    console.error('Erreur lors du téléchargement:', error)
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'Erreur lors du téléchargement',
+        message: error.message
+      })
+    }
+  }
+})
+
+/**
  * Start Vite dev server and API server
  */
 async function startServer() {

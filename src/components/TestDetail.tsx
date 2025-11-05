@@ -229,6 +229,16 @@ export default function TestDetail({ testId, onBack }: TestDetailProps) {
                 Preview
               </a>
               <a
+                href={`/api/download/${testId}`}
+                download={`${testId}.zip`}
+                className="px-4 py-2.5 text-sm font-medium bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-xl transition-all flex items-center gap-2 shadow-md hover:shadow-lg"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download
+              </a>
+              <a
                 href={metadata?.figmaUrl}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -283,47 +293,111 @@ export default function TestDetail({ testId, onBack }: TestDetailProps) {
       {/* Tabs */}
       <nav className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex space-x-8">
-            <button
-              onClick={() => setActiveTab('preview')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'preview'
-                  ? 'border-purple-500 text-purple-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              {t('detail.tabs.preview')}
-            </button>
-            <button
-              onClick={() => setActiveTab('code')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'code'
-                  ? 'border-purple-500 text-purple-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              {t('detail.tabs.code')}
-            </button>
-            <button
-              onClick={() => setActiveTab('report')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'report'
-                  ? 'border-purple-500 text-purple-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              {t('detail.tabs.report')}
-            </button>
-            <button
-              onClick={() => setActiveTab('technical')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'technical'
-                  ? 'border-purple-500 text-purple-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              {t('detail.tabs.technical')}
-            </button>
+          <div className="flex justify-between items-center">
+            <div className="flex space-x-8">
+              <button
+                onClick={() => setActiveTab('preview')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'preview'
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {t('detail.tabs.preview')}
+              </button>
+              <button
+                onClick={() => setActiveTab('report')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'report'
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {t('detail.tabs.report')}
+              </button>
+              <button
+                onClick={() => setActiveTab('code')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'code'
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {t('detail.tabs.code')}
+              </button>
+              <button
+                onClick={() => setActiveTab('technical')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'technical'
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {t('detail.tabs.technical')}
+              </button>
+            </div>
+
+            {/* Info button with hover tooltip */}
+            {activeTab === 'preview' && (
+              <div className="relative group">
+                <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 rounded-full border border-slate-200 hover:border-blue-200 transition-all duration-200 shadow-sm hover:shadow">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Info</span>
+                </button>
+
+                {/* Tooltip on hover */}
+                <div className="absolute right-0 top-full mt-3 w-96 bg-white border border-slate-200 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden">
+                  {/* Info section */}
+                  <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100/50 border-b border-blue-200">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white text-lg shadow-sm">
+                        ℹ️
+                      </div>
+                      <div className="text-sm flex-1">
+                        <p className="font-semibold mb-1 text-blue-900">{t('detail.preview.banner_title')}</p>
+                        <p className="text-blue-800 leading-relaxed">{t('detail.preview.banner_text')}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tips section */}
+                  <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50/50">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="flex-shrink-0 w-6 h-6 bg-green-500 rounded-md flex items-center justify-center text-white text-sm shadow-sm">
+                        💡
+                      </div>
+                      <p className="text-sm font-semibold text-green-900">{t('detail.preview.tips_title')}</p>
+                    </div>
+                    <ul className="text-sm text-green-800 space-y-2 ml-8">
+                      {metadata?.dimensions && (
+                        <li className="flex items-start gap-2">
+                          <span className="text-green-500 mt-0.5">→</span>
+                          <span>{t('detail.preview.tips.0', { width: metadata.dimensions.width.toString(), height: metadata.dimensions.height.toString() })}</span>
+                        </li>
+                      )}
+                      <li className="flex items-start gap-2">
+                        <span className="text-green-500 mt-0.5">→</span>
+                        <span>{t('detail.preview.tips.1')}</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-green-500 mt-0.5">→</span>
+                        <span>{t('detail.preview.tips.2')}</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-green-500 mt-0.5">→</span>
+                        <span>{t('detail.preview.tips.3')}</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-green-500 mt-0.5">→</span>
+                        <span>{t('detail.preview.tips.4')}</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </nav>
@@ -478,21 +552,6 @@ function PreviewTab({ testId, componentName, dimensions }: PreviewTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* Info banner */}
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <div className="text-blue-500 text-xl">ℹ️</div>
-            <div className="text-sm text-blue-900">
-              <p className="font-semibold mb-1">{t('detail.preview.banner_title')}</p>
-              <p className="text-blue-800">
-                {t('detail.preview.banner_text')}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Responsive Controls - Sticky */}
       <div className="sticky top-0 z-10 bg-gray-50 py-4 shadow-sm">
         <div className="max-w-7xl mx-auto px-6">
@@ -603,22 +662,6 @@ function PreviewTab({ testId, componentName, dimensions }: PreviewTabProps) {
               </Suspense>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Tips */}
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <p className="text-sm font-semibold text-green-900 mb-2">{t('detail.preview.tips_title')}</p>
-          <ul className="text-sm text-green-800 space-y-1">
-            {dimensions && (
-              <li>• {t('detail.preview.tips.0', { width: dimensions.width.toString(), height: dimensions.height.toString() })}</li>
-            )}
-            <li>• {t('detail.preview.tips.1')}</li>
-            <li>• {t('detail.preview.tips.2')}</li>
-            <li>• {t('detail.preview.tips.3')}</li>
-            <li>• {t('detail.preview.tips.4')}</li>
-          </ul>
         </div>
       </div>
     </div>
