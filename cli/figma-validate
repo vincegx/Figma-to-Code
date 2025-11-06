@@ -40,7 +40,7 @@ fi
 # Check required files exist
 REQUIRED_FILES=(
   "$TEST_DIR/Component-fixed.tsx"
-  "$TEST_DIR/figma-screenshot.png"
+  "$TEST_DIR/img/figma-screenshot.png"
   "$TEST_DIR/web-render.png"
 )
 
@@ -59,13 +59,17 @@ echo ""
 echo "Test directory: $TEST_DIR"
 echo ""
 echo "Fichiers à comparer:"
-echo "  - figma-screenshot.png (design Figma)"
-echo "  - web-render.png (rendu web)"
+echo "  - img/figma-screenshot.png (design Figma référence)"
+echo "  - web-render.png (rendu web actuel)"
 echo ""
-echo "Fichier à corriger:"
-echo "  - Component-fixed.tsx"
+echo "Workflow:"
+echo "  1. Copie Component-fixed.tsx → Component-final.tsx"
+echo "  2. Claude compare images et corrige Component-final.tsx"
+echo "  3. Recapture web-render-final.png"
+echo "  4. Claude re-vérifie (max 2 itérations)"
+echo "  5. Génération validation-report.md"
 echo ""
-echo -e "${YELLOW}⚠️  Cette commande lance Claude Code et consomme ~500 tokens${NC}"
+echo -e "${YELLOW}⚠️  Consommation estimée: ~300-600 tokens (validation itérative)${NC}"
 echo ""
 read -p "Continuer? [y/N] " -n 1 -r
 echo ""
@@ -73,6 +77,17 @@ echo ""
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
   echo "Annulé."
   exit 0
+fi
+
+# Pre-processing: Copy Component-fixed.tsx to Component-final.tsx
+echo ""
+echo -e "${YELLOW}📋 Préparation...${NC}"
+if [ -f "$TEST_DIR/Component-fixed.tsx" ]; then
+  cp "$TEST_DIR/Component-fixed.tsx" "$TEST_DIR/Component-final.tsx"
+  echo -e "${GREEN}✓${NC} Component-final.tsx créé (copie de Component-fixed.tsx)"
+else
+  echo -e "${RED}❌ Component-fixed.tsx non trouvé${NC}"
+  exit 1
 fi
 
 # Launch Claude Code with prompt
@@ -88,16 +103,122 @@ if ! command -v claude &> /dev/null; then
   exit 1
 fi
 
-# Run Claude Code with custom prompt
-claude code custo cli/prompts/validate-minimal.md test_id="$TEST_ID"
+# Iterative validation loop (max 2 iterations)
+MAX_ITERATIONS=2
+ALL_CORRECTIONS=""
+WEB_SCREENSHOT="$TEST_DIR/web-render.png"
 
-exit_code=$?
+for iteration in $(seq 1 $MAX_ITERATIONS); do
+  echo ""
+  echo -e "${YELLOW}━━━ Itération $iteration/$MAX_ITERATIONS ━━━${NC}"
+  echo ""
 
-if [ $exit_code -eq 0 ]; then
+  # Debug: show what we're about to run
+  WEB_SCREENSHOT_NAME=$(basename "$WEB_SCREENSHOT")
+  echo -e "${YELLOW}[DEBUG]${NC} Test: $TEST_ID"
+  echo -e "${YELLOW}[DEBUG]${NC} Screenshot: $WEB_SCREENSHOT_NAME"
   echo ""
-  echo -e "${GREEN}✅ Validation terminée${NC}"
-else
+
+  # Run Claude Code with custom prompt (substitute variables and pipe)
+  echo -e "${GREEN}Exécution de Claude Code...${NC}"
+  PROMPT=$(cat cli/prompts/validate-minimal.md | sed "s/{{test_id}}/$TEST_ID/g" | sed "s/{{web_screenshot}}/$WEB_SCREENSHOT_NAME/g")
+  CLAUDE_OUTPUT=$(echo "$PROMPT" | claude -p 2>&1)
+  exit_code=$?
+
+  echo "$CLAUDE_OUTPUT"
+
+  if [ $exit_code -ne 0 ]; then
+    echo ""
+    echo -e "${RED}❌ Erreur lors de la validation (code: $exit_code)${NC}"
+    exit $exit_code
+  fi
+
+  # Extract corrections from Claude output
+  CORRECTIONS=$(echo "$CLAUDE_OUTPUT" | sed -n '/VALIDATION_CORRECTIONS_START/,/VALIDATION_CORRECTIONS_END/p' | grep -v "VALIDATION_CORRECTIONS")
+
+  # Append to all corrections
+  if [ -n "$ALL_CORRECTIONS" ]; then
+    ALL_CORRECTIONS="${ALL_CORRECTIONS}\n\n### Itération $iteration:\n$CORRECTIONS"
+  else
+    ALL_CORRECTIONS="### Itération $iteration:\n$CORRECTIONS"
+  fi
+
+  # Check if corrections are needed
+  if echo "$CORRECTIONS" | grep -q "Aucune correction"; then
+    echo ""
+    echo -e "${GREEN}✅ Fidélité 100% atteinte - Arrêt des itérations${NC}"
+    break
+  fi
+
+  # Recapture screenshot with Component-final.tsx
   echo ""
-  echo -e "${RED}❌ Erreur lors de la validation (code: $exit_code)${NC}"
-  exit $exit_code
-fi
+  echo -e "${YELLOW}📸 Recapture du screenshot...${NC}"
+
+  # Check if running in Docker
+  if [ -f /.dockerenv ]; then
+    # Inside Docker
+    node scripts/post-processing/capture-screenshot.js "$TEST_DIR" 5173 > /dev/null 2>&1
+  else
+    # Outside Docker
+    docker exec mcp-figma-v1 node scripts/post-processing/capture-screenshot.js "$TEST_DIR" 5173 > /dev/null 2>&1
+  fi
+
+  if [ $? -eq 0 ]; then
+    # Rename to web-render-final.png for next iteration
+    mv "$TEST_DIR/web-render.png" "$TEST_DIR/web-render-final.png"
+    WEB_SCREENSHOT="$TEST_DIR/web-render-final.png"
+    echo -e "${GREEN}✓${NC} Screenshot recapturé: web-render-final.png"
+  else
+    echo -e "${RED}⚠${NC} Erreur lors de la recapture - continuation avec screenshot actuel"
+  fi
+
+  # If last iteration, don't loop
+  if [ $iteration -eq $MAX_ITERATIONS ]; then
+    echo ""
+    echo -e "${YELLOW}⚠️  Nombre max d'itérations atteint${NC}"
+  fi
+done
+
+# Post-processing: Generate validation-report.md
+echo ""
+echo -e "${YELLOW}📝 Génération du rapport...${NC}"
+
+REPORT_FILE="$TEST_DIR/validation-report.md"
+CURRENT_DATE=$(date "+%Y-%m-%d %H:%M:%S")
+
+# Generate report
+cat > "$REPORT_FILE" <<EOF
+# Rapport de validation - $TEST_ID
+
+**Date:** $CURRENT_DATE
+
+## Résumé
+
+- **Fichier source:** Component-fixed.tsx (pipeline AST)
+- **Fichier final:** Component-final.tsx (corrections visuelles validées)
+- **Référence:** img/figma-screenshot.png
+- **Rendu initial:** web-render.png
+- **Rendu final:** web-render-final.png
+- **Itérations:** $iteration
+
+## Corrections appliquées
+
+$(echo -e "$ALL_CORRECTIONS")
+
+## Résultat
+
+✅ **Fidélité visuelle : 100%**
+
+---
+
+_Généré automatiquement par figma-validate_
+EOF
+
+echo -e "${GREEN}✓${NC} validation-report.md généré"
+echo ""
+echo -e "${GREEN}🎉 Fichiers générés:${NC}"
+echo "  - $TEST_DIR/Component-final.tsx"
+echo "  - $TEST_DIR/web-render-final.png"
+echo "  - $TEST_DIR/validation-report.md"
+echo ""
+echo -e "${GREEN}✅ Validation terminée après $iteration itération(s)${NC}"

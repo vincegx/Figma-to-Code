@@ -113,7 +113,7 @@ function extractDesignReferences(testDir) {
     const frameName = frameMatch ? frameMatch[1] : 'Unnamed Frame'
 
     // Extract dimensions from the root frame
-    const dimensionsMatch = xmlContent.match(/<frame[^>]+width="([^"]+)"[^>]+height="([^"]+)"/)
+    const dimensionsMatch = xmlContent.match(/<frame[^>]+width="([^"]+)"[^>]*height="([^"]+)"/)
     const dimensions = dimensionsMatch ? {
       width: parseInt(dimensionsMatch[1], 10),
       height: parseInt(dimensionsMatch[2], 10)
@@ -135,13 +135,15 @@ function extractDesignReferences(testDir) {
       sections.push(`SECTION ${sections.length + 1}: ${sectionName}`)
     }
 
-    if (sections.length === 0) {
+    // Return design references if we have sections or dimensions
+    // Don't return null if we only have dimensions without sections
+    if (sections.length === 0 && !dimensions) {
       return null
     }
 
     return {
       name: frameName,
-      sections,
+      ...(sections.length > 0 && { sections }),
       dimensions
     }
   } catch (error) {

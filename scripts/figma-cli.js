@@ -84,11 +84,23 @@ class FigmaCLI {
     );
 
     // Determine project root (works from both Docker and host)
-    const projectRoot = process.env.PROJECT_ROOT || path.join(__dirname, '..');
+    // MCP Figma Desktop runs on HOST, so we need the HOST path for dirForAssetWrites
+    const isDocker = process.env.PROJECT_ROOT || fs.existsSync('/.dockerenv');
 
-    // Always use project tmp directory (not system /tmp)
-    this.assetsDir = path.join(projectRoot, 'tmp', 'figma-assets');
-    this.config.commonParams.dirForAssetWrites = this.assetsDir;
+    if (isDocker && process.env.PROJECT_ROOT) {
+      // Docker mode: we need BOTH paths
+      // - HOST path for MCP to write assets
+      // - Docker path for us to read/copy assets
+      this.assetsDirHost = path.join(process.env.PROJECT_ROOT, 'tmp', 'figma-assets');  // For MCP
+      this.assetsDir = '/app/tmp/figma-assets';  // For Docker to read
+    } else {
+      // Running on host directly - same path for both
+      const projectRoot = path.join(__dirname, '..');
+      this.assetsDir = path.join(projectRoot, 'tmp', 'figma-assets');
+      this.assetsDirHost = this.assetsDir;
+    }
+
+    this.config.commonParams.dirForAssetWrites = this.assetsDirHost;
 
     // Parse Figma URL
     const parsed = this.parseUrl(url);
@@ -296,6 +308,111 @@ class FigmaCLI {
   }
 
   /**
+   * Check if code looks like valid React component
+   */
+  isValidReactCode(code) {
+    // Check for error patterns first
+    const errorPatterns = [
+      /rate limit exceeded/i,
+      /please try again/i,
+      /^error:/i,
+      /api error/i,
+      /request failed/i,
+      /unauthorized/i,
+      /forbidden/i,
+      /not found/i
+    ];
+
+    if (errorPatterns.some(pattern => pattern.test(code))) {
+      return false;
+    }
+
+    // Valid React code should have:
+    // - export (function or default)
+    // - JSX syntax or function/const
+    // - reasonable length
+    const hasExport = code.includes('export');
+    const hasReactSyntax = code.includes('function') || code.includes('const') || code.includes('return');
+    const hasJSX = code.includes('<') && code.includes('>');
+    const hasMinLength = code.length > 500;
+
+    return hasExport && hasReactSyntax && hasJSX && hasMinLength;
+  }
+
+  /**
+   * Extract child nodes from metadata XML (already saved)
+   */
+  extractChildNodes() {
+    const chunksDir = path.join(this.testDir, 'chunks');
+    fs.mkdirSync(chunksDir, { recursive: true });
+
+    const nodesOutput = execSync(
+      `node ${path.join(__dirname, 'utils/chunking.js')} extract-nodes ${path.join(this.testDir, 'metadata.xml')}`,
+      { encoding: 'utf8' }
+    );
+
+    let nodes = JSON.parse(nodesOutput);
+
+    if (nodes.length === 0) {
+      nodes = [{ id: this.nodeId, name: 'Component' }];
+    }
+
+    return nodes;
+  }
+
+  /**
+   * Generate chunks for all child nodes
+   */
+  async generateChunks(nodes) {
+    log.task('⏳', 'Génération des chunks (séquentiel)');
+
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      log.progress(i + 1, nodes.length, `${node.name} (${node.id})`);
+
+      const codeResult = await this.callMCPTool('get_design_context', {
+        nodeId: node.id,
+        dirForAssetWrites: '',  // Images already retrieved
+        forceCode: true,
+        clientLanguages: this.config.commonParams.clientLanguages,
+        clientFrameworks: this.config.commonParams.clientFrameworks
+      });
+
+      const code = codeResult.content[0].text;
+
+      // Validate code
+      if (!this.isValidReactCode(code)) {
+        log.error('Code invalide pour chunk');
+        throw new Error(`Invalid chunk code for ${node.name}`);
+      }
+
+      this.saveFile(`chunks/${node.name}.tsx`, code);
+
+      if (i < nodes.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    log.success('Tous les chunks générés\n');
+  }
+
+  /**
+   * Assemble all chunks into Component.tsx
+   */
+  assembleChunks() {
+    const chunksDir = path.join(this.testDir, 'chunks');
+    const chunkFiles = fs.readdirSync(chunksDir)
+      .filter(f => f.endsWith('.tsx'))
+      .map(f => path.join(chunksDir, f))
+      .map(f => `"${f}"`)
+      .join(' ');
+
+    execSync(
+      `node ${path.join(__dirname, 'utils/chunking.js')} assemble-chunks ${this.testDir} Component ${chunkFiles}`
+    );
+  }
+
+  /**
    * PHASE 0: Preparation
    */
   async phase0_preparation() {
@@ -316,33 +433,25 @@ class FigmaCLI {
   }
 
   /**
-   * PHASE 1: MCP Extraction (chunk mode systématique)
+   * PHASE 1: MCP Extraction (Try Simple First)
    */
   async phase1_extraction() {
-    log.phase('PHASE 1: EXTRACTION MCP (mode chunk systématique)');
+    log.phase('PHASE 1: EXTRACTION MCP (Try Simple First)');
 
-    // 1. Get metadata
-    log.task('📄', 'Récupération metadata');
-    const metadataResult = await this.callMCPTool('get_metadata', {
-      nodeId: this.nodeId
-    });
-    this.saveFile('metadata.xml', metadataResult.content[0].text);
-    log.success('metadata.xml sauvegardé\n');
-
-    // 2. Get parent wrapper + screenshot + variables (parallel)
-    log.task('🎨', 'Récupération wrapper parent + screenshot + variables (parallèle)');
-    const [parentWrapperResult, screenshotResult, variablesResult] = await Promise.all([
+    // 1. Call 4 MCP tools in parallel
+    log.task('🎨', '4 appels MCP en parallèle');
+    const [codeResult, screenshotResult, variablesResult, metadataResult] = await Promise.all([
       this.callMCPTool('get_design_context', {
         nodeId: this.nodeId,
-        ...this.config.commonParams,
-        forceCode: true
+        dirForAssetWrites: this.assetsDirHost,  // HOST path for MCP to write
+        forceCode: true,
+        clientLanguages: this.config.commonParams.clientLanguages,
+        clientFrameworks: this.config.commonParams.clientFrameworks
       }),
       this.callMCPTool('get_screenshot', { nodeId: this.nodeId }),
-      this.callMCPTool('get_variable_defs', { nodeId: this.nodeId })
+      this.callMCPTool('get_variable_defs', { nodeId: this.nodeId }),
+      this.callMCPTool('get_metadata', { nodeId: this.nodeId })
     ]);
-
-    // Save parent wrapper
-    this.saveFile('parent-wrapper.tsx', parentWrapperResult.content[0].text);
 
     // Save screenshot (handle base64/binary)
     const screenshotData = screenshotResult.content[0].data || screenshotResult.content[0].text;
@@ -355,160 +464,93 @@ class FigmaCLI {
       log.warning('Screenshot non disponible');
     }
 
-    // Save variables
+    // Save variables and metadata
     this.saveFile('variables.json', variablesResult.content[0].text);
-    log.success('Parent wrapper + screenshot + variables sauvegardés\n');
+    this.saveFile('metadata.xml', metadataResult.content[0].text);
+    log.success('4 appels MCP terminés\n');
 
-    // 3. Extract nodes (mode chunk systématique)
-    log.task('📦', 'Extraction des nodes (mode chunk systématique)');
-    const chunksDir = path.join(this.testDir, 'chunks');
-    fs.mkdirSync(chunksDir, { recursive: true });
+    // 2. Check if code is valid and not too large
+    const code = codeResult.content[0].text;
+    const isValid = this.isValidReactCode(code);
+    const isTooLarge = code.length > 100000;
 
-    const nodesOutput = execSync(
-      `node ${path.join(__dirname, 'utils/chunking.js')} extract-nodes ` +
-      `${path.join(this.testDir, 'metadata.xml')}`,
-      { encoding: 'utf8' }
-    );
+    if (isValid && !isTooLarge) {
+      // SIMPLE MODE (4 calls total)
+      log.success('✅ MODE SIMPLE: Code valide et taille OK');
+      this.saveFile('Component.tsx', code);
 
-    const nodesListPath = path.join(chunksDir, 'nodes.json');
-    fs.writeFileSync(nodesListPath, nodesOutput, 'utf8');
-    let nodes = JSON.parse(nodesOutput);
+      // Wait for images to be written asynchronously
+      log.task('⏳', 'Attente des images MCP');
+      log.info('Délai de grâce de 10s pour l\'écriture asynchrone des images...');
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      await this.waitForImages();
 
-    // Si aucun enfant, traiter le node racine lui-même
-    if (nodes.length === 0) {
-      log.info('Aucun enfant détecté, traitement du node racine');
-      nodes = [{ id: this.nodeId, name: 'Component' }];
+      log.success('Phase 1 terminée en MODE SIMPLE (4 appels)\n');
+      return;
     }
 
+    // CHUNK MODE (5+N calls)
+    log.warning('⚠️  MODE CHUNKING: Code invalide ou trop volumineux');
+    log.info(`   Code valide: ${isValid}`);
+    log.info(`   Taille: ${(code.length / 1000).toFixed(1)}k caractères\n`);
+
+    // 3. Extract child nodes
+    const nodes = this.extractChildNodes();
     log.info(`${nodes.length} node(s) à traiter\n`);
 
-    // 4. For each node: get_design_context (séquentiel)
-    log.task('⏳', 'Génération des chunks (séquentiel)');
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i];
-      log.progress(i + 1, nodes.length, `${node.name} (${node.id})`);
+    // 4. Get parent wrapper for CSS classes
+    log.task('📦', 'Récupération parent wrapper');
+    const parentWrapperResult = await this.callMCPTool('get_design_context', {
+      nodeId: this.nodeId,
+      dirForAssetWrites: '',  // Images already retrieved
+      forceCode: true,
+      clientLanguages: this.config.commonParams.clientLanguages,
+      clientFrameworks: this.config.commonParams.clientFrameworks
+    });
+    this.saveFile('parent-wrapper.tsx', parentWrapperResult.content[0].text);
+    log.success('Parent wrapper sauvegardé\n');
 
-      const codeResult = await this.callMCPTool('get_design_context', {
-        nodeId: node.id,
-        ...this.config.commonParams,
-        forceCode: true
-      });
-
-      // Validate that the result contains valid code, not an error message
-      const resultText = codeResult.content[0].text;
-      const errorPatterns = [
-        /rate limit exceeded/i,
-        /please try again/i,
-        /^error:/i,
-        /api error/i,
-        /request failed/i,
-        /unauthorized/i,
-        /forbidden/i,
-        /not found/i
-      ];
-
-      const containsError = errorPatterns.some(pattern => pattern.test(resultText));
-      const looksLikeReactCode = resultText.includes('import') || resultText.includes('export') || resultText.includes('function') || resultText.includes('const');
-
-      if (containsError || (!looksLikeReactCode && resultText.length < 500)) {
-        log.error('Le serveur MCP a retourné une erreur au lieu du code');
-        console.log(`   ${colors.dim}Chunk: ${node.name}${colors.reset}`);
-        console.log(`   ${colors.dim}Réponse: ${resultText.substring(0, 200)}${colors.reset}`);
-        console.log(`\n${colors.yellow}📋 Actions requises:${colors.reset}`);
-        console.log(`   ${colors.dim}1. Attendez quelques minutes (rate limit Figma API)${colors.reset}`);
-        console.log(`   ${colors.dim}2. Vérifiez votre connexion Figma Desktop${colors.reset}`);
-        console.log(`   ${colors.dim}3. Réessayez la commande${colors.reset}\n`);
-        throw new Error(`MCP server returned error instead of code: ${resultText.substring(0, 100)}`);
-      }
-
-      // Save chunk immediately
-      this.saveFile(`chunks/${node.name}.tsx`, resultText);
-
-      // Wait 1s to avoid rate limit
-      if (i < nodes.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-    log.success('Tous les chunks générés\n');
-
-    // 5. Wait for images in assets directory
-    log.task('⏳', 'Attente des images MCP');
-    await this.waitForImages();
+    // 5. Generate chunks sequentially
+    await this.generateChunks(nodes);
 
     // 6. Assemble chunks
     log.task('🔗', 'Assemblage des chunks');
-    // Find all .tsx files in chunks/ directory (avoids issues with spaces in filenames)
-    const allChunkFiles = fs.readdirSync(chunksDir)
-      .filter(f => f.endsWith('.tsx'))
-      .map(f => path.join(chunksDir, f))
-      .map(f => `"${f}"`)  // Quote each file to handle spaces
-      .join(' ');
-
-    execSync(
-      `node ${path.join(__dirname, 'utils/chunking.js')} assemble-chunks ` +
-      `${this.testDir} Component ${allChunkFiles}`
-    );
+    this.assembleChunks();
     log.success('Component.tsx assemblé\n');
+
+    // 7. Wait for images (already should be there from first call)
+    log.task('⏳', 'Vérification des images');
+    await this.waitForImages();
+
+    log.success(`Phase 1 terminée en MODE CHUNKING (${5 + nodes.length} appels)\n`);
   }
 
   /**
    * Wait for images to be written by MCP server
    */
   async waitForImages() {
-    // Count expected images from Component.tsx
-    const componentPath = path.join(this.testDir, 'chunks');
-    if (!fs.existsSync(componentPath)) {
-      log.warning('Aucun chunk trouvé, skip attente images');
+    // Check if assets directory has images
+    if (!fs.existsSync(this.assetsDir)) {
+      log.info('Aucun assets directory, skip copie images');
       return;
     }
 
-    const chunks = fs.readdirSync(componentPath).filter(f => f.endsWith('.tsx'));
-    const allImagePaths = new Set();
+    const assetsFiles = fs.readdirSync(this.assetsDir).filter(f => /\.(png|svg|jpg|jpeg|gif|webp)$/i.test(f));
 
-    for (const chunk of chunks) {
-      const content = fs.readFileSync(path.join(componentPath, chunk), 'utf8');
-      // Match both absolute paths and hash filenames
-      const matches = content.match(/[^"']*[/\\][a-f0-9]{40}\.(png|svg|jpg|jpeg|gif|webp)|[^"']+\.(png|svg|jpg|jpeg|gif|webp)/gi);
-      if (matches) {
-        matches.forEach(match => allImagePaths.add(match));
-      }
-    }
-
-    const expectedCount = allImagePaths.size;
-
-    if (expectedCount === 0) {
-      log.info('Aucune image attendue');
+    if (assetsFiles.length === 0) {
+      log.info('Aucune image à copier depuis assets');
       return;
     }
 
-    log.info(`Attente de ${expectedCount} image(s) unique(s)...`);
-
-    // Wait max 30s
-    for (let i = 1; i <= 30; i++) {
-      let tmpFiles = [];
-      try {
-        if (fs.existsSync(this.assetsDir)) {
-          tmpFiles = fs.readdirSync(this.assetsDir).filter(f => /\.(png|svg|jpg|jpeg|gif|webp)$/i.test(f));
-        }
-      } catch (error) {
-        log.warning(`Cannot read ${this.assetsDir}: ${error.message}`);
-        tmpFiles = [];
-      }
-
-      if (tmpFiles.length >= expectedCount) {
-        log.success(`${tmpFiles.length} image(s) détectée(s) après ${i}s`);
-
-        // Copy to test directory
-        execSync(`cp -r "${this.assetsDir}"/* "${this.testDir}"/ 2>/dev/null || true`);
-        return;
-      }
-
-      if (i === 30) {
-        log.warning(`Timeout: seulement ${tmpFiles.length}/${expectedCount} images après 30s`);
-        execSync(`cp -r "${this.assetsDir}"/* "${this.testDir}"/ 2>/dev/null || true`);
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    // Copy images from assets to test directory
+    log.info(`Copie de ${assetsFiles.length} image(s) depuis ${path.basename(this.assetsDir)}...`);
+    try {
+      execSync(`cp -r "${this.assetsDir}"/* "${this.testDir}"/`);
+      const copiedFiles = fs.readdirSync(this.testDir).filter(f => /\.(png|svg|jpg|jpeg|gif|webp)$/i.test(f));
+      log.success(`✅ ${copiedFiles.length} image(s) copiée(s)\n`);
+    } catch (error) {
+      log.error(`Erreur lors de la copie des images: ${error.message}`);
+      throw error;
     }
   }
 
@@ -528,7 +570,7 @@ class FigmaCLI {
       execSync(`node ${path.join(__dirname, 'post-processing/organize-images.js')} ${this.testDir}`);
       log.success(`${imageCount} image(s) organisée(s)\n`);
     } else {
-      log.warning('Aucune image trouvée, skip organisation\n');
+      log.info('Aucune image à organiser\n');
     }
 
     // 2. Unified processor (AST + reports)
@@ -581,7 +623,7 @@ class FigmaCLI {
   async run() {
     const startTime = Date.now();
 
-    log.header('FIGMA-ANALYZE - Mode chunk systématique');
+    log.header('FIGMA-ANALYZE - Try Simple First');
     log.divider();
     console.log(`${colors.dim}URL:${colors.reset}  ${this.figmaUrl}`);
     console.log(`${colors.dim}Node:${colors.reset} ${this.nodeId}`);

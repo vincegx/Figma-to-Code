@@ -107,6 +107,17 @@ export function flattenAbsoluteImgWrappers(path) {
   )
   if (hasDimensions) return false
 
+  // Must NOT have inset positioning (inset-, top-, bottom-, left-, right-)
+  // These define implicit dimensions and the wrapper is needed for correct sizing
+  const hasInsetPositioning = classes.some(c =>
+    c.startsWith('inset-') ||
+    c.startsWith('top-') ||
+    c.startsWith('bottom-') ||
+    c.startsWith('left-') ||
+    c.startsWith('right-')
+  )
+  if (hasInsetPositioning) return false
+
   // Must NOT have overflow-hidden or overflow-clip (these are intentional clipping containers)
   const hasOverflow = classes.some(c =>
     c === 'overflow-hidden' ||

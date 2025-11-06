@@ -1,157 +1,89 @@
 ---
-description: Validation visuelle Figma → Web + corrections si nécessaire
+description: Validation visuelle Figma → Web
 ---
 
-# 🎯 Validation visuelle Figma
+# Validation - {{test_id}}
 
-Test à valider: **{{test_id}}**
+## Tâche
 
-Test directory: `src/generated/tests/{{test_id}}/`
+1. **Lire les screenshots**
+   - `src/generated/tests/{{test_id}}/img/figma-screenshot.png` (référence Figma)
+   - `src/generated/tests/{{test_id}}/{{web_screenshot}}` (rendu actuel à valider)
 
----
-
-## Étapes de validation
-
-### 1. Lire les screenshots (déjà générés par figma-analyze)
-
-Utilise le Read tool pour lire les 2 screenshots:
-
-- `src/generated/tests/{{test_id}}/figma-screenshot.png` (design Figma)
-- `src/generated/tests/{{test_id}}/web-render.png` (rendu web)
-
-**Important:** Ces 2 fichiers ont déjà été générés par `figma-analyze`. Tu dois juste les lire.
-
-### 2. Lire le composant à corriger
-
-- `src/generated/tests/{{test_id}}/Component-fixed.tsx`
-
-### 3. Comparer visuellement les 2 screenshots
-
-Compare **TRÈS ATTENTIVEMENT** les 2 images et identifie les différences:
+2. **Comparer pixel par pixel - Checklist complète**
 
 **Couleurs:**
-- Background colors identiques?
-- Text colors identiques?
-- Border colors identiques?
-- Gradients: mêmes angles, mêmes couleurs, mêmes positions?
+- Backgrounds, text, borders identiques?
+- Gradients: angles, couleurs, stops?
 
 **Espacements:**
-- Padding identique?
-- Margin identique?
-- Gap (flexbox/grid) identique?
-- Spacing entre éléments identique?
+- Padding, margin, gap identiques?
 
 **Typographie:**
-- Font family identique?
-- Font size identique?
-- Font weight identique?
-- Line height identique?
-- Letter spacing identique?
-- Text transform (uppercase, lowercase) identique?
+- Font: family, size, weight, line-height?
+- Letter spacing, text transform?
 
 **Effets visuels:**
-- Shadows: mêmes offsets (x, y), même blur, même spread, même couleur?
-- Gradients: mêmes angles, mêmes couleurs, mêmes stops?
-- Blend modes corrects?
-- Opacity correcte?
+- Shadows: offset (x,y), blur, spread, couleur?
+- Opacity, blend modes?
 
 **Layout:**
-- Positioning correct (absolute, relative, flex)?
-- Dimensions correctes (width, height)?
-- Overflow géré?
+- Positioning (absolute/relative/flex)?
+- Dimensions (width, height)?
 - Z-index correct?
 
 **Images & Assets:**
-- Toutes les images chargées?
-- Positions correctes?
-- Sizes correctes?
+- Toutes chargées? Positions/sizes correctes?
 
-**Borders & Strokes:**
-- Border width identique?
-- Border style identique?
-- Border radius identique?
-- Stroke alignment (inside, outside, center)?
+**Borders:**
+- Width, radius, style identiques?
+- Stroke alignment (inside/outside/center)?
 
-### 4. SI différences détectées
+3. **SI différences détectées**
 
-**A. Identifier précisément les écarts**
+**A. Identifier précisément:**
+- **Où:** Quel élément visuel
+- **Quoi:** Quelle propriété (ex: gradient angle)
+- **Figma:** Valeur attendue (ex: 47deg)
+- **Web:** Valeur actuelle (ex: 45deg)
 
-Pour chaque différence, note:
-- **Où** (quel élément, quelle ligne de code)
-- **Quoi** (quelle propriété CSS)
-- **Figma** (valeur attendue)
-- **Web** (valeur actuelle)
+**B. Corriger Component-final.tsx:**
+- Lire le fichier
+- Utiliser Edit tool pour corriger TOUTES les différences détectées
+- Modifier UNIQUEMENT ce qui est nécessaire pour atteindre 100% de fidélité
 
-Exemple:
+**Corrections à appliquer (tout automatiquement):**
+- Tailwind classes (colors, spacing, fonts, shadows, etc.)
+- Inline styles CSS (gradients, custom values)
+- Attributs HTML (width, height)
+- Structure JSX/HTML si nécessaire (ajouter/supprimer éléments)
+- Logique TypeScript si nécessaire (conditions, boucles)
+
+4. **Afficher résumé**
+
+Format de sortie :
 ```
-Différence 1: Gradient angle
-  - Élément: .hero-banner (ligne 45)
-  - Propriété: background
-  - Figma: linear-gradient(47deg, ...)
-  - Web: linear-gradient(45deg, ...)
-  - Correction: Changer 45deg → 47deg
-```
-
-**B. Appliquer les corrections**
-
-Utilise le Edit tool sur `src/generated/tests/{{test_id}}/Component-fixed.tsx` pour corriger les différences.
-
-**Corrections simples (applique directement):**
-- Couleurs (hex, rgb, rgba)
-- Espacements (padding, margin, gap)
-- Font sizes, weights
-- Border radius
-- Shadows (box-shadow)
-- Gradients (angles, colors)
-
-**Corrections complexes (demande confirmation):**
-- Changements de structure HTML
-- Changements de logique (conditions, boucles)
-- Ajout/suppression de composants
-
-**C. Générer Component-final.tsx**
-
-Après corrections, génère `src/generated/tests/{{test_id}}/Component-final.tsx` avec le code corrigé.
-
-### 5. Confirmer fidélité 100%
-
-Une fois les corrections appliquées, confirme:
-
-```
-✅ Validation terminée
-
-Corrections appliquées:
-• [Liste des corrections avec détails]
-
-🎉 Fidélité finale: 100%
+VALIDATION_CORRECTIONS_START
+1. [Élément] - [Propriété] - [Avant → Après]
+2. [Élément] - [Propriété] - [Avant → Après]
+VALIDATION_CORRECTIONS_END
 ```
 
-**OU** si aucune différence détectée:
-
+Si aucune différence :
 ```
-✅ Validation terminée
-
-Aucune différence détectée entre Figma et Web.
-🎉 Fidélité: 100% (sans corrections nécessaires)
+VALIDATION_CORRECTIONS_START
+Aucune correction - Fidélité 100%
+VALIDATION_CORRECTIONS_END
 ```
-
----
-
-## Checklist finale
-
-- [ ] Screenshots lus (figma-screenshot.png + web-render.png)
-- [ ] Comparaison visuelle effectuée (tous les aspects: couleurs, espacements, fonts, shadows, gradients, etc.)
-- [ ] Différences identifiées précisément (si applicable)
-- [ ] Corrections appliquées (si applicable)
-- [ ] Fidélité 100% confirmée
 
 ---
 
 ## Notes importantes
 
-- **PRÉCISION:** Sois très précis dans l'identification des différences. Par exemple, "gradient angle 45deg au lieu de 47deg" et pas juste "gradient incorrect".
-- **NE PAS REGÉNÉRER:** Ne relance PAS `capture-screenshot.js`. Les screenshots sont déjà générés.
-- **CORRECTIONS CIBLÉES:** Modifie uniquement les propriétés CSS nécessaires, ne réécris pas tout le composant.
-- **DOCUMENTATION:** Documente chaque correction appliquée pour traçabilité.
-
-**C'est parti! 🚀**
+- **VALIDATION ITÉRATIVE:** Ce prompt peut être exécuté plusieurs fois (max 2 itérations)
+- **PRÉCISION:** Sois très précis (ex: "gradient 45deg → 47deg", pas "gradient incorrect")
+- **NE PAS REGÉNÉRER:** Ne relance PAS capture-screenshot.js (géré par bash)
+- **CORRECTIONS CIBLÉES:** Modifie UNIQUEMENT ce qui est nécessaire (Tailwind/CSS/HTML)
+- **RÉFÉRENCE:** Figma = vérité absolue, Web doit être identique à 100%
+- **FORMAT:** Utilise Edit tool (pas Write), préserve la structure existante
+- **ITÉRATION 2:** Si c'est la 2e itération, {{web_screenshot}} sera web-render-final.png
