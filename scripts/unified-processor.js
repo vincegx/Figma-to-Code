@@ -592,9 +592,14 @@ if (context.customCSSClasses.size > 0) {
 const cssFilePath = outputFile.replace(/\.tsx$/, '.css')
 let cssContent = `/* Auto-generated design tokens from Figma */\n`
 
+// Use fonts from context (updated by font-detection transform) or fallback to initial detection
+const finalPrimaryFont = context.primaryFont || primaryFont
+const finalGoogleFontsUrl = context.googleFontsUrl || googleFontsUrl
+
 // Add Google Fonts import
-if (primaryFont && googleFontsUrl) {
-  cssContent += `@import url('${googleFontsUrl}');\n`
+if (finalPrimaryFont && finalGoogleFontsUrl) {
+  cssContent += `@import url('${finalGoogleFontsUrl}');\n`
+  console.log(`   ✅ Google Fonts import added: ${finalPrimaryFont}`)
 }
 
 // Add CSS custom properties
@@ -693,6 +698,28 @@ if (inputFile.includes('/chunks/')) {
   fs.writeFileSync(statsFilePath, JSON.stringify(statsToSave, null, 2), 'utf-8')
   console.log(`📊 Saved stats: ${path.basename(statsFilePath)}`)
 }
+
+// ═══════════════════════════════════════════════════════════════
+// UPDATE TAILWIND SAFELIST WITH ARBITRARY VALUE CLASSES
+// (colors, heights, widths, gaps, etc.)
+// ═══════════════════════════════════════════════════════════════
+
+// Only update safelist for actual test directories (not temp files or chunks)
+if (!inputFile.includes('/chunks/') && outputFile.includes('/generated/tests/')) {
+  console.log('\n🎨 Updating Tailwind safelist...')
+  try {
+    const { updateSafelistForTest } = await import('./post-processing/update-tailwind-safelist.js')
+    const testDir = path.dirname(outputFile)
+    const result = updateSafelistForTest(testDir)
+
+    if (!result.updated) {
+      console.log(`   ℹ️  No safelist update needed (${result.classes.length} classes already present)`)
+    }
+  } catch (error) {
+    console.error(`   ⚠️  Could not update safelist: ${error.message}`)
+  }
+}
+
 } // End of else block (normal mode)
 
 // ═══════════════════════════════════════════════════════════════

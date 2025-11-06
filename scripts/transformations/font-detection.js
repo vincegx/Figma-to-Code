@@ -121,12 +121,9 @@ function getCorrectFontWeight(node, context) {
 }
 
 export function execute(ast, context) {
-  const { primaryFont } = context
-
-  if (!primaryFont) return { fontsConverted: 0, enhancedWeights: 0 }
-
   let fontsConverted = 0
   let enhancedWeights = 0
+  const fontsDetected = new Map() // Track all fonts found: Map<fontFamily, Set<weights>>
 
   traverse.default(ast, {
     JSXElement(path) {
@@ -146,9 +143,15 @@ export function execute(ast, context) {
       // Fallback to style-based weight if no data attributes found
       if (fontWeight === 400 && fontStyle) {
         fontWeight = WEIGHT_MAP[fontStyle] || 400
-      } else {
+      } else if (fontWeight !== 400) {
         enhancedWeights++ // Track when we used enhanced detection
       }
+
+      // Track this font for Google Fonts URL generation
+      if (!fontsDetected.has(fontFamily)) {
+        fontsDetected.set(fontFamily, new Set())
+      }
+      fontsDetected.get(fontFamily).add(fontWeight)
 
       const styleAttr = attributes.find(attr => attr.name && attr.name.name === 'style')
 
@@ -184,5 +187,23 @@ export function execute(ast, context) {
     }
   })
 
-  return { fontsConverted, enhancedWeights }
+  // Update context with detected fonts for CSS generation
+  // ALWAYS update googleFontsUrl with fonts detected from code, even if primaryFont exists
+  // This overrides potentially incorrect weights from variables.json
+  if (fontsDetected.size > 0) {
+    const primaryFont = context.primaryFont || Array.from(fontsDetected.keys())[0]
+    const googleFontsUrls = []
+
+    for (const [family, weights] of fontsDetected) {
+      const weightsStr = Array.from(weights).sort((a, b) => a - b).join(';')
+      const familyParam = family.replace(/ /g, '+')
+      googleFontsUrls.push(`family=${familyParam}:wght@${weightsStr}`)
+    }
+
+    context.primaryFont = primaryFont
+    context.googleFontsUrl = `https://fonts.googleapis.com/css2?${googleFontsUrls.join('&')}&display=swap`
+    context.fontsDetected = fontsDetected
+  }
+
+  return { fontsConverted, enhancedWeights, fontsDetected: fontsDetected.size }
 }
