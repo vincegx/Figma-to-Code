@@ -160,6 +160,8 @@
       "danger": "✗ Limit"
     },
     "tooltip": {
+      "tokens_used": "Tokens Used (measured)",
+      "mcp_tools": "MCP Tools Breakdown",
       "credit_estimates": "Credit Estimates (today)",
       "min": "Min",
       "typical": "Typical",

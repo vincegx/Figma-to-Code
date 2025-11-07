@@ -8,12 +8,14 @@ interface UsageData {
     calls: Record<string, number>;
     totalCalls: number;
     analyses: number;
+    tokens?: Record<string, number>; // Optional pour compatibilité avec anciennes données
     credits: {
       min: number;
       typical: number;
       max: number;
       dailyLimit: number;
       percentUsed: number;
+      isActual: boolean;
     };
   };
   historical: Array<{
@@ -166,47 +168,43 @@ export function UsageBar() {
           onMouseLeave={() => setShowTooltip(false)}
         >
           <div className="space-y-3">
-            {/* Détail des crédits */}
+            {/* Total de tokens utilisés */}
             <div>
               <h4 className="text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100">
-                {t('usage.tooltip.credit_estimates')}
+                {t('usage.tooltip.tokens_used')}
               </h4>
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                <div className="rounded p-2 bg-gray-100 dark:bg-gray-900">
-                  <div className="text-gray-600 dark:text-gray-400">{t('usage.tooltip.min')}</div>
-                  <div className="font-semibold text-gray-900 dark:text-gray-100">
-                    {formatNumber(today.credits.min)}
-                  </div>
-                </div>
-                <div className="rounded p-2 bg-gray-100 dark:bg-gray-900">
-                  <div className="text-gray-600 dark:text-gray-400">{t('usage.tooltip.typical')}</div>
-                  <div className="font-semibold text-gray-900 dark:text-gray-100">
+              <div className="rounded p-3 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border border-blue-200 dark:border-blue-700">
+                <div className="flex justify-between items-center">
+                  <div className="text-gray-700 dark:text-gray-300 font-medium">Total</div>
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                     {formatNumber(today.credits.typical)}
                   </div>
                 </div>
-                <div className="rounded p-2 bg-gray-100 dark:bg-gray-900">
-                  <div className="text-gray-600 dark:text-gray-400">{t('usage.tooltip.max')}</div>
-                  <div className="font-semibold text-gray-900 dark:text-gray-100">
-                    {formatNumber(today.credits.max)}
-                  </div>
+                <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                  {formatNumber(today.credits.dailyLimit)} limit / {percentUsed.toFixed(1)}% used
                 </div>
               </div>
             </div>
 
-            {/* Détail des appels */}
+            {/* Détail par outil MCP */}
             <div>
               <h4 className="text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100">
-                {t('usage.tooltip.api_calls')}
+                {t('usage.tooltip.mcp_tools')}
               </h4>
               <div className="space-y-1 text-xs">
                 {Object.entries(today.calls).map(([tool, count]) => (
-                  <div key={tool} className="flex justify-between items-center">
-                    <span className="font-mono text-gray-600 dark:text-gray-400">
+                  <div key={tool} className="flex justify-between items-center gap-3 py-1">
+                    <span className="font-mono text-gray-600 dark:text-gray-400 text-[10px]">
                       {tool}
                     </span>
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">
-                      {count} {t('usage.tooltip.calls')}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500 dark:text-gray-400">
+                        {count}×
+                      </span>
+                      <span className="font-semibold text-blue-600 dark:text-blue-400 min-w-[60px] text-right">
+                        {formatNumber(today.tokens?.[tool] || 0)} tk
+                      </span>
+                    </div>
                   </div>
                 ))}
                 {Object.keys(today.calls).length === 0 && (

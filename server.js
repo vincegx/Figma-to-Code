@@ -305,28 +305,11 @@ app.get('/api/usage', (req, res) => {
     // Lire le fichier d'usage
     const usageData = JSON.parse(fs.readFileSync(usageFilePath, 'utf8'))
     const today = new Date().toISOString().split('T')[0]
-    const todayData = usageData.daily[today] || { calls: {}, totalCalls: 0, analyses: 0 }
+    const todayData = usageData.daily[today] || { calls: {}, totalCalls: 0, analyses: 0, tokens: {}, totalTokens: 0 }
 
-    // Calculer les crédits estimés
-    const creditEstimates = {
-      'get_metadata': { min: 50, typical: 50, max: 100 },
-      'get_variable_defs': { min: 50, typical: 50, max: 100 },
-      'get_design_context': { min: 50, typical: 200, max: 5000 },
-      'get_screenshot': { min: 200, typical: 200, max: 500 }
-    }
-
-    let minCredits = 0
-    let typicalCredits = 0
-    let maxCredits = 0
-
-    for (const [tool, count] of Object.entries(todayData.calls)) {
-      const estimates = creditEstimates[tool] || { min: 50, typical: 100, max: 200 }
-      minCredits += count * estimates.min
-      typicalCredits += count * estimates.typical
-      maxCredits += count * estimates.max
-    }
-
-    const percentUsed = (typicalCredits / 1200000) * 100
+    // Use actual tokens from measurements
+    const totalTokens = todayData.totalTokens || 0
+    const percentUsed = (totalTokens / 1200000) * 100
 
     // Déterminer le statut
     let status
@@ -351,16 +334,11 @@ app.get('/api/usage', (req, res) => {
       const dayData = usageData.daily[dateStr]
 
       if (dayData) {
-        let dayCredits = 0
-        for (const [tool, count] of Object.entries(dayData.calls)) {
-          const estimates = creditEstimates[tool] || { min: 50, typical: 100, max: 200 }
-          dayCredits += count * estimates.typical
-        }
         historical.push({
           date: dateStr,
           totalCalls: dayData.totalCalls,
           analyses: dayData.analyses,
-          creditsEstimate: dayCredits
+          creditsEstimate: dayData.totalTokens || 0
         })
       } else {
         historical.push({
@@ -378,12 +356,14 @@ app.get('/api/usage', (req, res) => {
         calls: todayData.calls,
         totalCalls: todayData.totalCalls,
         analyses: todayData.analyses,
+        tokens: todayData.tokens || {},
         credits: {
-          min: minCredits,
-          typical: typicalCredits,
-          max: maxCredits,
+          min: totalTokens,
+          typical: totalTokens,
+          max: totalTokens,
           dailyLimit: 1200000,
-          percentUsed
+          percentUsed,
+          isActual: true
         }
       },
       historical,

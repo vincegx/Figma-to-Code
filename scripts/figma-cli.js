@@ -234,7 +234,8 @@ class FigmaCLI {
 
       // Track successful call (only if no rate limit error in response)
       if (this.validateMCPResult(result)) {
-        this.usageTracker.track(toolName);
+        const tokensUsed = this.estimateTokensFromResult(result);
+        this.usageTracker.track(toolName, tokensUsed);
       }
 
       return result;
@@ -242,6 +243,30 @@ class FigmaCLI {
       log.error(`Erreur lors de l'appel ${toolName}: ${error.message}`);
       throw error;
     }
+  }
+
+  /**
+   * Estimate tokens consumed by an MCP result
+   * Based on actual content size (TSX, XML, JSON, screenshot)
+   * @param {Object} result - MCP tool result
+   * @returns {number} - Estimated tokens used
+   */
+  estimateTokensFromResult(result) {
+    if (!result.content || result.content.length === 0) return 0;
+
+    const item = result.content[0];
+
+    // Text content (TSX, XML, JSON) - ~4 chars per token
+    if (item.text) {
+      return Math.round(item.text.length / 4);
+    }
+
+    // Binary content (screenshot base64) - ~6 chars per token (base64 overhead)
+    if (item.data) {
+      return Math.round(item.data.length / 6);
+    }
+
+    return 0;
   }
 
   /**
@@ -481,8 +506,8 @@ class FigmaCLI {
 
       // Wait for images to be written asynchronously
       log.task('⏳', 'Attente des images MCP');
-      log.info('Délai de grâce de 10s pour l\'écriture asynchrone des images...');
-      await new Promise(resolve => setTimeout(resolve, 10000));
+      log.info('Délai de grâce de 5s pour l\'écriture asynchrone des images...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
       await this.waitForImages();
 
       log.success('Phase 1 terminée en MODE SIMPLE (4 appels)\n');

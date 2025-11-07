@@ -12,16 +12,6 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Credit estimates (conservative, based on Figma docs)
-const CREDIT_ESTIMATES = {
-  'get_metadata': { min: 50, typical: 50, max: 100 },
-  'get_variable_defs': { min: 50, typical: 50, max: 100 },
-  'get_design_context': { min: 50, typical: 200, max: 5000 },
-  'get_screenshot': { min: 200, typical: 200, max: 500 },
-  'get_code_connect_map': { min: 50, typical: 50, max: 100 },
-  'get_figjam': { min: 50, typical: 200, max: 3000 }
-};
-
 const DAILY_LIMIT = 1200000; // Figma Professional plan daily limit
 const DATA_FILE = path.join(__dirname, '../../data/figma-usage.json');
 
@@ -120,19 +110,37 @@ export class UsageTracker {
   /**
    * Track a successful MCP call
    * @param {string} toolName - MCP tool name (e.g., 'get_design_context')
+   * @param {number} tokensUsed - Actual tokens consumed (optional, calculated from content size)
    */
-  track(toolName) {
+  track(toolName, tokensUsed = null) {
     // Remove 'mcp__figma-desktop__' prefix if present
     const cleanToolName = toolName.replace('mcp__figma-desktop__', '');
 
-    // Initialize tool count if not exists
+    // Initialize today's data structure if needed
     if (!this.data.daily[this.today].calls[cleanToolName]) {
       this.data.daily[this.today].calls[cleanToolName] = 0;
+    }
+    if (!this.data.daily[this.today].tokens) {
+      this.data.daily[this.today].tokens = {};
+    }
+    if (!this.data.daily[this.today].tokens[cleanToolName]) {
+      this.data.daily[this.today].tokens[cleanToolName] = 0;
     }
 
     // Increment counters
     this.data.daily[this.today].calls[cleanToolName]++;
     this.data.daily[this.today].totalCalls++;
+
+    // Add actual tokens if provided
+    if (tokensUsed !== null) {
+      this.data.daily[this.today].tokens[cleanToolName] += tokensUsed;
+
+      // Update total tokens
+      if (!this.data.daily[this.today].totalTokens) {
+        this.data.daily[this.today].totalTokens = 0;
+      }
+      this.data.daily[this.today].totalTokens += tokensUsed;
+    }
 
     // Save immediately
     this.saveData();
@@ -150,31 +158,23 @@ export class UsageTracker {
    * Get statistics for today
    */
   getTodayStats() {
-    const todayData = this.data.daily[this.today] || { calls: {}, totalCalls: 0, analyses: 0 };
+    const todayData = this.data.daily[this.today] || { calls: {}, totalCalls: 0, analyses: 0, tokens: {}, totalTokens: 0 };
 
-    // Calculate credit estimates
-    let minCredits = 0;
-    let typicalCredits = 0;
-    let maxCredits = 0;
-
-    for (const [tool, count] of Object.entries(todayData.calls)) {
-      const estimates = CREDIT_ESTIMATES[tool] || { min: 50, typical: 100, max: 200 };
-      minCredits += count * estimates.min;
-      typicalCredits += count * estimates.typical;
-      maxCredits += count * estimates.max;
-    }
+    const totalTokens = todayData.totalTokens || 0;
 
     return {
       date: this.today,
       calls: todayData.calls,
       totalCalls: todayData.totalCalls,
       analyses: todayData.analyses,
+      tokens: todayData.tokens || {},
       credits: {
-        min: minCredits,
-        typical: typicalCredits,
-        max: maxCredits,
+        min: totalTokens,
+        typical: totalTokens,
+        max: totalTokens,
         dailyLimit: DAILY_LIMIT,
-        percentUsed: (typicalCredits / DAILY_LIMIT) * 100
+        percentUsed: (totalTokens / DAILY_LIMIT) * 100,
+        isActual: true
       }
     };
   }
@@ -193,18 +193,11 @@ export class UsageTracker {
       const dayData = this.data.daily[dateStr];
 
       if (dayData) {
-        // Calculate typical credits for this day
-        let typicalCredits = 0;
-        for (const [tool, count] of Object.entries(dayData.calls)) {
-          const estimates = CREDIT_ESTIMATES[tool] || { min: 50, typical: 100, max: 200 };
-          typicalCredits += count * estimates.typical;
-        }
-
         stats.push({
           date: dateStr,
           totalCalls: dayData.totalCalls,
           analyses: dayData.analyses,
-          creditsEstimate: typicalCredits
+          creditsEstimate: dayData.totalTokens || 0
         });
       } else {
         stats.push({
