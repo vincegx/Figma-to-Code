@@ -514,6 +514,7 @@ try {
     inputDir,
     metadataXmlPath,
     cleanMode,
+    keepDataName: true, // Keep data-name attributes for responsive merging
     analysis: {
       sections: [],
       totalNodes,

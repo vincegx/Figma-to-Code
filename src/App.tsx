@@ -9,6 +9,7 @@ import TestDetailPage from './components/pages/TestDetailPage'
 import SettingsPage from './components/pages/SettingsPage'
 import { Switch } from './components/ui/switch'
 import { Label } from './components/ui/label'
+import { ToggleGroup, ToggleGroupItem } from './components/ui/toggle-group'
 
 function App() {
   return (
@@ -62,6 +63,7 @@ function PreviewMode({ testId }: { testId: string }) {
   const [Component, setComponent] = useState<React.ComponentType | null>(null)
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null)
   const [showNavbar, setShowNavbar] = useState(false)
+  const [displayMode, setDisplayMode] = useState<'web' | 'figma'>('web')
 
   // Get version from URL params (clean or fixed)
   const params = new URLSearchParams(window.location.search)
@@ -72,14 +74,20 @@ function PreviewMode({ testId }: { testId: string }) {
     import(`./generated/tests/${testId}/metadata.xml?raw`)
       .then((module) => {
         const xmlContent = module.default
-        const widthMatch = xmlContent.match(/width="(\d+)"/)
-        const heightMatch = xmlContent.match(/height="(\d+)"/)
 
-        if (widthMatch && heightMatch) {
-          setDimensions({
-            width: parseInt(widthMatch[1]),
-            height: parseInt(heightMatch[1])
-          })
+        // Capture the first <frame> tag to get root dimensions
+        const firstFrame = xmlContent.match(/<frame[^>]*>/)?.[0]
+
+        if (firstFrame) {
+          const widthMatch = firstFrame.match(/width="([\d.]+)"/)
+          const heightMatch = firstFrame.match(/height="([\d.]+)"/)
+
+          if (widthMatch && heightMatch) {
+            setDimensions({
+              width: Math.round(parseFloat(widthMatch[1])),
+              height: Math.round(parseFloat(heightMatch[1]))
+            })
+          }
         }
       })
       .catch((err) => {
@@ -110,10 +118,10 @@ function PreviewMode({ testId }: { testId: string }) {
     }
   }, [testId, version])
 
-  // Auto-hide navbar after 3 seconds when visible
+  // Auto-hide navbar after 5 seconds when visible
   useEffect(() => {
     if (showNavbar) {
-      const timer = setTimeout(() => setShowNavbar(false), 3000)
+      const timer = setTimeout(() => setShowNavbar(false), 5000)
       return () => clearTimeout(timer)
     }
   }, [showNavbar])
@@ -183,10 +191,38 @@ function PreviewMode({ testId }: { testId: string }) {
                   Detail
                 </button>
               </div>
-              <div className="flex items-center gap-3">
+
+              <div className="absolute left-1/2 -translate-x-1/2">
                 <span className="text-xs text-muted-foreground font-mono">
                   {testId}
                 </span>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <ToggleGroup
+                  type="single"
+                  value={displayMode}
+                  onValueChange={(value) => {
+                    if (value) setDisplayMode(value as 'web' | 'figma')
+                  }}
+                  className="inline-flex bg-background border border-border rounded-md p-1 gap-1"
+                >
+                  <ToggleGroupItem
+                    value="web"
+                    aria-label="Web mode"
+                    className="text-xs px-2.5 py-1 data-[state=on]:bg-primary data-[state=on]:text-white data-[state=off]:hover:bg-accent data-[state=off]:hover:text-accent-foreground"
+                  >
+                    <span className="mr-1.5">💻</span>Web
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="figma"
+                    aria-label="Figma mode"
+                    className="text-xs px-2.5 py-1 data-[state=on]:bg-primary data-[state=on]:text-white data-[state=off]:hover:bg-accent data-[state=off]:hover:text-accent-foreground"
+                  >
+                    <span className="mr-1.5">📐</span>Figma
+                  </ToggleGroupItem>
+                </ToggleGroup>
+
                 <div className="flex items-center gap-2">
                   <Label htmlFor="version-switch" className="text-xs text-muted-foreground cursor-pointer">
                     {version === 'clean' ? 'Clean' : 'Fixed'}
@@ -213,8 +249,8 @@ function PreviewMode({ testId }: { testId: string }) {
       </div>
 
       <div style={{
-        width: `${dimensions.width}px`,
-        height: `${dimensions.height}px`
+        width: displayMode === 'figma' ? `${dimensions.width}px` : '100%',
+        ...(displayMode === 'figma' && { minHeight: `${dimensions.height}px` })
       }}>
         <Component />
       </div>

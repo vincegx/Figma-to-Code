@@ -46,6 +46,33 @@ function getColorClassName(property, color) {
 }
 
 /**
+ * Normalize calc() expressions from Figma to valid CSS
+ *
+ * Figma generates calc() without spaces around + and - operators,
+ * which violates CSS spec (operators must be surrounded by whitespace).
+ *
+ * @example
+ * normalizeCalcValue('calc(50%-0.5px)')   → 'calc(50% - 0.5px)'
+ * normalizeCalcValue('calc(25%+13.5px)')  → 'calc(25% + 13.5px)'
+ * normalizeCalcValue('10px')              → '10px' (unchanged)
+ */
+function normalizeCalcValue(value) {
+  if (!value || !value.includes('calc(')) {
+    return value
+  }
+
+  return value.replace(/calc\(([^)]+)\)/g, (_match, expression) => {
+    // Add spaces around + operator: 50%+13.5px → 50% + 13.5px
+    let normalized = expression.replace(/([0-9.%]+)\+([0-9.%-]+)/g, '$1 + $2')
+
+    // Add spaces around - operator: 50%-0.5px → 50% - 0.5px
+    normalized = normalized.replace(/([0-9.%]+)-([0-9.%]+)/g, '$1 - $2')
+
+    return `calc(${normalized})`
+  })
+}
+
+/**
  * Convert arbitrary Tailwind classes to custom CSS classes
  */
 function convertArbitraryClasses(className, cleanClasses) {
@@ -168,7 +195,7 @@ function convertArbitraryClasses(className, cleanClasses) {
 
       cleanClasses.set(customClass, {
         property,
-        value
+        value: normalizeCalcValue(value) // Normalize calc() expressions from Figma
       })
 
       return customClass
@@ -258,6 +285,9 @@ export function execute(ast, context) {
   const fontClasses = new Map()
   const cleanClasses = new Map()
 
+  // Check if we should keep data-name for responsive merging
+  const keepDataName = context.keepDataName || false
+
   // Pass 1: Process all transformations
   traverse.default(ast, {
     JSXElement(path) {
@@ -268,7 +298,11 @@ export function execute(ast, context) {
       path.node.openingElement.attributes = attributes.filter(attr => {
         if (!attr.name) return true
         const name = attr.name.name
-        return name !== 'data-name' && name !== 'data-node-id'
+        // Keep data-name if keepDataName flag is set (for responsive merging)
+        // Always remove data-node-id (internal Figma ID, not needed)
+        if (name === 'data-node-id') return false
+        if (name === 'data-name') return keepDataName
+        return true
       })
       dataAttrsRemoved += initialLength - path.node.openingElement.attributes.length
 
