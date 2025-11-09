@@ -30,19 +30,21 @@
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/vincegx/Figma-to-Code---MCP-tools.git
-cd Figma-to-Code---MCP-tools
+git clone https://github.com/vincegx/Figma-to-Code.git
+cd Figma-to-Code
 
-# 2. Install dependencies
-npm install
-
-# 3. Start Docker environment
+# 2. Start Docker (installs dependencies inside container automatically)
 docker-compose up --build
+
+# 3. (Optional) Install locally for IDE support only
+npm install  # Only if you want IntelliSense/linting locally
 
 # 4. Verify setup
 curl http://localhost:5173  # Dashboard
 curl http://localhost:3845/mcp  # MCP server
 ```
+
+**Note:** The app runs entirely in Docker. Local `npm install` is optional and only needed for IDE features (IntelliSense, linting). Chromium is NOT downloaded locally (configured in `.npmrc`).
 
 ### Development Environment
 

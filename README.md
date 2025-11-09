@@ -123,20 +123,29 @@ Both versions generated automatically via CLI `--clean` flag or dashboard.
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/vincegx/Figma-to-Code---MCP-tools.git
-cd Figma-to-Code---MCP-tools
+git clone https://github.com/vincegx/Figma-to-Code.git
+cd Figma-to-Code
 
-# 2. Install dependencies
-npm install
-
-# 3. Start Docker containers
+# 2. Start Docker (dependencies install automatically inside container)
 docker-compose up --build
 
-# 4. Open dashboard
+# 3. Open dashboard
 # http://localhost:5173
 ```
 
 **That's it!** 🎉 The dashboard is now running.
+
+### For Developers (Optional)
+
+If you want IDE support (IntelliSense, linting):
+
+```bash
+# Install dependencies locally (optional - for IDE only)
+npm install
+
+# Note: Chromium is NOT downloaded (configured in .npmrc)
+# The app MUST run in Docker for full functionality (MCP + Puppeteer)
+```
 
 ### Verify MCP Connection
 
@@ -349,7 +358,7 @@ We welcome contributions! Here's how to get started:
 
 ```bash
 # 1. Fork & clone
-git clone https://github.com/YOUR_USERNAME/Figma-to-Code---MCP-tools.git
+git clone https://github.com/YOUR_USERNAME/Figma-to-Code.git
 
 # 2. Create feature branch
 git checkout -b feature/amazing-feature
@@ -384,9 +393,9 @@ git push origin feature/amazing-feature
 ## 📚 Resources
 
 ### Project Links
-- [GitHub Repository](https://github.com/vincegx/Figma-to-Code---MCP-tools)
-- [Issues](https://github.com/vincegx/Figma-to-Code---MCP-tools/issues)
-- [Discussions](https://github.com/vincegx/Figma-to-Code---MCP-tools/discussions)
+- [GitHub Repository](https://github.com/vincegx/Figma-to-Code)
+- [Issues](https://github.com/vincegx/Figma-to-Code/issues)
+- [Discussions](https://github.com/vincegx/Figma-to-Code/discussions)
 
 ### External Documentation
 - [Model Context Protocol](https://github.com/anthropics/mcp) - MCP specification

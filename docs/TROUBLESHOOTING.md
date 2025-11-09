@@ -168,9 +168,13 @@ docker logs mcp-figma-v1
 
 # Common causes:
 
-# 1. Missing node_modules
+# 1. Missing node_modules in container
 docker exec mcp-figma-v1 ls /app/node_modules
-# Fix: Run npm install on host, then rebuild
+# Fix: Rebuild container to reinstall dependencies
+docker-compose down
+docker-compose up --build
+# Or install inside running container:
+docker exec mcp-figma-v1 npm install --legacy-peer-deps
 
 # 2. Syntax errors
 docker exec mcp-figma-v1 npm run lint
@@ -780,8 +784,8 @@ docker-compose up
 
 If issue persists:
 
-1. **Check GitHub Issues**: [Issues](https://github.com/vincegx/Figma-to-Code---MCP-tools/issues)
-2. **Search Discussions**: [Discussions](https://github.com/vincegx/Figma-to-Code---MCP-tools/discussions)
+1. **Check GitHub Issues**: [Issues](https://github.com/vincegx/Figma-to-Code/issues)
+2. **Search Discussions**: [Discussions](https://github.com/vincegx/Figma-to-Code/discussions)
 3. **Create New Issue**:
    - Include error message
    - Include Figma URL (if public)
