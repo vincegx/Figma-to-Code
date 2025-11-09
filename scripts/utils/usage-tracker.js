@@ -135,11 +135,23 @@ export class UsageTracker {
     if (tokensUsed !== null) {
       this.data.daily[this.today].tokens[cleanToolName] += tokensUsed;
 
-      // Update total tokens
-      if (!this.data.daily[this.today].totalTokens) {
-        this.data.daily[this.today].totalTokens = 0;
+      // Images (get_screenshot) are counted separately - they are processed by Figma's AI vision
+      // and NOT counted against the MCP text token quota
+      const isImageTool = cleanToolName === 'get_screenshot';
+
+      if (isImageTool) {
+        // Track image tokens separately (informational only)
+        if (!this.data.daily[this.today].imageTokens) {
+          this.data.daily[this.today].imageTokens = 0;
+        }
+        this.data.daily[this.today].imageTokens += tokensUsed;
+      } else {
+        // Only count non-image tokens in total (these count against quota)
+        if (!this.data.daily[this.today].totalTokens) {
+          this.data.daily[this.today].totalTokens = 0;
+        }
+        this.data.daily[this.today].totalTokens += tokensUsed;
       }
-      this.data.daily[this.today].totalTokens += tokensUsed;
     }
 
     // Save immediately
@@ -158,9 +170,10 @@ export class UsageTracker {
    * Get statistics for today
    */
   getTodayStats() {
-    const todayData = this.data.daily[this.today] || { calls: {}, totalCalls: 0, analyses: 0, tokens: {}, totalTokens: 0 };
+    const todayData = this.data.daily[this.today] || { calls: {}, totalCalls: 0, analyses: 0, tokens: {}, totalTokens: 0, imageTokens: 0 };
 
     const totalTokens = todayData.totalTokens || 0;
+    const imageTokens = todayData.imageTokens || 0;
 
     return {
       date: this.today,
@@ -168,6 +181,7 @@ export class UsageTracker {
       totalCalls: todayData.totalCalls,
       analyses: todayData.analyses,
       tokens: todayData.tokens || {},
+      imageTokens: imageTokens,
       credits: {
         min: totalTokens,
         typical: totalTokens,
@@ -197,14 +211,16 @@ export class UsageTracker {
           date: dateStr,
           totalCalls: dayData.totalCalls,
           analyses: dayData.analyses,
-          creditsEstimate: dayData.totalTokens || 0
+          creditsEstimate: dayData.totalTokens || 0, // Excludes image tokens
+          imageTokens: dayData.imageTokens || 0
         });
       } else {
         stats.push({
           date: dateStr,
           totalCalls: 0,
           analyses: 0,
-          creditsEstimate: 0
+          creditsEstimate: 0,
+          imageTokens: 0
         });
       }
     }
