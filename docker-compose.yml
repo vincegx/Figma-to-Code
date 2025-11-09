@@ -39,7 +39,6 @@ services:
     environment:
       - NODE_ENV=development
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-      - FIGMA_API_KEY=${FIGMA_API_KEY}
       - MCP_SERVER_PORT=3845
       - PROJECT_ROOT=${PWD}  # Chemin absolu sur l'hôte macOS pour MCP
 

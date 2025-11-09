@@ -70,17 +70,6 @@ if ! docker ps | grep -q mcp-figma-v1; then
   sleep 10
 fi
 
-# Check .env file exists
-if [ ! -f .env ]; then
-  echo -e "${RED}❌ Fichier .env manquant${NC}"
-  echo ""
-  echo "Créez un fichier .env avec:"
-  echo "  FIGMA_API_KEY=your_figma_api_key"
-  echo ""
-  echo "Obtenez votre clé API sur: https://www.figma.com/developers/api#access-tokens"
-  exit 1
-fi
-
 # Get absolute project path for MCP (runs on host, not in Docker)
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
