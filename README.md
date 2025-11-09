@@ -110,14 +110,22 @@ Both versions generated automatically via CLI `--clean` flag or dashboard.
 ---
 
 ![Dashboard Interface](docs/images/image02.png)
+*Simple Form With Visible Comamand Line*
 
 ---
 
 ![Dashboard Interface](docs/images/image03.png)
+*Grid list of all exported Code*
 
 ---
 
 ![Dashboard Interface](docs/images/image04.png)
+*View list of all exported Code*
+
+---
+
+![Dashboard Interface](docs/images/image05.png)
+*Detailled exported page with responsive test preview*
 
 ---
 
@@ -326,8 +334,6 @@ export const defaultConfig = {
 ports:
   - "5173:5173"  # Dashboard + API
 ```
-
-![Dashboard Interface](docs/images/image05.png)
 
 ---
 
