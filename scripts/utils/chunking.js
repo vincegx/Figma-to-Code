@@ -72,25 +72,30 @@ function extractChildNodes(xmlPath) {
  * Assemble multiple chunk components into one parent component
  * Generates Component.tsx with imports to chunks (not inline fusion)
  */
-function assembleChunks(parentName, chunkFiles, testDir) {
-  // Helper: Convert filename to valid PascalCase component name
-  // Examples:
-  //   "Frame 1618872337" → "Frame1618872337"
-  //   "Group 1321314779" → "Group1321314779"
-  //   "Appbar" → "Appbar"
-  //   "123test" → "Chunk123test"
-  const toPascalCase = (name) => {
-    // Remove spaces and special chars, keep alphanumeric
-    let cleaned = name.replace(/[^a-zA-Z0-9]/g, '');
+/**
+ * Convert filename to valid PascalCase component name
+ *
+ * Examples:
+ *   "Frame 1618872337" → "Frame1618872337"
+ *   "Group 1321314779" → "Group1321314779"
+ *   "Appbar" → "Appbar"
+ *   "123test" → "Chunk123test"
+ *   "title section" → "Titlesection"
+ */
+export function toPascalCase(name) {
+  // Remove spaces and special chars, keep alphanumeric
+  let cleaned = name.replace(/[^a-zA-Z0-9]/g, '');
 
-    // If starts with number, prefix with "Chunk"
-    if (/^\d/.test(cleaned)) {
-      cleaned = 'Chunk' + cleaned;
-    }
-
-    // Ensure first letter is uppercase
-    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  // If starts with number, prefix with "Chunk"
+  if (/^\d/.test(cleaned)) {
+    cleaned = 'Chunk' + cleaned;
   }
+
+  // Ensure first letter is uppercase
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+}
+
+function assembleChunks(parentName, chunkFiles, testDir) {
 
   const chunks = chunkFiles.map(file => ({
     fileName: path.basename(file, '.tsx'),
@@ -140,46 +145,48 @@ ${componentCalls}
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MAIN SCRIPT
+// MAIN SCRIPT (only run when executed directly, not when imported)
 // ═══════════════════════════════════════════════════════════════
 
-const mode = process.argv[2];
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const mode = process.argv[2];
 
-// Handle different modes
-if (mode === 'extract-nodes') {
-  const xmlPath = process.argv[3];
-  if (!xmlPath) {
-    console.error('Usage: node mcp-direct-save.js extract-nodes <metadataXmlPath>');
-    process.exit(1);
+  // Handle different modes
+  if (mode === 'extract-nodes') {
+    const xmlPath = process.argv[3];
+    if (!xmlPath) {
+      console.error('Usage: node mcp-direct-save.js extract-nodes <metadataXmlPath>');
+      process.exit(1);
+    }
+
+    const nodes = extractChildNodes(xmlPath);
+    console.log(JSON.stringify(nodes, null, 2));
+    process.exit(0);
   }
 
-  const nodes = extractChildNodes(xmlPath);
-  console.log(JSON.stringify(nodes, null, 2));
-  process.exit(0);
-}
+  if (mode === 'assemble-chunks') {
+    const assembleTestDir = process.argv[3];
+    const parentName = process.argv[4];
+    const chunkFiles = process.argv.slice(5);
 
-if (mode === 'assemble-chunks') {
-  const assembleTestDir = process.argv[3];
-  const parentName = process.argv[4];
-  const chunkFiles = process.argv.slice(5);
+    if (!assembleTestDir || !parentName || chunkFiles.length === 0) {
+      console.error('Usage: node mcp-direct-save.js assemble-chunks <testDir> <parentName> <chunk1> <chunk2> ...');
+      process.exit(1);
+    }
 
-  if (!assembleTestDir || !parentName || chunkFiles.length === 0) {
-    console.error('Usage: node mcp-direct-save.js assemble-chunks <testDir> <parentName> <chunk1> <chunk2> ...');
-    process.exit(1);
+    const assembled = assembleChunks(parentName, chunkFiles, assembleTestDir);
+    const outputPath = path.join(assembleTestDir, 'Component.tsx');
+    fs.writeFileSync(outputPath, assembled, 'utf8');
+
+    console.log(JSON.stringify({
+      success: true,
+      file: outputPath,
+      chunks: chunkFiles.length
+    }));
+    process.exit(0);
   }
 
-  const assembled = assembleChunks(parentName, chunkFiles, assembleTestDir);
-  const outputPath = path.join(assembleTestDir, 'Component.tsx');
-  fs.writeFileSync(outputPath, assembled, 'utf8');
-
-  console.log(JSON.stringify({
-    success: true,
-    file: outputPath,
-    chunks: chunkFiles.length
-  }));
-  process.exit(0);
+  console.error('Usage: node mcp-direct-save.js extract-nodes <metadataXmlPath>');
+  console.error('   or: node mcp-direct-save.js assemble-chunks <testDir> <parentName> <chunk1> <chunk2> ...');
+  process.exit(1);
 }
-
-console.error('Usage: node mcp-direct-save.js extract-nodes <metadataXmlPath>');
-console.error('   or: node mcp-direct-save.js assemble-chunks <testDir> <parentName> <chunk1> <chunk2> ...');
-process.exit(1);

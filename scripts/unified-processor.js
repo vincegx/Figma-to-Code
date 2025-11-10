@@ -932,4 +932,17 @@ if (figmaUrl) {
 
 console.log('\n✅ Unified processing complete!')
 
+// PHASE 1: Component splitting (optional)
+if (process.argv.includes('--split-components')) {
+  console.log('\n🔪 Splitting components into modular chunks...')
+
+  try {
+    const { splitComponent } = await import('./post-processing/component-splitter.js')
+    await splitComponent(testDir)
+  } catch (error) {
+    console.error(`❌ Error splitting components: ${error.message}`)
+    // Non-blocking: continue even if splitting fails
+  }
+}
+
 process.exit(0)
