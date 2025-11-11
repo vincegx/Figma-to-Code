@@ -214,7 +214,7 @@ export default function DashboardPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
-            Transformation Activity Over Time (Last 14 days)
+            <p className="text-lg font-medium">Transformation Activity Over Time (Last 14 days)</p>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -257,7 +257,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
-              Tests Timeline
+              <p className="text-lg font-medium">Tests Timeline</p>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -291,7 +291,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
-              Top 10 Tests by Nodes
+              <p className="text-lg font-medium">Top 10 Tests by Nodes</p>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -321,7 +321,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PieChartIcon className="h-5 w-5" />
-              Transformation Breakdown
+              <p className="text-lg font-medium">Transformation Breakdown</p>
             </CardTitle>
           </CardHeader>
           <CardContent>

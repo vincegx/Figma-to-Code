@@ -21,6 +21,7 @@ import { parseStringPromise } from 'xml2js';
 import { parse as babelParse } from '@babel/parser';
 import traverseLib from '@babel/traverse';
 import generateLib from '@babel/generator';
+import { compileResponsiveClasses } from './responsive-css-compiler.js';
 
 const traverseDefault = traverseLib.default || traverseLib;
 const generateDefault = generateLib.default || generateLib;
@@ -1210,11 +1211,17 @@ function generatePageCSS(components, desktop, tablet, mobile, outputDir, breakpo
     breakpoints
   );
 
-  // 5. Combine imports + parent CSS
-  const pageCSS = `/* Auto-generated Page.css */\n/* Component imports */\n${cssImports}\n\n${responsiveParentCSS}`;
+  // 5. Compile responsive classes (max-md:*, max-lg:*) from ALL generated TSX files
+  log.task('🎨', 'Compiling responsive classes to CSS');
+  const compiledCSS = compileResponsiveClasses(outputDir);
+
+  // 6. Combine imports + parent CSS + compiled responsive CSS
+  const pageCSS = compiledCSS
+    ? `/* Auto-generated Page.css */\n/* Component imports */\n${cssImports}\n\n${responsiveParentCSS}\n\n${compiledCSS}`
+    : `/* Auto-generated Page.css */\n/* Component imports */\n${cssImports}\n\n${responsiveParentCSS}`;
 
   fs.writeFileSync(path.join(outputDir, 'Page.css'), pageCSS);
-  log.success('Page.css generated with component imports + parent CSS');
+  log.success('Page.css generated with component imports + parent CSS + compiled responsive classes');
 }
 
 function readComponentCSS(testDir) {
