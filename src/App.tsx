@@ -7,6 +7,8 @@ import AnalyzePage from './components/pages/AnalyzePage'
 import TestsPage from './components/pages/TestsPage'
 import TestDetailPage from './components/pages/TestDetailPage'
 import ResponsiveTestsPage from './components/pages/ResponsiveTestsPage'
+import PuckEditorPage from './components/pages/PuckEditorPage'
+import PuckRenderPage from './components/pages/PuckRenderPage'
 import SettingsPage from './components/pages/SettingsPage'
 import { Switch } from './components/ui/switch'
 import { Label } from './components/ui/label'
@@ -18,6 +20,12 @@ function App() {
       <Routes>
         {/* Preview mode route (no layout) */}
         <Route path="/preview" element={<PreviewModeWrapper />} />
+
+        {/* Puck Editor route (no layout, fullscreen) */}
+        <Route path="/responsive-tests/:mergeId/puck-editor" element={<PuckEditorPage />} />
+
+        {/* Puck Render/Preview route (no layout) */}
+        <Route path="/responsive-tests/:mergeId/puck-preview" element={<PuckRenderPage />} />
 
         {/* Main app routes with layout */}
         <Route element={<MainLayout />}>

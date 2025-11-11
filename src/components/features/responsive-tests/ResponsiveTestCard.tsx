@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, memo } from 'react'
-import { ExternalLink, Trash2, Eye, ChevronRight, Loader2, Monitor, Tablet, Smartphone } from 'lucide-react'
+import { ExternalLink, Trash2, Eye, ChevronRight, Loader2, Monitor, Tablet, Smartphone, Edit } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -15,12 +16,18 @@ interface ResponsiveTestCardProps {
 export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRefresh }: ResponsiveTestCardProps) {
   const { confirm, ConfirmDialog } = useConfirm()
   const { alert, AlertDialogComponent } = useAlert()
+  const navigate = useNavigate()
   const [isDeleting, setIsDeleting] = useState(false)
 
   const handleOpenPreview = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     window.location.href = `/preview?responsive=${test.mergeId}`
   }, [test.mergeId])
+
+  const handleOpenPuck = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    navigate(`/responsive-tests/${test.mergeId}/puck-editor`)
+  }, [test.mergeId, navigate])
 
   const handleDelete = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -236,6 +243,14 @@ export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRef
               onClick={handleOpenPreview}
             >
               <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={handleOpenPuck}
+            >
+              <Edit className="h-4 w-4" />
             </Button>
             <Button
               variant="default"

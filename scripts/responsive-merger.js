@@ -1415,7 +1415,23 @@ async function mergeResponsive() {
     totalComponents: orderedComponents.length
   });
 
-  // 11. Summary
+  // 12. Generate Puck-ready components
+  log.phase('GENERATING PUCK COMPONENTS');
+  try {
+    const { generatePuckComponents } = await import('./puck-generator.js');
+    await generatePuckComponents({
+      sourceDir: subcomponentsDir,
+      outputDir: path.join(mergedDir, 'puck'),
+      imagesDir: path.join(mergedDir, 'img'),
+      components: orderedComponents
+    });
+    log.success('Puck components generated successfully\n');
+  } catch (error) {
+    log.error(`Error generating Puck components: ${error.message}`);
+    console.error(error.stack);
+  }
+
+  // 13. Summary
   console.log(`\n${colors.bright}${colors.bgGreen} ${colors.reset}`);
   console.log(`${colors.bright}${colors.green}┌${'─'.repeat(60)}┐${colors.reset}`);
   console.log(`${colors.bright}${colors.green}│  ✅ RESPONSIVE MERGE COMPLETE${' '.repeat(28)}│${colors.reset}`);

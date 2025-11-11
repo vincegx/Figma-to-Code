@@ -765,6 +765,157 @@ app.delete('/api/responsive-tests/:mergeId', async (req, res) => {
 })
 
 /**
+ * GET /api/responsive-tests/:mergeId/puck-config
+ * Retourne la configuration Puck (liste des composants disponibles)
+ */
+app.get('/api/responsive-tests/:mergeId/puck-config', async (req, res) => {
+  const { mergeId } = req.params
+
+  if (!mergeId || !mergeId.startsWith('responsive-merger-')) {
+    return res.status(400).json({ error: 'Merge ID invalide' })
+  }
+
+  try {
+    const metadataPath = path.join(
+      __dirname,
+      'src/generated/responsive-screens',
+      mergeId,
+      'responsive-metadata.json'
+    )
+
+    if (!fs.existsSync(metadataPath)) {
+      return res.status(404).json({ error: 'Test responsive introuvable' })
+    }
+
+    const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'))
+
+    res.json({
+      componentNames: metadata.components || [],
+      breakpoints: metadata.breakpoints,
+      mergeId: metadata.mergeId
+    })
+  } catch (error) {
+    console.error('Erreur lors du chargement de la config Puck:', error)
+    res.status(500).json({
+      error: 'Erreur lors du chargement de la configuration',
+      message: error.message
+    })
+  }
+})
+
+/**
+ * GET /api/responsive-tests/:mergeId/puck-data
+ * Retourne le layout Puck sauvegardé (ou null si pas encore sauvegardé)
+ */
+app.get('/api/responsive-tests/:mergeId/puck-data', async (req, res) => {
+  const { mergeId } = req.params
+
+  if (!mergeId || !mergeId.startsWith('responsive-merger-')) {
+    return res.status(400).json({ error: 'Merge ID invalide' })
+  }
+
+  try {
+    const dataPath = path.join(
+      __dirname,
+      'src/generated/responsive-screens',
+      mergeId,
+      'puck/puck-data.json'
+    )
+
+    if (!fs.existsSync(dataPath)) {
+      // Pas encore de données sauvegardées, retourner null
+      return res.json(null)
+    }
+
+    const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'))
+    res.json(data)
+  } catch (error) {
+    console.error('Erreur lors du chargement des données Puck:', error)
+    res.status(500).json({
+      error: 'Erreur lors du chargement des données',
+      message: error.message
+    })
+  }
+})
+
+/**
+ * POST /api/responsive-tests/:mergeId/puck-save
+ * Sauvegarde le layout Puck
+ */
+app.post('/api/responsive-tests/:mergeId/puck-save', async (req, res) => {
+  const { mergeId } = req.params
+
+  if (!mergeId || !mergeId.startsWith('responsive-merger-')) {
+    return res.status(400).json({ error: 'Merge ID invalide' })
+  }
+
+  try {
+    const puckDir = path.join(
+      __dirname,
+      'src/generated/responsive-screens',
+      mergeId,
+      'puck'
+    )
+
+    if (!fs.existsSync(puckDir)) {
+      return res.status(404).json({ error: 'Dossier Puck introuvable' })
+    }
+
+    const dataPath = path.join(puckDir, 'puck-data.json')
+
+    // Sauvegarder les données Puck
+    fs.writeFileSync(dataPath, JSON.stringify(req.body, null, 2))
+
+    res.json({
+      success: true,
+      message: 'Layout Puck sauvegardé avec succès',
+      mergeId
+    })
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde:', error)
+    res.status(500).json({
+      error: 'Erreur lors de la sauvegarde du layout',
+      message: error.message
+    })
+  }
+})
+
+/**
+ * GET /api/responsive-tests/:mergeId/images/:imageName
+ * Servir les images pour Puck Editor
+ */
+app.get('/api/responsive-tests/:mergeId/images/:imageName', (req, res) => {
+  const { mergeId, imageName } = req.params
+
+  if (!mergeId || !mergeId.startsWith('responsive-merger-')) {
+    return res.status(400).json({ error: 'Merge ID invalide' })
+  }
+
+  try {
+    const imagePath = path.join(
+      __dirname,
+      'src/generated/responsive-screens',
+      mergeId,
+      'puck/img',
+      imageName
+    )
+
+    if (!fs.existsSync(imagePath)) {
+      return res.status(404).json({ error: 'Image non trouvée' })
+    }
+
+    // Servir l'image avec le bon Content-Type
+    res.sendFile(imagePath)
+  } catch (error) {
+    console.error('Erreur lors du chargement de l\'image:', error)
+    res.status(500).json({
+      error: 'Erreur lors du chargement de l\'image',
+      message: error.message
+    })
+  }
+})
+
+/**
  * GET /api/download/:testId
  * Télécharge un test complet en archive ZIP
  */

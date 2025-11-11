@@ -1,5 +1,6 @@
 import { memo } from 'react'
-import { Eye, Trash2, Loader2 } from 'lucide-react'
+import { Eye, Trash2, Loader2, Edit } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -23,6 +24,7 @@ interface ResponsiveTestsTableProps {
 const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefresh }: ResponsiveTestsTableProps) {
   const { confirm, ConfirmDialog } = useConfirm()
   const { alert, AlertDialogComponent } = useAlert()
+  const navigate = useNavigate()
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null)
 
@@ -226,6 +228,16 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                       }}
                     >
                       <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigate(`/responsive-tests/${test.mergeId}/puck-editor`)
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
