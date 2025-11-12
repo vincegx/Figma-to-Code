@@ -254,16 +254,40 @@
     }
   },
   "dashboard": {
+    "intro": {
+      "title": "Dashboard",
+      "subtitle": "Overview of your Figma exports and responsive merges. Track your progress, analyze transformations, and monitor API usage."
+    },
+    "quick_actions": {
+      "figma_export": {
+        "title": "Figma Export",
+        "description": "Convert your Figma designs into React + Tailwind components",
+        "total": "Exports",
+        "nodes": "Nodes",
+        "button": "New Export"
+      },
+      "responsive_merge": {
+        "title": "Responsive Merge",
+        "description": "Merge Desktop, Tablet and Mobile versions",
+        "total": "Merges",
+        "components": "Components",
+        "button": "New Merge"
+      }
+    },
     "kpi": {
       "total_tests": "Total Tests",
+      "total_operations": "Total Operations",
       "avg_time": "Avg Time"
     },
     "charts": {
       "transformation_activity": "Transformation Activity Over Time (Last 14 days)",
+      "activity_timeline": "Activity Timeline",
       "tests_timeline": "Tests Timeline",
       "top_tests": "Top 10 Tests by Nodes",
       "transformation_breakdown": "Transformation Breakdown",
-      "recent_tests": "Recent Tests"
+      "recent_tests": "Recent Tests",
+      "exports": "Exports",
+      "merges": "Merges"
     },
     "chart_labels": {
       "fonts": "Fonts",
@@ -271,6 +295,16 @@
       "variables": "Variables",
       "assets": "Assets",
       "cleanup": "Cleanup"
+    },
+    "activity_feed": {
+      "title": "Recent Activity",
+      "type_export": "Export",
+      "type_merge": "Merge",
+      "just_now": "Just now",
+      "minutes_ago": "min ago",
+      "hours_ago": "h ago",
+      "days_ago": "d ago",
+      "no_activity": "No recent activity"
     },
     "empty_states": {
       "no_data": "No data available",
@@ -369,5 +403,10 @@
       "continue_help": "Continue processing even if a transformation fails",
       "options": "options"
     }
+  },
+  "documentation": {
+    "title": "Documentation",
+    "loading": "Loading documentation...",
+    "error": "Error loading documentation"
   }
 }

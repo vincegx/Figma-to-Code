@@ -6,9 +6,10 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarSeparator,
 } from "@/components/ui/sidebar"
 import { NavLink } from "react-router-dom"
-import { LayoutDashboard, FileText, MonitorSmartphone, Settings } from "lucide-react"
+import { LayoutDashboard, FileText, MonitorSmartphone, BookOpen, Settings } from "lucide-react"
 import ThemeToggle from '../common/ThemeToggle'
 import LanguageSwitcher from '../common/LanguageSwitcher'
 import { useTranslation } from '../../i18n/I18nContext'
@@ -58,6 +59,26 @@ export function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
+        </SidebarMenu>
+
+        {/* Separator */}
+        <SidebarSeparator className="my-4" />
+
+        {/* Documentation Link */}
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <NavLink
+                to="/documentation"
+                className={({ isActive }) =>
+                  isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                }
+              >
+                <BookOpen className="h-4 w-4" />
+                <span>{t('documentation.title')}</span>
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>
 

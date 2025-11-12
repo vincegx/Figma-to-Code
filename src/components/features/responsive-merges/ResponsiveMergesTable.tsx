@@ -319,17 +319,14 @@ const ResponsiveMergesTable = memo(function ResponsiveMergesTable({ merges, onRe
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1.5">
-                    <Badge variant="secondary" className="text-[10px]">
-                      {merge.components?.length || 0} composants
-                    </Badge>
                     {merge.mergeStats?.successCount > 0 && (
                       <Badge variant="default" className="text-[10px] bg-green-500">
-                        ✓ {merge.mergeStats.successCount}
+                        ✓ {merge.mergeStats.successCount} {t('responsive.card.components')}
                       </Badge>
                     )}
                     {merge.mergeStats?.errorCount > 0 && (
                       <Badge variant="destructive" className="text-[10px]">
-                        ✗ {merge.mergeStats.errorCount}
+                        ✗ {merge.mergeStats.errorCount} {t('responsive.card.errors')}
                       </Badge>
                     )}
                   </div>

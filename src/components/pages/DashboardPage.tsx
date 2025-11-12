@@ -6,60 +6,113 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useExports } from '../../hooks/useExports'
+import { useResponsiveMerges } from '../../hooks/useResponsiveMerges'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell } from "recharts"
-import { Package, Image, Zap, Clock, BarChart3, TrendingUp, Activity, PieChart as PieChartIcon } from "lucide-react"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area, PieChart, Pie, Cell, LabelList } from "recharts"
+import { Package, Image, Zap, Clock, BarChart3, TrendingUp, Activity, PieChart as PieChartIcon, FileCode2, Smartphone } from "lucide-react"
 import { useTranslation } from '../../i18n/I18nContext'
+import { QuickActionCard } from '../features/dashboard/QuickActionCard'
+import { ActivityFeed } from '../features/dashboard/ActivityFeed'
 
 export default function DashboardPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { exports, loading } = useExports()
+  const { exports, loading: exportsLoading } = useExports()
+  const { merges, loading: mergesLoading } = useResponsiveMerges()
+  const loading = exportsLoading || mergesLoading
 
-  // KPIs calculation
+  // Combined activity (exports + merges)
+  const combinedActivity = useMemo(() => {
+    const exportActivities = exports.map(e => ({
+      type: 'export' as const,
+      id: e.exportId,
+      name: e.layerName || e.fileName || t('dashboard.untitled'),
+      timestamp: typeof e.timestamp === 'number' && e.timestamp < 10000000000 ? e.timestamp * 1000 : e.timestamp,
+      stats: e.stats
+    }))
+
+    const mergeActivities = merges.map(m => ({
+      type: 'merge' as const,
+      id: m.mergeId,
+      name: `Merge ${m.mergeId.substring(0, 8)}`,
+      timestamp: typeof m.timestamp === 'number' && m.timestamp < 10000000000 ? m.timestamp * 1000 : m.timestamp,
+      stats: m.mergeStats
+    }))
+
+    return [...exportActivities, ...mergeActivities]
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  }, [exports, merges, t])
+
+  // KPIs calculation (combined exports + merges)
   const kpis = useMemo(() => {
     const totalNodes = exports.reduce((acc, test) => acc + (test.stats?.totalNodes || 0), 0)
     const totalImages = exports.reduce((acc, test) => acc + (test.stats?.imagesOrganized || 0), 0)
     const totalFixes = exports.reduce((acc, test) => acc + (test.stats?.totalFixes || test.stats?.classesOptimized || 0), 0)
     const totalExecutionTime = exports.reduce((acc, test) => acc + (test.stats?.executionTime || 0), 0)
 
+    // Add merge stats
+    const totalComponents = merges.reduce((acc, merge) => acc + (merge.mergeStats?.totalComponents || 0), 0)
+    const totalOperations = exports.length + merges.length
+
     return {
+      totalOperations,
       totalTests: exports.length,
+      totalMerges: merges.length,
       totalNodes,
       totalImages,
+      totalComponents,
       totalFixes,
       avgExecutionTime: exports.length > 0 ? Math.round(totalExecutionTime / exports.length) : 0
     }
-  }, [exports])
+  }, [exports, merges])
 
-  // Timeline data: tests per day
+  // Timeline data: dual-line (exports + merges per day)
   const timelineData = useMemo(() => {
-    const grouped = exports.reduce((acc, test) => {
+    const grouped: Record<string, { exports: number; merges: number }> = {}
+
+    // Group exports by date
+    exports.forEach(test => {
       const date = new Date(typeof test.timestamp === 'number' && test.timestamp < 10000000000
         ? test.timestamp * 1000
         : test.timestamp)
       const dateKey = date.toISOString().split('T')[0]
-      acc[dateKey] = (acc[dateKey] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
+      if (!grouped[dateKey]) grouped[dateKey] = { exports: 0, merges: 0 }
+      grouped[dateKey].exports += 1
+    })
+
+    // Group merges by date
+    merges.forEach(merge => {
+      const date = new Date(typeof merge.timestamp === 'number' && merge.timestamp < 10000000000
+        ? merge.timestamp * 1000
+        : merge.timestamp)
+      const dateKey = date.toISOString().split('T')[0]
+      if (!grouped[dateKey]) grouped[dateKey] = { exports: 0, merges: 0 }
+      grouped[dateKey].merges += 1
+    })
 
     return Object.entries(grouped)
-      .map(([date, count]) => ({ date, count }))
+      .map(([date, counts]) => ({ date, exports: counts.exports, merges: counts.merges }))
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(-14) // Last 14 days
-  }, [exports])
+  }, [exports, merges])
 
   // Top 10 tests by nodes
   const topTestsByNodes = useMemo(() => {
     return [...exports]
       .sort((a, b) => (b.stats?.totalNodes || 0) - (a.stats?.totalNodes || 0))
       .slice(0, 10)
-      .map(test => ({
-        name: (test.layerName || test.fileName || t('dashboard.untitled')).substring(0, 20),
-        nodes: test.stats?.totalNodes || 0,
-        testId: test.testId
-      }))
+      .map(test => {
+        const name = (test.layerName || test.fileName || t('dashboard.untitled')).substring(0, 10)
+        const nodes = test.stats?.totalNodes || 0
+        return {
+          name,
+          nodes,
+          label: `${name}: ${nodes}`,
+          exportId: test.exportId
+        }
+      })
   }, [exports, t])
 
   // Transformation Activity Over Time (Stacked Area Chart)
@@ -116,13 +169,6 @@ export default function DashboardPage() {
     ].filter(item => item.value > 0) // Only show non-zero categories
   }, [exports, t])
 
-  // Recent tests
-  const recentTests = useMemo(() => {
-    return [...exports]
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 5)
-  }, [exports])
-
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -136,14 +182,75 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Intro Section */}
+      <Card className="border-none bg-gradient-to-br from-primary/5 via-background to-violet-500/5">
+        <CardContent className="p-6">
+          <div className="flex items-start justify-between gap-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                </div>
+                <h1 className="text-3xl font-bold tracking-tight">{t('dashboard.intro.title')}</h1>
+              </div>
+              <p className="text-muted-foreground text-base leading-relaxed mb-4">
+                {t('dashboard.intro.subtitle')}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary" className="text-xs">
+                  <Activity className="h-3 w-3 mr-1" />
+                  {kpis.totalOperations} opérations
+                </Badge>
+                <Badge variant="secondary" className="text-xs">
+                  <Package className="h-3 w-3 mr-1" />
+                  {kpis.totalNodes.toLocaleString()} nodes
+                </Badge>
+                <Badge variant="secondary" className="text-xs">
+                  <Zap className="h-3 w-3 mr-1" />
+                  {kpis.totalFixes.toLocaleString()} fixes
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Actions - Hero Section */}
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+        <QuickActionCard
+          title={t('dashboard.quick_actions.figma_export.title')}
+          description={t('dashboard.quick_actions.figma_export.description')}
+          icon={FileCode2}
+          color="blue"
+          stats={[
+            { label: t('dashboard.quick_actions.figma_export.total'), value: kpis.totalTests },
+            { label: t('dashboard.quick_actions.figma_export.nodes'), value: kpis.totalNodes.toLocaleString() }
+          ]}
+          buttonText={t('dashboard.quick_actions.figma_export.button')}
+          onClick={() => navigate('/export_figma?action=new')}
+        />
+        <QuickActionCard
+          title={t('dashboard.quick_actions.responsive_merge.title')}
+          description={t('dashboard.quick_actions.responsive_merge.description')}
+          icon={Smartphone}
+          color="purple"
+          stats={[
+            { label: t('dashboard.quick_actions.responsive_merge.total'), value: kpis.totalMerges },
+            { label: t('dashboard.quick_actions.responsive_merge.components'), value: kpis.totalComponents }
+          ]}
+          buttonText={t('dashboard.quick_actions.responsive_merge.button')}
+          onClick={() => navigate('/responsive-merges?action=new')}
+        />
+      </div>
+
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">{t('dashboard.kpi.total_tests')}</p>
-                <p className="text-3xl font-bold tracking-tight">{kpis.totalTests}</p>
+                <p className="text-sm font-medium text-muted-foreground">{t('dashboard.kpi.total_operations')}</p>
+                <p className="text-3xl font-bold tracking-tight">{kpis.totalOperations}</p>
               </div>
               <div className="rounded-lg bg-primary/10 p-3">
                 <BarChart3 className="h-6 w-6 text-primary" />
@@ -252,31 +359,55 @@ export default function DashboardPage() {
 
       {/* Second Row - 3 Charts Aligned: Timeline + Top 10 + Breakdown */}
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {/* Tests Timeline */}
+        {/* Activity Timeline - Dual Line */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
-              <p className="text-lg font-medium">{t('dashboard.charts.tests_timeline')}</p>
+              <p className="text-lg font-medium">{t('dashboard.charts.activity_timeline')}</p>
             </CardTitle>
           </CardHeader>
           <CardContent>
             {timelineData.length > 0 ? (
               <ChartContainer config={{
-                count: { label: "Tests", color: "hsl(var(--primary))" }
+                exports: { label: t('dashboard.charts.exports'), color: "hsl(var(--chart-1))" },
+                merges: { label: t('dashboard.charts.merges'), color: "hsl(var(--chart-4))" }
               }} className="h-[300px] w-full">
-                <LineChart data={timelineData} width={undefined} height={undefined} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                <AreaChart data={timelineData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="fillExports" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0.1} />
+                    </linearGradient>
+                    <linearGradient id="fillMerges" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="hsl(var(--chart-4))" stopOpacity={0.1} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
                     tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     tick={{ fontSize: 10 }}
                   />
-                  <YAxis tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} width={30} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <ChartLegend content={<ChartLegendContent />} />
-                  <Line type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} />
-                </LineChart>
+                  <Area
+                    type="natural"
+                    dataKey="exports"
+                    stroke="hsl(var(--chart-1))"
+                    fill="url(#fillExports)"
+                    fillOpacity={0.4}
+                  />
+                  <Area
+                    type="natural"
+                    dataKey="merges"
+                    stroke="hsl(var(--chart-4))"
+                    fill="url(#fillMerges)"
+                    fillOpacity={0.4}
+                  />
+                </AreaChart>
               </ChartContainer>
             ) : (
               <div className="flex h-[300px] items-center justify-center text-muted-foreground">
@@ -299,13 +430,21 @@ export default function DashboardPage() {
               <ChartContainer config={{
                 nodes: { label: "Nodes", color: "hsl(var(--chart-1))" }
               }} className="h-[300px] w-full">
-                <BarChart data={topTestsByNodes} layout="vertical" width={undefined} height={undefined} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
+                <BarChart data={topTestsByNodes} layout="vertical" margin={{ top: 5, right: 12, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" tick={{ fontSize: 10 }} />
-                  <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 9 }} />
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" hide />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <ChartLegend content={<ChartLegendContent />} />
-                  <Bar dataKey="nodes" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="nodes" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]}>
+                    <LabelList
+                      dataKey="label"
+                      position="insideLeft"
+                      offset={8}
+                      className="fill-white"
+                      fontSize={11}
+                      fontWeight={500}
+                    />
+                  </Bar>
                 </BarChart>
               </ChartContainer>
             ) : (
@@ -363,70 +502,17 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Recent Tests Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('dashboard.charts.recent_tests')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {recentTests.length > 0 ? (
-            <div className="space-y-2">
-              {recentTests.map((test) => (
-                <div
-                  key={test.testId}
-                  className="flex items-center gap-4 rounded-lg border p-3 hover:bg-accent cursor-pointer transition-colors"
-                  onClick={() => navigate(`/export_figma/${test.exportId}`)}
-                >
-                  {/* Thumbnail */}
-                  <div className="relative flex-shrink-0 w-14 h-14 rounded-md overflow-hidden bg-muted border">
-                    <img
-                      src={`/src/generated/export_figma/${test.exportId}/img/figma-screenshot.png`}
-                      alt={test.layerName || test.fileName || t('dashboard.untitled')}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        // Fallback to web-render.png if figma-screenshot.png fails
-                        const img = e.target as HTMLImageElement
-                        if (!img.src.includes('web-render.png')) {
-                          img.src = `/src/generated/export_figma/${test.exportId}/img/web-render.png`
-                        } else {
-                          // If both fail, hide the image
-                          img.style.display = 'none'
-                        }
-                      }}
-                    />
-                  </div>
-
-                  {/* Test Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{test.layerName || test.fileName || t('dashboard.untitled')}</p>
-                    <p className="text-xs text-muted-foreground truncate">{test.testId}</p>
-                  </div>
-
-                  {/* Stats */}
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground flex-shrink-0">
-                    <div className="flex items-center gap-1">
-                      <Package className="h-4 w-4" />
-                      {test.stats?.totalNodes || 0}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Image className="h-4 w-4" />
-                      {test.stats?.imagesOrganized || 0}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Zap className="h-4 w-4" />
-                      {test.stats?.totalFixes || test.stats?.classesOptimized || 0}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="py-12 text-center text-muted-foreground">
-              {t('dashboard.empty_states.no_exports')}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Recent Activity Feed */}
+      <ActivityFeed
+        activities={combinedActivity}
+        onActivityClick={(type, id) => {
+          if (type === 'export') {
+            navigate(`/export_figma/${id}`)
+          } else {
+            navigate(`/responsive-merges/${id}`)
+          }
+        }}
+      />
     </div>
   )
 }

@@ -254,16 +254,40 @@
     }
   },
   "dashboard": {
+    "intro": {
+      "title": "Tableau de Bord",
+      "subtitle": "Vue d'ensemble de vos exports Figma et merges responsive. Suivez votre progression, analysez les transformations et surveillez l'utilisation de l'API."
+    },
+    "quick_actions": {
+      "figma_export": {
+        "title": "Export Figma",
+        "description": "Convertir vos designs Figma en composants React + Tailwind",
+        "total": "Exports",
+        "nodes": "Nodes",
+        "button": "Nouvel Export"
+      },
+      "responsive_merge": {
+        "title": "Merge Responsive",
+        "description": "Fusionner les versions Desktop, Tablet et Mobile",
+        "total": "Merges",
+        "components": "Composants",
+        "button": "Nouveau Merge"
+      }
+    },
     "kpi": {
       "total_tests": "Total Tests",
+      "total_operations": "Total Opérations",
       "avg_time": "Temps Moyen"
     },
     "charts": {
       "transformation_activity": "Activité de Transformation (14 derniers jours)",
+      "activity_timeline": "Timeline d'Activité",
       "tests_timeline": "Timeline des Tests",
       "top_tests": "Top 10 Tests par Nodes",
       "transformation_breakdown": "Répartition des Transformations",
-      "recent_tests": "Tests Récents"
+      "recent_tests": "Tests Récents",
+      "exports": "Exports",
+      "merges": "Merges"
     },
     "chart_labels": {
       "fonts": "Polices",
@@ -271,6 +295,16 @@
       "variables": "Variables",
       "assets": "Assets",
       "cleanup": "Nettoyage"
+    },
+    "activity_feed": {
+      "title": "Activité Récente",
+      "type_export": "Export",
+      "type_merge": "Merge",
+      "just_now": "À l'instant",
+      "minutes_ago": "min",
+      "hours_ago": "h",
+      "days_ago": "j",
+      "no_activity": "Aucune activité récente"
     },
     "empty_states": {
       "no_data": "Aucune donnée disponible",
@@ -369,5 +403,10 @@
       "continue_help": "Continue le traitement même si une transformation échoue",
       "options": "options"
     }
+  },
+  "documentation": {
+    "title": "Documentation",
+    "loading": "Chargement de la documentation...",
+    "error": "Erreur de chargement de la documentation"
   }
 }

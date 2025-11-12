@@ -10,11 +10,9 @@ import { Slider } from '@/components/ui/slider'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { Settings, Palette, Save, RotateCcw, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react'
+import { Settings, Palette, Save, RotateCcw, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useTranslation } from '../../i18n/I18nContext'
 import { useConfirm } from '../../hooks/useConfirm'
-import AnalysisForm from '../features/analysis/AnalysisForm'
-import { useExports } from '../../hooks/useExports'
 
 type Settings = {
   mcp: {
@@ -65,7 +63,6 @@ type Settings = {
 export default function SettingsPage() {
   const { t } = useTranslation()
   const { confirm, ConfirmDialog } = useConfirm()
-  const { reload: reloadTests } = useExports()
   const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -216,15 +213,15 @@ export default function SettingsPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="interface" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="interface">
             <Palette className="h-4 w-4 mr-2" />
             {t('settings.tabs.ui')}
           </TabsTrigger>
-          <TabsTrigger value="analysis">
+          {/* <TabsTrigger value="analysis">
             <Sparkles className="h-4 w-4 mr-2" />
             Analyse Figma
-          </TabsTrigger>
+          </TabsTrigger> */}
           <TabsTrigger value="advanced">
             <Settings className="h-4 w-4 mr-2" />
             {t('settings.tabs.advanced')}
@@ -232,9 +229,9 @@ export default function SettingsPage() {
         </TabsList>
 
         {/* Analysis Tab */}
-        <TabsContent value="analysis" className="space-y-4">
+        {/* <TabsContent value="analysis" className="space-y-4">
           <AnalysisForm onAnalysisComplete={reloadTests} />
-        </TabsContent>
+        </TabsContent> */}
 
         {/* Interface Tab */}
         <TabsContent value="interface" className="space-y-4">
@@ -249,7 +246,7 @@ export default function SettingsPage() {
               {/* Tests Page Settings */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-primary" />
+                  <Palette className="h-4 w-4 text-primary" />
                   <h3 className="font-semibold">Page des Tests Figma</h3>
                 </div>
 

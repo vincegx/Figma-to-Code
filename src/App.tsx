@@ -12,6 +12,7 @@ import ResponsivePreviewPage from './components/pages/ResponsivePreviewPage'
 import PuckEditorPage from './components/pages/PuckEditorPage'
 import PuckRenderPage from './components/pages/PuckRenderPage'
 import SettingsPage from './components/pages/SettingsPage'
+import DocumentationPage from './components/pages/DocumentationPage'
 import { PreviewNavbar } from './components/common/PreviewNavbar'
 
 function App() {
@@ -40,6 +41,7 @@ function App() {
           <Route path="/export_figma/:exportId" element={<ExportFigmaDetailWrapper />} />
           <Route path="/responsive-merges" element={<ResponsiveMergesPage />} />
           <Route path="/responsive-merges/:mergeId" element={<ResponsiveMergeDetailPage />} />
+          <Route path="/documentation" element={<DocumentationPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
 

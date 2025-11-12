@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, startTransition } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useResponsiveMerges } from '../../hooks/useResponsiveMerges'
 import { useTranslation } from '../../i18n/I18nContext'
 import { PaginationControls } from '../features/export_figma/PaginationControls'
@@ -28,6 +29,7 @@ type SortOption = 'date-desc' | 'date-asc'
 
 export default function ResponsiveMergesPage() {
   const { t } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { merges, loading, reload } = useResponsiveMerges()
   const [settingsLoaded, setSettingsLoaded] = useState<boolean>(false)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -49,6 +51,16 @@ export default function ResponsiveMergesPage() {
       .catch(err => console.error('Failed to load settings:', err))
       .finally(() => setSettingsLoaded(true))
   }, [])
+
+  // Check for action=new in URL to auto-open dialog
+  useEffect(() => {
+    if (searchParams.get('action') === 'new') {
+      setDialogOpen(true)
+      // Remove the action param from URL
+      searchParams.delete('action')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   const sortedMerges = useMemo(() => {
     const sorted = [...merges]
@@ -183,8 +195,8 @@ export default function ResponsiveMergesPage() {
                 </ToggleGroupItem>
               </ToggleGroup>
 
-              <Badge variant="secondary">
-                {merges.length} {merges.length > 1 ? t('common.merges_plural') : t('common.merges')}
+              <Badge variant="secondary" className="text-xs">
+                ✓ {merges.length} {t('responsive.card.components')}
               </Badge>
             </div>
 

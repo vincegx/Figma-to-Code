@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, startTransition } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useExports } from '../../hooks/useExports'
 import { ControlsBar } from '../features/export_figma/ControlsBar'
 import { PaginationControls } from '../features/export_figma/PaginationControls'
@@ -23,6 +23,7 @@ type SortOption = 'date-desc' | 'date-asc' | 'name-asc' | 'name-desc'
 export default function ExportFigmaPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { exports, loading, reload } = useExports()
   const [settingsLoaded, setSettingsLoaded] = useState<boolean>(false)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -44,6 +45,16 @@ export default function ExportFigmaPage() {
       .catch(err => console.error('Failed to load settings:', err))
       .finally(() => setSettingsLoaded(true))
   }, [])
+
+  // Check for action=new in URL to auto-open dialog
+  useEffect(() => {
+    if (searchParams.get('action') === 'new') {
+      setDialogOpen(true)
+      // Remove the action param from URL
+      searchParams.delete('action')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   const sortedExports = useMemo(() => {
     const sorted = [...exports]
