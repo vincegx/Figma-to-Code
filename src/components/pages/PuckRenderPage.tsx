@@ -121,31 +121,45 @@ export default function PuckRenderPage() {
     );
   }
 
-  // Puck Render
+  // Puck Render - Si dans iframe, retourne juste le Render sans wrapper
+  if (isInIframe) {
+    return config && data ? (
+      <Render config={config} data={data} />
+    ) : (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center space-y-2">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            {!config ? 'Loading configuration...' : 'Loading data...'}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Mode standalone (pas dans iframe)
   return (
     <div className="min-h-screen bg-background">
-      {/* Header with back and edit buttons - masqué dans iframe */}
-      {!isInIframe && (
-        <div className="sticky top-0 z-50 bg-background border-b border-border">
-          <div className="flex items-center justify-between px-4 py-3">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/responsive-tests">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Tests
+      {/* Header with back and edit buttons */}
+      <div className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="flex items-center justify-between px-4 py-3">
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/responsive-tests">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Tests
+            </Link>
+          </Button>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground font-mono">{mergeId}</span>
+            <Button variant="default" size="sm" asChild>
+              <Link to={`/responsive-tests/${mergeId}/puck-editor`}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
               </Link>
             </Button>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground font-mono">{mergeId}</span>
-              <Button variant="default" size="sm" asChild>
-                <Link to={`/responsive-tests/${mergeId}/puck-editor`}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </Link>
-              </Button>
-            </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Render Puck content */}
       {config && data ? (

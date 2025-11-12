@@ -542,7 +542,7 @@ function PreviewTab({ testId, dimensions }: PreviewTabProps) {
 
       {/* Component Render */}
       <div
-        className="flex justify-center overflow-auto py-8"
+        className="flex justify-center items-start overflow-auto py-8"
         style={{
           backgroundColor: '#fafafa',
           backgroundImage: `
@@ -550,14 +550,14 @@ function PreviewTab({ testId, dimensions }: PreviewTabProps) {
             linear-gradient(to bottom, rgb(209 213 219 / 0.5) 1px, transparent 1px)
           `,
           backgroundSize: '20px 20px',
-          minHeight: dimensions?.height ? `${dimensions.height + 64}px` : 'calc(100vh-300px)'
+          minHeight: 'calc(100vh - 300px)'
         }}
       >
         <div
           className="bg-white shadow-lg"
           style={{
             width: `${viewportWidth}px`,
-            height: dimensions?.height ? `${dimensions.height}px` : 'auto'
+            minHeight: dimensions?.height ? `${dimensions.height}px` : 'auto'
           }}
         >
           {Component && (

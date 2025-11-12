@@ -622,79 +622,175 @@ app.post('/api/responsive-tests/merge', async (req, res) => {
 
   activeJobs.set(jobId, job)
 
-  // Start the merge process
-  const mergerPath = path.join(__dirname, 'scripts', 'responsive-merger.js')
-  const child = spawn('node', [
-    mergerPath,
-    '--desktop', desktop.size, desktop.testId,
-    '--tablet', tablet.size, tablet.testId,
-    '--mobile', mobile.size, mobile.testId
-  ], {
-    cwd: __dirname,
-    env: {
-      ...process.env,
-      FORCE_COLOR: '1'
+  // Helper function to run component-splitter synchronously
+  const runComponentSplitter = (testPath, breakpointName) => {
+    return new Promise((resolve, reject) => {
+      const splitterPath = path.join(__dirname, 'scripts', 'post-processing', 'component-splitter.js')
+      const splitProcess = spawn('node', [splitterPath, testPath], {
+        cwd: __dirname,
+        env: process.env
+      })
+
+      let output = ''
+      let errorOutput = ''
+
+      splitProcess.stdout.on('data', (data) => {
+        const log = data.toString()
+        output += log
+        const cleanLog = stripAnsi(log)
+        job.logs.push(cleanLog)
+
+        // Broadcast to all connected clients
+        job.clients.forEach(client => {
+          client.write(`data: ${JSON.stringify({ type: 'log', message: cleanLog })}\n\n`)
+        })
+      })
+
+      splitProcess.stderr.on('data', (data) => {
+        const log = data.toString()
+        errorOutput += log
+        const cleanLog = stripAnsi(log)
+        job.logs.push(cleanLog)
+
+        // Broadcast to all connected clients
+        job.clients.forEach(client => {
+          client.write(`data: ${JSON.stringify({ type: 'log', message: cleanLog })}\n\n`)
+        })
+      })
+
+      splitProcess.on('close', (code) => {
+        if (code === 0) {
+          resolve({ success: true, output })
+        } else {
+          reject(new Error(`${breakpointName} split failed (code: ${code})\n${errorOutput}`))
+        }
+      })
+
+      splitProcess.on('error', (error) => {
+        reject(new Error(`${breakpointName} split error: ${error.message}`))
+      })
+    })
+  }
+
+  // Run component-splitter on all 3 tests sequentially, then start merge
+  ;(async () => {
+    try {
+      // Split Desktop
+      job.logs.push('\n🔪 Splitting Desktop components...\n')
+      job.clients.forEach(client => {
+        client.write(`data: ${JSON.stringify({ type: 'log', message: '\n🔪 Splitting Desktop components...\n' })}\n\n`)
+      })
+      await runComponentSplitter(desktopPath, 'Desktop')
+
+      // Split Tablet
+      job.logs.push('\n🔪 Splitting Tablet components...\n')
+      job.clients.forEach(client => {
+        client.write(`data: ${JSON.stringify({ type: 'log', message: '\n🔪 Splitting Tablet components...\n' })}\n\n`)
+      })
+      await runComponentSplitter(tabletPath, 'Tablet')
+
+      // Split Mobile
+      job.logs.push('\n🔪 Splitting Mobile components...\n')
+      job.clients.forEach(client => {
+        client.write(`data: ${JSON.stringify({ type: 'log', message: '\n🔪 Splitting Mobile components...\n' })}\n\n`)
+      })
+      await runComponentSplitter(mobilePath, 'Mobile')
+
+      // All splits successful, now start the merge
+      job.logs.push('\n🚀 Starting responsive merge...\n')
+      job.clients.forEach(client => {
+        client.write(`data: ${JSON.stringify({ type: 'log', message: '\n🚀 Starting responsive merge...\n' })}\n\n`)
+      })
+
+      const mergerPath = path.join(__dirname, 'scripts', 'responsive-merger.js')
+      const child = spawn('node', [
+        mergerPath,
+        '--desktop', desktop.size, desktop.testId,
+        '--tablet', tablet.size, tablet.testId,
+        '--mobile', mobile.size, mobile.testId
+      ], {
+        cwd: __dirname,
+        env: {
+          ...process.env,
+          FORCE_COLOR: '1'
+        }
+      })
+
+      job.process = child
+
+      // Capture stdout
+      child.stdout.on('data', (data) => {
+        const log = data.toString()
+        const cleanLog = stripAnsi(log)
+        job.logs.push(cleanLog)
+
+        // Broadcast to all connected clients
+        job.clients.forEach(client => {
+          client.write(`data: ${JSON.stringify({ type: 'log', message: cleanLog })}\n\n`)
+        })
+      })
+
+      // Capture stderr
+      child.stderr.on('data', (data) => {
+        const log = data.toString()
+        const cleanLog = stripAnsi(log)
+        job.logs.push(cleanLog)
+
+        // Broadcast to all connected clients
+        job.clients.forEach(client => {
+          client.write(`data: ${JSON.stringify({ type: 'log', message: cleanLog })}\n\n`)
+        })
+      })
+
+      // Handle process exit
+      child.on('close', (code) => {
+        job.status = code === 0 ? 'completed' : 'failed'
+        job.endTime = Date.now()
+        job.exitCode = code
+
+        const finalMessage = code === 0
+          ? '\n✓ Merge responsive terminé avec succès\n'
+          : `\n✗ Merge responsive échoué (code: ${code})\n`
+
+        job.logs.push(finalMessage)
+
+        // Broadcast completion to all clients
+        job.clients.forEach(client => {
+          client.write(`data: ${JSON.stringify({ type: 'done', message: finalMessage, success: code === 0, mergeId })}\n\n`)
+        })
+      })
+
+      // Handle process errors
+      child.on('error', (error) => {
+        job.status = 'failed'
+        job.error = error.message
+        job.endTime = Date.now()
+
+        const errorMessage = `\n✗ Erreur: ${error.message}\n`
+        job.logs.push(errorMessage)
+
+        // Broadcast error to all clients
+        job.clients.forEach(client => {
+          client.write(`data: ${JSON.stringify({ type: 'error', message: errorMessage })}\n\n`)
+        })
+      })
+
+    } catch (error) {
+      // Handle component splitting errors
+      job.status = 'failed'
+      job.error = error.message
+      job.endTime = Date.now()
+
+      const errorMessage = `\n✗ Erreur lors du split des composants: ${error.message}\n`
+      job.logs.push(errorMessage)
+
+      // Broadcast error to all clients
+      job.clients.forEach(client => {
+        client.write(`data: ${JSON.stringify({ type: 'error', message: errorMessage })}\n\n`)
+        client.write(`data: ${JSON.stringify({ type: 'done', success: false })}\n\n`)
+      })
     }
-  })
-
-  job.process = child
-
-  // Capture stdout
-  child.stdout.on('data', (data) => {
-    const log = data.toString()
-    const cleanLog = stripAnsi(log)
-    job.logs.push(cleanLog)
-
-    // Broadcast to all connected clients
-    job.clients.forEach(client => {
-      client.write(`data: ${JSON.stringify({ type: 'log', message: cleanLog })}\n\n`)
-    })
-  })
-
-  // Capture stderr
-  child.stderr.on('data', (data) => {
-    const log = data.toString()
-    const cleanLog = stripAnsi(log)
-    job.logs.push(cleanLog)
-
-    // Broadcast to all connected clients
-    job.clients.forEach(client => {
-      client.write(`data: ${JSON.stringify({ type: 'log', message: cleanLog })}\n\n`)
-    })
-  })
-
-  // Handle process exit
-  child.on('close', (code) => {
-    job.status = code === 0 ? 'completed' : 'failed'
-    job.endTime = Date.now()
-    job.exitCode = code
-
-    const finalMessage = code === 0
-      ? '\n✓ Merge responsive terminé avec succès\n'
-      : `\n✗ Merge responsive échoué (code: ${code})\n`
-
-    job.logs.push(finalMessage)
-
-    // Broadcast completion to all clients
-    job.clients.forEach(client => {
-      client.write(`data: ${JSON.stringify({ type: 'done', message: finalMessage, success: code === 0, mergeId })}\n\n`)
-    })
-  })
-
-  // Handle process errors
-  child.on('error', (error) => {
-    job.status = 'failed'
-    job.error = error.message
-    job.endTime = Date.now()
-
-    const errorMessage = `\n✗ Erreur: ${error.message}\n`
-    job.logs.push(errorMessage)
-
-    // Broadcast error to all clients
-    job.clients.forEach(client => {
-      client.write(`data: ${JSON.stringify({ type: 'error', message: errorMessage })}\n\n`)
-    })
-  })
+  })()
 
   res.json({
     jobId,

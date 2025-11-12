@@ -83,8 +83,33 @@ fi
 # Get absolute project path
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-# Run responsive-merger.js in Docker
-echo -e "${GREEN}🚀 Lancement du Responsive Merger dans Docker...${NC}"
+# Step 1: Split components for all 3 tests
+echo -e "${CYAN}🔪 Étape 1/4: Splitting Desktop components...${NC}"
+docker exec mcp-figma-v1 node scripts/post-processing/component-splitter.js "/app/src/generated/tests/$DESKTOP_ID"
+if [ $? -ne 0 ]; then
+  echo -e "${RED}❌ Erreur lors du split Desktop${NC}"
+  exit 1
+fi
+
+echo ""
+echo -e "${CYAN}🔪 Étape 2/4: Splitting Tablet components...${NC}"
+docker exec mcp-figma-v1 node scripts/post-processing/component-splitter.js "/app/src/generated/tests/$TABLET_ID"
+if [ $? -ne 0 ]; then
+  echo -e "${RED}❌ Erreur lors du split Tablet${NC}"
+  exit 1
+fi
+
+echo ""
+echo -e "${CYAN}🔪 Étape 3/4: Splitting Mobile components...${NC}"
+docker exec mcp-figma-v1 node scripts/post-processing/component-splitter.js "/app/src/generated/tests/$MOBILE_ID"
+if [ $? -ne 0 ]; then
+  echo -e "${RED}❌ Erreur lors du split Mobile${NC}"
+  exit 1
+fi
+
+# Step 2: Run responsive-merger.js in Docker
+echo ""
+echo -e "${GREEN}🚀 Étape 4/4: Lancement du Responsive Merger dans Docker...${NC}"
 echo ""
 
 docker exec -e "PROJECT_ROOT=$PROJECT_ROOT" mcp-figma-v1 node scripts/responsive-merger.js \

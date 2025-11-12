@@ -19,7 +19,7 @@ import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DetailPageHero, HeroBadge, HeroAction, HeroStat } from '../common/DetailPageHero'
-import { CodeViewer, CodeFile } from '../common/CodeViewer'
+import { CodeFile } from '../common/CodeViewer'
 import { ReportViewer } from '../common/ReportViewer'
 import { TechnicalAnalysisViewer } from '../common/TechnicalAnalysisViewer'
 import { ResponsiveViewportControls } from '../common/ResponsiveViewportControls'
@@ -160,7 +160,7 @@ export default function ResponsiveTestDetailPage() {
 
   // Prepare badges (seulement le mergeId)
   const badges: HeroBadge[] = [
-    { label: mergeId, variant: 'outline' }
+    { label: mergeId || 'unknown', variant: 'outline' }
   ]
 
   // Prepare actions
@@ -320,6 +320,33 @@ interface PreviewTabProps {
 function PreviewTab({ mergeId }: PreviewTabProps) {
   const { t } = useTranslation()
   const [viewportWidth, setViewportWidth] = useState<number>(1440)
+  const [iframeHeight, setIframeHeight] = useState<number>(800)
+  const [metadata, setMetadata] = useState<ResponsiveMetadata | null>(null)
+
+  useEffect(() => {
+    // Load metadata to get breakpoint dimensions
+    fetch(`/src/generated/responsive-screens/${mergeId}/responsive-metadata.json`)
+      .then(res => res.json())
+      .then(data => {
+        setMetadata(data)
+        setViewportWidth(data.breakpoints.desktop.width)
+        setIframeHeight(data.breakpoints.desktop.height || 800)
+      })
+      .catch(err => {
+        console.error('Failed to load responsive metadata:', err)
+      })
+  }, [mergeId])
+
+  // Listen for iframe resize messages
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data.type === 'iframe-resize' && typeof e.data.height === 'number') {
+        setIframeHeight(e.data.height)
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
 
   return (
     <div>
@@ -336,24 +363,28 @@ function PreviewTab({ mergeId }: PreviewTabProps) {
 
       {/* Preview iframe with viewport control */}
       <div
-        className="flex min-h-[calc(100vh-300px)] justify-center overflow-auto py-8"
+        className="flex justify-center items-start overflow-auto py-8"
         style={{
           backgroundColor: '#fafafa',
           backgroundImage: `
             linear-gradient(to right, rgb(209 213 219 / 0.5) 1px, transparent 1px),
             linear-gradient(to bottom, rgb(209 213 219 / 0.5) 1px, transparent 1px)
           `,
-          backgroundSize: '20px 20px'
+          backgroundSize: '20px 20px',
+          minHeight: 'calc(100vh - 300px)'
         }}
       >
         <div
           className="bg-white shadow-lg overflow-hidden"
-          style={{ width: `${viewportWidth}px`, minHeight: '600px' }}
+          style={{
+            width: `${viewportWidth}px`,
+            minHeight: `${iframeHeight}px`
+          }}
         >
           <iframe
-            src={`/responsive-tests/${mergeId}/puck-preview`}
+            src={`/responsive-tests/${mergeId}/preview`}
             className="w-full border-0"
-            style={{ height: '100vh', minHeight: '600px' }}
+            style={{ height: `${iframeHeight}px` }}
             title="Responsive Preview"
           />
         </div>

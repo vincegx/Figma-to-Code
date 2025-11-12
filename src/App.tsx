@@ -8,6 +8,7 @@ import TestDetailPage from './components/pages/TestDetailPage'
 import TestPreviewPage from './components/pages/TestPreviewPage'
 import ResponsiveTestsPage from './components/pages/ResponsiveTestsPage'
 import ResponsiveTestDetailPage from './components/pages/ResponsiveTestDetailPage'
+import ResponsivePreviewPage from './components/pages/ResponsivePreviewPage'
 import PuckEditorPage from './components/pages/PuckEditorPage'
 import PuckRenderPage from './components/pages/PuckRenderPage'
 import SettingsPage from './components/pages/SettingsPage'
@@ -22,6 +23,9 @@ function App() {
 
         {/* Test Preview iframe route (no layout) */}
         <Route path="/tests/:testId/preview" element={<TestPreviewPage />} />
+
+        {/* Responsive Preview iframe route (no layout) */}
+        <Route path="/responsive-tests/:mergeId/preview" element={<ResponsivePreviewPage />} />
 
         {/* Puck Editor route (no layout, fullscreen) */}
         <Route path="/responsive-tests/:mergeId/puck-editor" element={<PuckEditorPage />} />
@@ -81,6 +85,7 @@ function TestDetailWrapper() {
 function PreviewMode({ testId }: { testId: string }) {
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null)
   const [viewportWidth, setViewportWidth] = useState(1440)
+  const [iframeHeight, setIframeHeight] = useState<number>(800)
   const [mode, setMode] = useState<'responsive' | 'full'>('responsive')
   const [showNavbar, setShowNavbar] = useState(false)
 
@@ -104,6 +109,7 @@ function PreviewMode({ testId }: { testId: string }) {
             const height = Math.round(parseFloat(heightMatch[1]))
             setDimensions({ width, height })
             setViewportWidth(width)
+            setIframeHeight(height)
           }
         }
       })
@@ -111,6 +117,17 @@ function PreviewMode({ testId }: { testId: string }) {
         console.error('Failed to load metadata:', err)
       })
   }, [testId])
+
+  // Listen for iframe resize messages
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data.type === 'iframe-resize' && typeof e.data.height === 'number') {
+        setIframeHeight(e.data.height)
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
 
   // Auto-hide navbar after 5 seconds when visible
   useEffect(() => {
@@ -168,13 +185,14 @@ function PreviewMode({ testId }: { testId: string }) {
         className="bg-white shadow-lg overflow-hidden"
         style={{
           width: mode === 'responsive' ? `${viewportWidth}px` : '100%',
+          minHeight: `${iframeHeight}px`,
           transition: 'width 0.3s ease-in-out'
         }}
       >
         <iframe
           src={`/tests/${testId}/preview?version=${version}`}
           className="w-full border-0"
-          style={{ height: `${dimensions.height}px` }}
+          style={{ height: `${iframeHeight}px` }}
           title="Test Preview"
         />
       </div>
@@ -186,6 +204,7 @@ function PreviewMode({ testId }: { testId: string }) {
 function ResponsivePreviewMode({ mergeId }: { mergeId: string }) {
   const [metadata, setMetadata] = useState<any>(null)
   const [viewportWidth, setViewportWidth] = useState(1440)
+  const [iframeHeight, setIframeHeight] = useState<number>(800)
   const [mode, setMode] = useState<'responsive' | 'full'>('responsive')
   const [showNavbar, setShowNavbar] = useState(false)
 
@@ -196,11 +215,23 @@ function ResponsivePreviewMode({ mergeId }: { mergeId: string }) {
       .then(data => {
         setMetadata(data)
         setViewportWidth(data.breakpoints.desktop.width)
+        setIframeHeight(data.breakpoints.desktop.height || 800)
       })
       .catch(err => {
         console.error('Failed to load responsive metadata:', err)
       })
   }, [mergeId])
+
+  // Listen for iframe resize messages
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data.type === 'iframe-resize' && typeof e.data.height === 'number') {
+        setIframeHeight(e.data.height)
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
 
   // Auto-hide navbar after 5 seconds when visible
   useEffect(() => {
@@ -245,14 +276,14 @@ function ResponsivePreviewMode({ mergeId }: { mergeId: string }) {
         className="bg-white shadow-lg overflow-hidden"
         style={{
           width: mode === 'responsive' ? `${viewportWidth}px` : '100%',
-          transition: 'width 0.3s ease-in-out',
-          minHeight: '100vh'
+          minHeight: `${iframeHeight}px`,
+          transition: 'width 0.3s ease-in-out'
         }}
       >
         <iframe
-          src={`/responsive-tests/${mergeId}/puck-preview`}
+          src={`/responsive-tests/${mergeId}/preview`}
           className="w-full border-0"
-          style={{ height: '100vh', minHeight: '600px' }}
+          style={{ height: `${iframeHeight}px` }}
           title="Responsive Preview"
         />
       </div>

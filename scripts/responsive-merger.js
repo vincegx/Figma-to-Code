@@ -201,7 +201,7 @@ function validateBreakpoint(testId, breakpointName, explicitWidth) {
     modularDir,
     metadata,
     width: explicitWidth, // Use explicit width from CLI args
-    height: metadata.stats?.height || 0
+    height: metadata.dimensions?.height || 0
   };
 }
 

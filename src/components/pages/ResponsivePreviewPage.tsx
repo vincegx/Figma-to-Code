@@ -1,28 +1,26 @@
 import { useState, useEffect } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 
 /**
- * TestPreviewPage - Renders only the generated component without layout
- * Used as iframe content in PreviewMode
+ * ResponsivePreviewPage - Renders only the generated responsive Page component without layout
+ * Used as iframe content in Responsive Preview modes
  */
-export default function TestPreviewPage() {
-  const { testId } = useParams<{ testId: string }>()
-  const [searchParams] = useSearchParams()
-  const version = searchParams.get('version') === 'fixed' ? 'fixed' : 'clean'
+export default function ResponsivePreviewPage() {
+  const { mergeId } = useParams<{ mergeId: string }>()
 
   const [Component, setComponent] = useState<React.ComponentType | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!testId) {
-      setError('Test ID is required')
+    if (!mergeId) {
+      setError('Merge ID is required')
       setLoading(false)
       return
     }
 
     loadComponent()
-  }, [testId, version])
+  }, [mergeId])
 
   async function loadComponent() {
     try {
@@ -32,24 +30,24 @@ export default function TestPreviewPage() {
       // Load CSS
       const link = document.createElement('link')
       link.rel = 'stylesheet'
-      link.href = `/src/generated/tests/${testId}/Component-${version}.css`
-      link.id = `test-css-${testId}`
+      link.href = `/src/generated/responsive-screens/${mergeId}/Page.css`
+      link.id = `responsive-css-${mergeId}`
       document.head.appendChild(link)
 
-      // Dynamically import the generated component
-      const module = await import(`../../generated/tests/${testId}/Component-${version}.tsx`)
+      // Dynamically import the generated Page component
+      const module = await import(`../../generated/responsive-screens/${mergeId}/Page.tsx`)
       setComponent(() => module.default)
       setLoading(false)
 
       // Cleanup function
       return () => {
-        const existingLink = document.getElementById(`test-css-${testId}`)
+        const existingLink = document.getElementById(`responsive-css-${mergeId}`)
         if (existingLink) {
           document.head.removeChild(existingLink)
         }
       }
     } catch (err) {
-      console.error('Failed to load component:', err)
+      console.error('Failed to load responsive component:', err)
       setError(err instanceof Error ? err.message : 'Failed to load component')
       setLoading(false)
     }
@@ -82,7 +80,7 @@ export default function TestPreviewPage() {
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-primary"></div>
-          <p className="text-muted-foreground">Loading component...</p>
+          <p className="text-muted-foreground">Loading responsive component...</p>
         </div>
       </div>
     )
