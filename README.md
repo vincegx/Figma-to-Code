@@ -335,7 +335,28 @@ Transforms sorted by priority (10→100), all execute in one traversal for perfo
 **Visual Validation:**
 Puppeteer captures web render at exact Figma dimensions for pixel-perfect comparison.
 
-**For more details:** See [Architecture Guide](docs/ARCHITECTURE.md)
+**Responsive Merge (Multi-Screen):**
+
+Three key strategies power the responsive merge system:
+
+- **Desktop-First Approach** - Desktop layout serves as baseline, Tablet/Mobile become progressive overrides via media queries
+- **Component Matching** - Automatically detects common components across breakpoints by name (e.g., "Header" present in Desktop, Tablet, Mobile)
+- **Conflict Resolution** - Uses `data-name` attributes and positional matching to identify corresponding elements, then merges classNames intelligently
+- **Media Query Generation** - Calculates CSS differences between breakpoints, generates optimized `@media` rules (Desktop → Tablet @960px → Mobile @420px)
+- **Helper Injection** - Extracts shared utilities (like `formatCurrency()`, icon components) from Desktop and auto-injects where needed
+- **Pure CSS Output** - Compiles responsive classes (`max-md:w-80`) to pure CSS, zero dependencies
+- **Puck Integration** - Visual editor for drag-and-drop customization post-merge
+
+**Example workflow:**
+```
+Desktop (1440px) → Export with --split-components
+Tablet (960px)   → Export with --split-components  } → Responsive Merge
+Mobile (420px)   → Export with --split-components
+
+Result: Page.tsx + Subcomponents/ with media queries
+```
+
+**For more details:** See [Architecture Guide](docs/ARCHITECTURE.md) and [Responsive Merge Guide](docs/RESPONSIVE_MERGE.md)
 
 ---
 
