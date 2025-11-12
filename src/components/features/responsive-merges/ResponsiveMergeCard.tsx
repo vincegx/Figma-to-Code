@@ -8,16 +8,16 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useConfirm } from '../../../hooks/useConfirm'
 import { useAlert } from '../../../hooks/useAlert'
 import { useTranslation } from '../../../i18n/I18nContext'
-import type { ResponsiveTest } from '../../../hooks/useResponsiveTests'
+import type { ResponsiveMerge } from '../../../hooks/useResponsiveMerges'
 
-interface ResponsiveTestCardProps {
-  test: ResponsiveTest
+interface ResponsiveMergeCardProps {
+  merge: ResponsiveMerge
   onRefresh?: () => void
   isSelected?: boolean
   onToggleSelection?: () => void
 }
 
-export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRefresh, isSelected, onToggleSelection }: ResponsiveTestCardProps) {
+export const ResponsiveMergeCard = memo(function ResponsiveMergeCard({ merge, onRefresh, isSelected, onToggleSelection }: ResponsiveMergeCardProps) {
   const { t } = useTranslation()
   const { confirm, ConfirmDialog } = useConfirm()
   const { alert, AlertDialogComponent } = useAlert()
@@ -25,18 +25,18 @@ export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRef
   const [isDeleting, setIsDeleting] = useState(false)
 
   const handleCardClick = useCallback(() => {
-    navigate(`/responsive-tests/${test.mergeId}`)
-  }, [test.mergeId, navigate])
+    navigate(`/responsive-merges/${merge.mergeId}`)
+  }, [merge.mergeId, navigate])
 
   const handleDemoLive = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    window.open(`/preview?responsive=${test.mergeId}`, '_blank')
-  }, [test.mergeId])
+    window.open(`/preview?responsive=${merge.mergeId}`, '_blank')
+  }, [merge.mergeId])
 
   const handleOpenPuck = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    navigate(`/responsive-tests/${test.mergeId}/puck-editor`)
-  }, [test.mergeId, navigate])
+    navigate(`/responsive-merges/${merge.mergeId}/puck-editor`)
+  }, [merge.mergeId, navigate])
 
   const handleDelete = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -53,7 +53,7 @@ export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRef
 
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/responsive-tests/${test.mergeId}`, { method: 'DELETE' })
+      const response = await fetch(`/api/responsive-merges/${merge.mergeId}`, { method: 'DELETE' })
       if (response.ok) {
         if (onRefresh) {
           onRefresh()
@@ -76,27 +76,27 @@ export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRef
       })
       setIsDeleting(false)
     }
-  }, [test.mergeId, confirm, alert, onRefresh, t])
+  }, [merge.mergeId, confirm, alert, onRefresh, t])
 
   // Thumbnails paths for 3 breakpoints
   const desktopThumbnail = useMemo(
-    () => `/src/generated/export_figma/${test.breakpoints.desktop.testId}/img/figma-screenshot.png`,
-    [test.breakpoints.desktop.testId]
+    () => `/src/generated/export_figma/${merge.breakpoints.desktop.testId}/img/figma-screenshot.png`,
+    [merge.breakpoints.desktop.testId]
   )
   const tabletThumbnail = useMemo(
-    () => `/src/generated/export_figma/${test.breakpoints.tablet.testId}/img/figma-screenshot.png`,
-    [test.breakpoints.tablet.testId]
+    () => `/src/generated/export_figma/${merge.breakpoints.tablet.testId}/img/figma-screenshot.png`,
+    [merge.breakpoints.tablet.testId]
   )
   const mobileThumbnail = useMemo(
-    () => `/src/generated/export_figma/${test.breakpoints.mobile.testId}/img/figma-screenshot.png`,
-    [test.breakpoints.mobile.testId]
+    () => `/src/generated/export_figma/${merge.breakpoints.mobile.testId}/img/figma-screenshot.png`,
+    [merge.breakpoints.mobile.testId]
   )
 
   const formattedDate = useMemo(() => {
-    if (!test.timestamp) return ''
-    const dateValue = typeof test.timestamp === 'number' && test.timestamp < 10000000000
-      ? test.timestamp * 1000
-      : test.timestamp
+    if (!merge.timestamp) return ''
+    const dateValue = typeof merge.timestamp === 'number' && merge.timestamp < 10000000000
+      ? merge.timestamp * 1000
+      : merge.timestamp
     const date = new Date(dateValue)
     return new Intl.DateTimeFormat('fr-FR', {
       day: '2-digit',
@@ -105,7 +105,7 @@ export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRef
       hour: '2-digit',
       minute: '2-digit'
     }).format(date)
-  }, [test.timestamp])
+  }, [merge.timestamp])
 
   return (
     <>
@@ -146,7 +146,7 @@ export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRef
             <div className="absolute bottom-2 left-2">
               <Badge variant="secondary" className="text-[9px] gap-1">
                 <Monitor className="h-3 w-3" />
-                {test.breakpoints.desktop.width}px
+                {merge.breakpoints.desktop.width}px
               </Badge>
             </div>
           </div>
@@ -166,7 +166,7 @@ export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRef
             <div className="absolute bottom-2 left-2">
               <Badge variant="secondary" className="text-[9px] gap-1">
                 <Tablet className="h-3 w-3" />
-                {test.breakpoints.tablet.width}px
+                {merge.breakpoints.tablet.width}px
               </Badge>
             </div>
           </div>
@@ -186,7 +186,7 @@ export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRef
             <div className="absolute bottom-2 left-2">
               <Badge variant="secondary" className="text-[9px] gap-1">
                 <Smartphone className="h-3 w-3" />
-                {test.breakpoints.mobile.width}px
+                {merge.breakpoints.mobile.width}px
               </Badge>
             </div>
           </div>
@@ -213,16 +213,16 @@ export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRef
         {/* Card Content */}
         <CardContent className="p-5">
           {/* Stats Badges */}
-          {test.mergeStats && (
+          {merge.mergeStats && (
             <div className="mb-3 flex flex-wrap gap-1.5">
-              {test.mergeStats.successCount > 0 && (
+              {merge.mergeStats.successCount > 0 && (
                 <Badge variant="default" className="text-[10px] bg-green-500">
-                  ✓ {test.mergeStats.successCount} composants
+                  ✓ {merge.mergeStats.successCount} composants
                 </Badge>
               )}
-              {test.mergeStats.errorCount > 0 && (
+              {merge.mergeStats.errorCount > 0 && (
                 <Badge variant="destructive" className="text-[10px]">
-                  ✗ {test.mergeStats.errorCount} {t('responsive.card.errors')}
+                  ✗ {merge.mergeStats.errorCount} {t('responsive.card.errors')}
                 </Badge>
               )}
             </div>
@@ -238,7 +238,7 @@ export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRef
                 {formattedDate}
               </span>
               <span className="font-mono text-[9px] text-muted-foreground">
-                {test.mergeId}
+                {merge.mergeId}
               </span>
             </div>
           </div>

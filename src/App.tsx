@@ -6,8 +6,8 @@ import DashboardPage from './components/pages/DashboardPage'
 import ExportFigmaPage from './components/pages/ExportFigmaPage'
 import ExportFigmaDetailPage from './components/pages/ExportFigmaDetailPage'
 import ExportFigmaPreviewPage from './components/pages/ExportFigmaPreviewPage'
-import ResponsiveTestsPage from './components/pages/ResponsiveTestsPage'
-import ResponsiveTestDetailPage from './components/pages/ResponsiveTestDetailPage'
+import ResponsiveMergesPage from './components/pages/ResponsiveMergesPage'
+import ResponsiveMergeDetailPage from './components/pages/ResponsiveMergeDetailPage'
 import ResponsivePreviewPage from './components/pages/ResponsivePreviewPage'
 import PuckEditorPage from './components/pages/PuckEditorPage'
 import PuckRenderPage from './components/pages/PuckRenderPage'
@@ -25,21 +25,21 @@ function App() {
         <Route path="/export_figma/:exportId/preview" element={<ExportFigmaPreviewPage />} />
 
         {/* Responsive Preview iframe route (no layout) */}
-        <Route path="/responsive-tests/:mergeId/preview" element={<ResponsivePreviewPage />} />
+        <Route path="/responsive-merges/:mergeId/preview" element={<ResponsivePreviewPage />} />
 
         {/* Puck Editor route (no layout, fullscreen) */}
-        <Route path="/responsive-tests/:mergeId/puck-editor" element={<PuckEditorPage />} />
+        <Route path="/responsive-merges/:mergeId/puck-editor" element={<PuckEditorPage />} />
 
         {/* Puck Render/Preview route (no layout) */}
-        <Route path="/responsive-tests/:mergeId/puck-preview" element={<PuckRenderPage />} />
+        <Route path="/responsive-merges/:mergeId/puck-preview" element={<PuckRenderPage />} />
 
         {/* Main app routes with layout */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/export_figma" element={<ExportFigmaPage />} />
           <Route path="/export_figma/:exportId" element={<ExportFigmaDetailWrapper />} />
-          <Route path="/responsive-tests" element={<ResponsiveTestsPage />} />
-          <Route path="/responsive-tests/:mergeId" element={<ResponsiveTestDetailPage />} />
+          <Route path="/responsive-merges" element={<ResponsiveMergesPage />} />
+          <Route path="/responsive-merges/:mergeId" element={<ResponsiveMergeDetailPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
 
@@ -281,7 +281,7 @@ function ResponsivePreviewMode({ mergeId }: { mergeId: string }) {
         }}
       >
         <iframe
-          src={`/responsive-tests/${mergeId}/preview`}
+          src={`/responsive-merges/${mergeId}/preview`}
           className="w-full border-0"
           style={{ height: `${iframeHeight}px` }}
           title="Responsive Preview"

@@ -375,7 +375,7 @@ export default function DashboardPage() {
                 <div
                   key={test.testId}
                   className="flex items-center justify-between rounded-lg border p-3 hover:bg-accent cursor-pointer transition-colors"
-                  onClick={() => navigate(`/export_figma/${exportFigma.exportId}`)}
+                  onClick={() => navigate(`/export_figma/${test.exportId}`)}
                 >
                   <div className="flex-1">
                     <p className="font-medium">{test.layerName || test.fileName || 'Untitled'}</p>

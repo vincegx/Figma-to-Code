@@ -1,14 +1,14 @@
 /**
- * ResponsiveTestsPage - List of all responsive merge tests
+ * ResponsiveMergesPage - List of all responsive merges
  */
 
 import { useState, useEffect, useMemo, useCallback, startTransition } from 'react'
-import { useResponsiveTests } from '../../hooks/useResponsiveTests'
+import { useResponsiveMerges } from '../../hooks/useResponsiveMerges'
 import { useTranslation } from '../../i18n/I18nContext'
 import { PaginationControls } from '../features/export_figma/PaginationControls'
-import ResponsiveTestsGrid from '../features/responsive-tests/ResponsiveTestsGrid'
-import ResponsiveTestsTable from '../features/responsive-tests/ResponsiveTestsTable'
-import { MergeDialog } from '../features/responsive-tests/MergeDialog'
+import ResponsiveMergesGrid from '../features/responsive-merges/ResponsiveMergesGrid'
+import ResponsiveMergesTable from '../features/responsive-merges/ResponsiveMergesTable'
+import { MergeDialog } from '../features/responsive-merges/MergeDialog'
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -26,9 +26,9 @@ import {
 type ViewMode = 'grid' | 'list'
 type SortOption = 'date-desc' | 'date-asc'
 
-export default function ResponsiveTestsPage() {
+export default function ResponsiveMergesPage() {
   const { t } = useTranslation()
-  const { tests, loading, reload } = useResponsiveTests()
+  const { merges, loading, reload } = useResponsiveMerges()
   const [settingsLoaded, setSettingsLoaded] = useState<boolean>(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
@@ -50,23 +50,23 @@ export default function ResponsiveTestsPage() {
       .finally(() => setSettingsLoaded(true))
   }, [])
 
-  const sortedTests = useMemo(() => {
-    const sorted = [...tests]
+  const sortedMerges = useMemo(() => {
+    const sorted = [...merges]
     if (sortOption === 'date-desc') {
       sorted.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     } else {
       sorted.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     }
     return sorted
-  }, [tests, sortOption])
+  }, [merges, sortOption])
 
-  const totalPages = useMemo(() => Math.ceil(sortedTests.length / itemsPerPage), [sortedTests.length, itemsPerPage])
+  const totalPages = useMemo(() => Math.ceil(sortedMerges.length / itemsPerPage), [sortedMerges.length, itemsPerPage])
 
-  const currentTests = useMemo(() => {
+  const currentMerges = useMemo(() => {
     const indexOfLastItem = currentPage * itemsPerPage
     const indexOfFirstItem = indexOfLastItem - itemsPerPage
-    return sortedTests.slice(indexOfFirstItem, indexOfLastItem)
-  }, [sortedTests, currentPage, itemsPerPage])
+    return sortedMerges.slice(indexOfFirstItem, indexOfLastItem)
+  }, [sortedMerges, currentPage, itemsPerPage])
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page)
@@ -148,16 +148,16 @@ export default function ResponsiveTestsPage() {
         </CardContent>
       </Card>
 
-      {tests.length === 0 ? (
+      {merges.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed p-12 text-center">
           <div className="mb-4 flex justify-center">
             <Inbox className="h-16 w-16 text-muted-foreground/50" strokeWidth={1.5} />
           </div>
           <h3 className="mb-2 text-xl font-semibold">
-            {t('responsive.page.no_tests_title')}
+            {t('responsive.page.no_merges_title')}
           </h3>
           <p className="text-muted-foreground mb-4">
-            {t('responsive.page.no_tests_message')}
+            {t('responsive.page.no_merges_message')}
           </p>
           <Button onClick={() => setDialogOpen(true)} className="gap-2">
             <Plus className="h-4 w-4" />
@@ -184,7 +184,7 @@ export default function ResponsiveTestsPage() {
               </ToggleGroup>
 
               <Badge variant="secondary">
-                {tests.length} {tests.length > 1 ? t('common.tests_plural') : t('common.tests')}
+                {merges.length} {merges.length > 1 ? t('common.merges_plural') : t('common.merges')}
               </Badge>
             </div>
 
@@ -231,9 +231,9 @@ export default function ResponsiveTestsPage() {
 
           {/* Grid or List View */}
           {viewMode === 'grid' ? (
-            <ResponsiveTestsGrid tests={currentTests} onRefresh={reload} />
+            <ResponsiveMergesGrid merges={currentMerges} onRefresh={reload} />
           ) : (
-            <ResponsiveTestsTable tests={currentTests} onRefresh={reload} />
+            <ResponsiveMergesTable merges={currentMerges} onRefresh={reload} />
           )}
 
           {/* Pagination */}
@@ -241,7 +241,7 @@ export default function ResponsiveTestsPage() {
             <PaginationControls
               currentPage={currentPage}
               totalPages={totalPages}
-              totalItems={sortedTests.length}
+              totalItems={sortedMerges.length}
               itemsPerPage={itemsPerPage}
               onPageChange={handlePageChange}
             />

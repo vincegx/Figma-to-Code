@@ -1,11 +1,11 @@
 /**
- * useResponsiveTests - Hook to load and manage responsive test data
- * Pattern adapted from useTests.ts
+ * useResponsiveMerges - Hook to load and manage responsive merge data
+ * Pattern adapted from useExportFigma.ts
  */
 
 import { useState, useEffect } from 'react'
 
-export interface ResponsiveTest {
+export interface ResponsiveMerge {
   mergeId: string
   timestamp: string | number
   type: 'responsive-merge'
@@ -39,36 +39,36 @@ export interface ResponsiveTest {
   }
 }
 
-export function useResponsiveTests() {
-  const [tests, setTests] = useState<ResponsiveTest[]>([])
+export function useResponsiveMerges() {
+  const [merges, setMerges] = useState<ResponsiveMerge[]>([])
   const [loading, setLoading] = useState<boolean>(true)
 
-  const loadTests = async () => {
+  const loadMerges = async () => {
     try {
-      // Load tests via API to avoid HMR reload
-      const response = await fetch('/api/responsive-tests')
+      // Load merges via API to avoid HMR reload
+      const response = await fetch('/api/responsive-merges')
 
       if (!response.ok) {
-        throw new Error('Failed to fetch responsive tests')
+        throw new Error('Failed to fetch responsive merges')
       }
 
-      const loadedTests = await response.json()
-      setTests(loadedTests)
+      const loadedMerges = await response.json()
+      setMerges(loadedMerges)
       setLoading(false)
     } catch (error) {
-      console.error('Error loading responsive tests:', error)
-      setTests([])
+      console.error('Error loading responsive merges:', error)
+      setMerges([])
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    loadTests()
+    loadMerges()
   }, [])
 
   return {
-    tests,
+    merges,
     loading,
-    reload: loadTests
+    reload: loadMerges
   }
 }

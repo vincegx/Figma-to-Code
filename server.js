@@ -534,10 +534,10 @@ app.get('/api/export_figma', async (req, res) => {
 })
 
 /**
- * GET /api/responsive-tests
+ * GET /api/responsive-merges
  * Récupère la liste de tous les tests responsive avec leurs métadonnées
  */
-app.get('/api/responsive-tests', async (req, res) => {
+app.get('/api/responsive-merges', async (req, res) => {
   try {
     const responsiveDir = path.join(__dirname, 'src', 'generated', 'responsive-screens')
 
@@ -580,10 +580,10 @@ app.get('/api/responsive-tests', async (req, res) => {
 })
 
 /**
- * POST /api/responsive-tests/merge
+ * POST /api/responsive-merges
  * Lance un nouveau merge responsive
  */
-app.post('/api/responsive-tests/merge', async (req, res) => {
+app.post('/api/responsive-merges', async (req, res) => {
   const { desktop, tablet, mobile } = req.body
 
   // Validation
@@ -801,10 +801,10 @@ app.post('/api/responsive-tests/merge', async (req, res) => {
 })
 
 /**
- * GET /api/responsive-tests/merge/logs/:jobId
+ * GET /api/responsive-merges/logs/:jobId
  * Stream les logs d'un merge responsive via Server-Sent Events (SSE)
  */
-app.get('/api/responsive-tests/merge/logs/:jobId', (req, res) => {
+app.get('/api/responsive-merges/logs/:jobId', (req, res) => {
   const { jobId } = req.params
   const job = activeJobs.get(jobId)
 
@@ -850,10 +850,10 @@ app.get('/api/responsive-tests/merge/logs/:jobId', (req, res) => {
 })
 
 /**
- * DELETE /api/responsive-tests/:mergeId
+ * DELETE /api/responsive-merges/:mergeId
  * Supprime un test responsive et son dossier
  */
-app.delete('/api/responsive-tests/:mergeId', async (req, res) => {
+app.delete('/api/responsive-merges/:mergeId', async (req, res) => {
   const { mergeId } = req.params
 
   if (!mergeId || !mergeId.startsWith('responsive-merger-')) {
@@ -882,10 +882,10 @@ app.delete('/api/responsive-tests/:mergeId', async (req, res) => {
 })
 
 /**
- * GET /api/responsive-tests/:mergeId/puck-config
+ * GET /api/responsive-merges/:mergeId/puck-config
  * Retourne la configuration Puck (liste des composants disponibles)
  */
-app.get('/api/responsive-tests/:mergeId/puck-config', async (req, res) => {
+app.get('/api/responsive-merges/:mergeId/puck-config', async (req, res) => {
   const { mergeId } = req.params
 
   if (!mergeId || !mergeId.startsWith('responsive-merger-')) {
@@ -921,10 +921,10 @@ app.get('/api/responsive-tests/:mergeId/puck-config', async (req, res) => {
 })
 
 /**
- * GET /api/responsive-tests/:mergeId/puck-data
+ * GET /api/responsive-merges/:mergeId/puck-data
  * Retourne le layout Puck sauvegardé (ou null si pas encore sauvegardé)
  */
-app.get('/api/responsive-tests/:mergeId/puck-data', async (req, res) => {
+app.get('/api/responsive-merges/:mergeId/puck-data', async (req, res) => {
   const { mergeId } = req.params
 
   if (!mergeId || !mergeId.startsWith('responsive-merger-')) {
@@ -956,10 +956,10 @@ app.get('/api/responsive-tests/:mergeId/puck-data', async (req, res) => {
 })
 
 /**
- * POST /api/responsive-tests/:mergeId/puck-save
+ * POST /api/responsive-merges/:mergeId/puck-save
  * Sauvegarde le layout Puck
  */
-app.post('/api/responsive-tests/:mergeId/puck-save', async (req, res) => {
+app.post('/api/responsive-merges/:mergeId/puck-save', async (req, res) => {
   const { mergeId } = req.params
 
   if (!mergeId || !mergeId.startsWith('responsive-merger-')) {
@@ -998,10 +998,10 @@ app.post('/api/responsive-tests/:mergeId/puck-save', async (req, res) => {
 })
 
 /**
- * GET /api/responsive-tests/:mergeId/images/:imageName
+ * GET /api/responsive-merges/:mergeId/images/:imageName
  * Servir les images pour Puck Editor
  */
-app.get('/api/responsive-tests/:mergeId/images/:imageName', (req, res) => {
+app.get('/api/responsive-merges/:mergeId/images/:imageName', (req, res) => {
   const { mergeId, imageName } = req.params
 
   if (!mergeId || !mergeId.startsWith('responsive-merger-')) {
@@ -1033,10 +1033,10 @@ app.get('/api/responsive-tests/:mergeId/images/:imageName', (req, res) => {
 })
 
 /**
- * GET /api/responsive-tests/:mergeId/data
+ * GET /api/responsive-merges/:mergeId/data
  * Récupère les données d'un merge responsive (metadata + analysis)
  */
-app.get('/api/responsive-tests/:mergeId/data', async (req, res) => {
+app.get('/api/responsive-merges/:mergeId/data', async (req, res) => {
   const { mergeId } = req.params
 
   if (!mergeId || !mergeId.startsWith('responsive-merger-')) {
@@ -1080,10 +1080,10 @@ app.get('/api/responsive-tests/:mergeId/data', async (req, res) => {
 })
 
 /**
- * GET /api/responsive-tests/:mergeId/download
+ * GET /api/responsive-merges/:mergeId/download
  * Télécharge un merge responsive complet en archive ZIP (sans fichiers puck)
  */
-app.get('/api/responsive-tests/:mergeId/download', async (req, res) => {
+app.get('/api/responsive-merges/:mergeId/download', async (req, res) => {
   const { mergeId } = req.params
 
   if (!mergeId || !mergeId.startsWith('responsive-merger-')) {

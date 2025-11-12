@@ -661,7 +661,7 @@ ${fields.join(',\n')}
       if (transformedProps.${p.propName} && typeof transformedProps.${p.propName} === 'object') {
         const imgUrl = transformedProps.${p.propName}.url;
         if (imgUrl && !imgUrl.startsWith('http') && !imgUrl.startsWith('/api/')) {
-          transformedProps.${p.propName} = \`/api/responsive-tests/\${mergeId}/images/\${imgUrl}\`;
+          transformedProps.${p.propName} = \`/api/responsive-merges/\${mergeId}/images/\${imgUrl}\`;
         } else {
           transformedProps.${p.propName} = imgUrl;
         }

@@ -201,8 +201,8 @@
       "badge_breakpoints": "3 Breakpoints",
       "new_merge": "Nouveau Merge",
       "loading": "Chargement des tests responsive...",
-      "no_tests_title": "Aucun test responsive",
-      "no_tests_message": "Créez votre premier test responsive en fusionnant 3 tests existants",
+      "no_merges_title": "Aucun test responsive",
+      "no_merges_message": "Créez votre premier test responsive en fusionnant 3 tests existants",
       "create_merge": "Créer un merge"
     },
     "card": {

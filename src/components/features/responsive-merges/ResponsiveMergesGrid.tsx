@@ -1,25 +1,25 @@
 import { memo, useState } from 'react'
-import { ResponsiveTestCard } from './ResponsiveTestCard'
+import { ResponsiveMergeCard } from './ResponsiveMergeCard'
 import { SelectionBar } from '@/components/ui/SelectionBar'
 import { useSelection } from '../../../hooks/useSelection'
 import { useConfirm } from '../../../hooks/useConfirm'
 import { useAlert } from '../../../hooks/useAlert'
 import { useTranslation } from '../../../i18n/I18nContext'
-import type { ResponsiveTest } from '../../../hooks/useResponsiveTests'
+import type { ResponsiveMerge } from '../../../hooks/useResponsiveMerges'
 
-interface ResponsiveTestsGridProps {
-  tests: ResponsiveTest[]
+interface ResponsiveMergesGridProps {
+  merges: ResponsiveMerge[]
   onRefresh?: () => void
 }
 
-const ResponsiveTestsGrid = memo(function ResponsiveTestsGrid({ tests, onRefresh }: ResponsiveTestsGridProps) {
+const ResponsiveMergesGrid = memo(function ResponsiveMergesGrid({ merges, onRefresh }: ResponsiveMergesGridProps) {
   const { t } = useTranslation()
   const { confirm, ConfirmDialog } = useConfirm()
   const { alert, AlertDialogComponent } = useAlert()
   const [isDeletingMultiple, setIsDeletingMultiple] = useState(false)
 
   // Use selection hook
-  const selection = useSelection(tests, (test) => test.mergeId)
+  const selection = useSelection(merges, (merge) => merge.mergeId)
 
   const handleDeleteSelected = async () => {
     if (selection.selectedCount === 0) return
@@ -37,7 +37,7 @@ const ResponsiveTestsGrid = memo(function ResponsiveTestsGrid({ tests, onRefresh
     setIsDeletingMultiple(true)
     try {
       const deletePromises = Array.from(selection.selectedIds).map(mergeId =>
-        fetch(`/api/responsive-tests/${mergeId}`, { method: 'DELETE' })
+        fetch(`/api/responsive-merges/${mergeId}`, { method: 'DELETE' })
       )
       await Promise.all(deletePromises)
       selection.clearSelection()
@@ -50,7 +50,7 @@ const ResponsiveTestsGrid = memo(function ResponsiveTestsGrid({ tests, onRefresh
     } catch (error) {
       alert({
         title: t('common.error'),
-        description: 'Impossible de supprimer les tests responsive',
+        description: 'Impossible de supprimer les responsive merges',
         variant: 'destructive'
       })
       setIsDeletingMultiple(false)
@@ -72,13 +72,13 @@ const ResponsiveTestsGrid = memo(function ResponsiveTestsGrid({ tests, onRefresh
 
         {/* Grid */}
         <div className="grid gap-4 sm:gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))' }}>
-          {tests.map((test) => (
-            <ResponsiveTestCard
-              key={test.mergeId}
-              test={test}
+          {merges.map((merge) => (
+            <ResponsiveMergeCard
+              key={merge.mergeId}
+              merge={merge}
               onRefresh={onRefresh}
-              isSelected={selection.isSelected(test.mergeId)}
-              onToggleSelection={() => selection.toggleSelection(test.mergeId)}
+              isSelected={selection.isSelected(merge.mergeId)}
+              onToggleSelection={() => selection.toggleSelection(merge.mergeId)}
             />
           ))}
         </div>
@@ -87,4 +87,4 @@ const ResponsiveTestsGrid = memo(function ResponsiveTestsGrid({ tests, onRefresh
   )
 })
 
-export default ResponsiveTestsGrid
+export default ResponsiveMergesGrid

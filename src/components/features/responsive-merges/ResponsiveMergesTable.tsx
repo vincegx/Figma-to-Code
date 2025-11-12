@@ -24,14 +24,14 @@ import { useConfirm } from '../../../hooks/useConfirm'
 import { useAlert } from '../../../hooks/useAlert'
 import { useSelection } from '../../../hooks/useSelection'
 import { useTranslation } from '../../../i18n/I18nContext'
-import type { ResponsiveTest } from '../../../hooks/useResponsiveTests'
+import type { ResponsiveMerge } from '../../../hooks/useResponsiveMerges'
 
-interface ResponsiveTestsTableProps {
-  tests: ResponsiveTest[]
+interface ResponsiveMergesTableProps {
+  merges: ResponsiveMerge[]
   onRefresh?: () => void
 }
 
-const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefresh }: ResponsiveTestsTableProps) {
+const ResponsiveMergesTable = memo(function ResponsiveMergesTable({ merges, onRefresh }: ResponsiveMergesTableProps) {
   const { t } = useTranslation()
   const { confirm, ConfirmDialog } = useConfirm()
   const { alert, AlertDialogComponent } = useAlert()
@@ -41,14 +41,14 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
   const [isDeletingMultiple, setIsDeletingMultiple] = useState(false)
 
   // Use selection hook
-  const selection = useSelection(tests, (test) => test.mergeId)
+  const selection = useSelection(merges, (merge) => merge.mergeId)
 
-  const handleDelete = async (test: ResponsiveTest, e: React.MouseEvent) => {
+  const handleDelete = async (merge: ResponsiveMerge, e: React.MouseEvent) => {
     e.stopPropagation()
 
     const confirmed = await confirm({
-      title: 'Supprimer le test responsive',
-      description: 'Êtes-vous sûr de vouloir supprimer ce test responsive ? Cette action est irréversible.',
+      title: 'Supprimer le responsive merge',
+      description: 'Êtes-vous sûr de vouloir supprimer ce responsive merge ? Cette action est irréversible.',
       confirmText: 'Supprimer',
       cancelText: 'Annuler',
       variant: 'destructive'
@@ -56,9 +56,9 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
 
     if (!confirmed) return
 
-    setDeletingId(test.mergeId)
+    setDeletingId(merge.mergeId)
     try {
-      const response = await fetch(`/api/responsive-tests/${test.mergeId}`, { method: 'DELETE' })
+      const response = await fetch(`/api/responsive-merges/${merge.mergeId}`, { method: 'DELETE' })
       if (response.ok) {
         if (onRefresh) {
           onRefresh()
@@ -68,7 +68,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
       } else {
         alert({
           title: 'Erreur',
-          description: 'Impossible de supprimer le test responsive',
+          description: 'Impossible de supprimer le responsive merge',
           variant: 'destructive'
         })
         setDeletingId(null)
@@ -76,7 +76,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
     } catch (error) {
       alert({
         title: 'Erreur',
-        description: 'Impossible de supprimer le test responsive',
+        description: 'Impossible de supprimer le responsive merge',
         variant: 'destructive'
       })
       setDeletingId(null)
@@ -99,7 +99,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
     setIsDeletingMultiple(true)
     try {
       const deletePromises = Array.from(selection.selectedIds).map(mergeId =>
-        fetch(`/api/responsive-tests/${mergeId}`, { method: 'DELETE' })
+        fetch(`/api/responsive-merges/${mergeId}`, { method: 'DELETE' })
       )
       await Promise.all(deletePromises)
       selection.clearSelection()
@@ -112,7 +112,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
     } catch (error) {
       alert({
         title: t('common.error'),
-        description: 'Impossible de supprimer les tests responsive',
+        description: 'Impossible de supprimer les responsive merges',
         variant: 'destructive'
       })
       setIsDeletingMultiple(false)
@@ -166,22 +166,22 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
               </TableRow>
             </TableHeader>
           <TableBody className="overflow-visible">
-            {tests.map((test, index) => {
-              const isLastTwo = index >= tests.length - 2
-              const isSelected = selection.isSelected(test.mergeId)
+            {merges.map((merge, index) => {
+              const isLastTwo = index >= merges.length - 2
+              const isSelected = selection.isSelected(merge.mergeId)
               return (
               <TableRow
-                key={test.mergeId}
+                key={merge.mergeId}
                 className="cursor-pointer relative overflow-visible"
-                onClick={() => navigate(`/responsive-tests/${test.mergeId}`)}
-                onMouseEnter={() => setHoveredRowId(test.mergeId)}
+                onClick={() => navigate(`/responsive-merges/${merge.mergeId}`)}
+                onMouseEnter={() => setHoveredRowId(merge.mergeId)}
                 onMouseLeave={() => setHoveredRowId(null)}
                 data-state={isSelected ? "selected" : undefined}
               >
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     checked={isSelected}
-                    onCheckedChange={() => selection.toggleSelection(test.mergeId)}
+                    onCheckedChange={() => selection.toggleSelection(merge.mergeId)}
                     aria-label="Sélectionner la ligne"
                   />
                 </TableCell>
@@ -191,7 +191,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                     <div className="flex flex-col items-center gap-0.5">
                       <div className="w-12 h-9 rounded border overflow-hidden bg-muted">
                         <img
-                          src={`/src/generated/export_figma/${test.breakpoints.desktop.testId}/img/figma-screenshot.png`}
+                          src={`/src/generated/export_figma/${merge.breakpoints.desktop.testId}/img/figma-screenshot.png`}
                           alt="Desktop"
                           className="w-full h-full object-cover object-top"
                           onError={(e) => {
@@ -203,14 +203,14 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                           }}
                         />
                       </div>
-                      <span className="text-[9px] text-muted-foreground">{test.breakpoints.desktop.width}px</span>
+                      <span className="text-[9px] text-muted-foreground">{merge.breakpoints.desktop.width}px</span>
                     </div>
 
                     {/* Tablet Thumbnail */}
                     <div className="flex flex-col items-center gap-0.5">
                       <div className="w-9 h-9 rounded border overflow-hidden bg-muted">
                         <img
-                          src={`/src/generated/export_figma/${test.breakpoints.tablet.testId}/img/figma-screenshot.png`}
+                          src={`/src/generated/export_figma/${merge.breakpoints.tablet.testId}/img/figma-screenshot.png`}
                           alt="Tablet"
                           className="w-full h-full object-cover object-top"
                           onError={(e) => {
@@ -222,14 +222,14 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                           }}
                         />
                       </div>
-                      <span className="text-[9px] text-muted-foreground">{test.breakpoints.tablet.width}px</span>
+                      <span className="text-[9px] text-muted-foreground">{merge.breakpoints.tablet.width}px</span>
                     </div>
 
                     {/* Mobile Thumbnail */}
                     <div className="flex flex-col items-center gap-0.5">
                       <div className="w-7 h-9 rounded border overflow-hidden bg-muted">
                         <img
-                          src={`/src/generated/export_figma/${test.breakpoints.mobile.testId}/img/figma-screenshot.png`}
+                          src={`/src/generated/export_figma/${merge.breakpoints.mobile.testId}/img/figma-screenshot.png`}
                           alt="Mobile"
                           className="w-full h-full object-cover object-top"
                           onError={(e) => {
@@ -241,12 +241,12 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                           }}
                         />
                       </div>
-                      <span className="text-[9px] text-muted-foreground">{test.breakpoints.mobile.width}px</span>
+                      <span className="text-[9px] text-muted-foreground">{merge.breakpoints.mobile.width}px</span>
                     </div>
                   </div>
 
                   {/* Hover Preview */}
-                  {hoveredRowId === test.mergeId && (
+                  {hoveredRowId === merge.mergeId && (
                     <div
                       className={`absolute left-0 ${isLastTwo ? 'bottom-full mb-1' : 'top-full mt-1'} z-50 bg-popover border rounded-lg shadow-lg p-2 flex gap-2`}
                       style={{ width: 'max-content' }}
@@ -256,7 +256,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                       <div className="flex flex-col items-center gap-1">
                         <div className="w-32 h-24 rounded border overflow-hidden bg-muted">
                           <img
-                            src={`/src/generated/export_figma/${test.breakpoints.desktop.testId}/img/figma-screenshot.png`}
+                            src={`/src/generated/export_figma/${merge.breakpoints.desktop.testId}/img/figma-screenshot.png`}
                             alt="Desktop"
                             className="w-full h-full object-cover object-top"
                             onError={(e) => {
@@ -269,7 +269,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                           />
                         </div>
                         <Badge variant="secondary" className="text-[10px]">
-                          🖥️ {test.breakpoints.desktop.width}px
+                          🖥️ {merge.breakpoints.desktop.width}px
                         </Badge>
                       </div>
 
@@ -277,7 +277,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                       <div className="flex flex-col items-center gap-1">
                         <div className="w-24 h-24 rounded border overflow-hidden bg-muted">
                           <img
-                            src={`/src/generated/export_figma/${test.breakpoints.tablet.testId}/img/figma-screenshot.png`}
+                            src={`/src/generated/export_figma/${merge.breakpoints.tablet.testId}/img/figma-screenshot.png`}
                             alt="Tablet"
                             className="w-full h-full object-cover object-top"
                             onError={(e) => {
@@ -290,7 +290,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                           />
                         </div>
                         <Badge variant="secondary" className="text-[10px]">
-                          📱 {test.breakpoints.tablet.width}px
+                          📱 {merge.breakpoints.tablet.width}px
                         </Badge>
                       </div>
 
@@ -298,7 +298,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                       <div className="flex flex-col items-center gap-1">
                         <div className="w-20 h-24 rounded border overflow-hidden bg-muted">
                           <img
-                            src={`/src/generated/export_figma/${test.breakpoints.mobile.testId}/img/figma-screenshot.png`}
+                            src={`/src/generated/export_figma/${merge.breakpoints.mobile.testId}/img/figma-screenshot.png`}
                             alt="Mobile"
                             className="w-full h-full object-cover object-top"
                             onError={(e) => {
@@ -311,7 +311,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                           />
                         </div>
                         <Badge variant="secondary" className="text-[10px]">
-                          📱 {test.breakpoints.mobile.width}px
+                          📱 {merge.breakpoints.mobile.width}px
                         </Badge>
                       </div>
                     </div>
@@ -320,31 +320,31 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                 <TableCell>
                   <div className="flex items-center gap-1.5">
                     <Badge variant="secondary" className="text-[10px]">
-                      {test.components?.length || 0} composants
+                      {merge.components?.length || 0} composants
                     </Badge>
-                    {test.mergeStats?.successCount > 0 && (
+                    {merge.mergeStats?.successCount > 0 && (
                       <Badge variant="default" className="text-[10px] bg-green-500">
-                        ✓ {test.mergeStats.successCount}
+                        ✓ {merge.mergeStats.successCount}
                       </Badge>
                     )}
-                    {test.mergeStats?.errorCount > 0 && (
+                    {merge.mergeStats?.errorCount > 0 && (
                       <Badge variant="destructive" className="text-[10px]">
-                        ✗ {test.mergeStats.errorCount}
+                        ✗ {merge.mergeStats.errorCount}
                       </Badge>
                     )}
                   </div>
                 </TableCell>
                 <TableCell className="text-sm">
-                  {formatDate(test.timestamp)}
+                  {formatDate(merge.timestamp)}
                 </TableCell>
                 <TableCell className="font-mono text-xs text-muted-foreground">
-                  {test.mergeId}
+                  {merge.mergeId}
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
-                        {deletingId === test.mergeId ? (
+                        {deletingId === merge.mergeId ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <MoreVertical className="h-4 w-4" />
@@ -352,21 +352,21 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => navigate(`/responsive-tests/${test.mergeId}`)}>
+                      <DropdownMenuItem onClick={() => navigate(`/responsive-merges/${merge.mergeId}`)}>
                         <Eye className="mr-2 h-4 w-4" />
                         {t('common.details')}
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => window.open(`/preview?responsive=${test.mergeId}`, '_blank')}>
+                      <DropdownMenuItem onClick={() => window.open(`/preview?responsive=${merge.mergeId}`, '_blank')}>
                         <Eye className="mr-2 h-4 w-4" />
                         Open Live Demo
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate(`/responsive-tests/${test.mergeId}/puck-editor`)}>
+                      <DropdownMenuItem onClick={() => navigate(`/responsive-merges/${merge.mergeId}/puck-editor`)}>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit in Puck
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        onClick={(e) => handleDelete(test, e)}
+                        onClick={(e) => handleDelete(merge, e)}
                         className="text-destructive focus:text-destructive"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
@@ -386,4 +386,4 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
   )
 })
 
-export default ResponsiveTestsTable
+export default ResponsiveMergesTable

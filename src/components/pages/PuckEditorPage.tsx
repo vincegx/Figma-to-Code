@@ -59,7 +59,7 @@ export default function PuckEditorPage() {
       setConfig(puckConfig);
 
       // 2. Load saved Puck data (or use empty initial data)
-      const dataRes = await fetch(`/api/responsive-tests/${mergeId}/puck-data`);
+      const dataRes = await fetch(`/api/responsive-merges/${mergeId}/puck-data`);
       if (dataRes.ok) {
         const savedData = await dataRes.json();
         console.log('📦 Loaded Puck data:', savedData);
@@ -110,7 +110,7 @@ export default function PuckEditorPage() {
   async function handlePublish(publishedData: any) {
     setSaving(true);
     try {
-      const response = await fetch(`/api/responsive-tests/${mergeId}/puck-save`, {
+      const response = await fetch(`/api/responsive-merges/${mergeId}/puck-save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(publishedData)
@@ -158,7 +158,7 @@ export default function PuckEditorPage() {
             <h2 className="text-2xl font-bold text-destructive">Error Loading Editor</h2>
             <p className="text-muted-foreground">{error}</p>
           </div>
-          <Button onClick={() => navigate('/responsive-tests')} className="mt-4">
+          <Button onClick={() => navigate('/responsive-merges')} className="mt-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Tests
           </Button>
@@ -180,7 +180,7 @@ export default function PuckEditorPage() {
             headerActions: () => (
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <Link
-                  to={`/responsive-tests/${mergeId}/puck-preview`}
+                  to={`/responsive-merges/${mergeId}/puck-preview`}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',

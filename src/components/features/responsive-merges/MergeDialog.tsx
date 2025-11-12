@@ -99,7 +99,7 @@ export function MergeDialog({ open, onOpenChange, onMergeComplete }: MergeDialog
 
     try {
       // Start merge
-      const response = await fetch('/api/responsive-tests/merge', {
+      const response = await fetch('/api/responsive-merges', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -115,7 +115,7 @@ export function MergeDialog({ open, onOpenChange, onMergeComplete }: MergeDialog
       setProgress(20)
 
       // Connect to SSE stream
-      const eventSource = new EventSource(`/api/responsive-tests/merge/logs/${jobId}`)
+      const eventSource = new EventSource(`/api/responsive-merges/logs/${jobId}`)
 
       eventSource.onmessage = (event) => {
         try {

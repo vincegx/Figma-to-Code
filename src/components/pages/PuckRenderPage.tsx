@@ -60,7 +60,7 @@ export default function PuckRenderPage() {
       setConfig(puckConfig);
 
       // 2. Load saved Puck data
-      const dataRes = await fetch(`/api/responsive-tests/${mergeId}/puck-data`);
+      const dataRes = await fetch(`/api/responsive-merges/${mergeId}/puck-data`);
       if (dataRes.ok) {
         const savedData = await dataRes.json();
         setData(savedData);
@@ -152,7 +152,7 @@ export default function PuckRenderPage() {
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground font-mono">{mergeId}</span>
             <Button variant="default" size="sm" asChild>
-              <Link to={`/responsive-tests/${mergeId}/puck-editor`}>
+              <Link to={`/responsive-merges/${mergeId}/puck-editor`}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit
               </Link>

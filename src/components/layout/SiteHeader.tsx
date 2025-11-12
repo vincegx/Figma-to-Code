@@ -51,20 +51,20 @@ export const SiteHeader = memo(function SiteHeader({ mcpConnected, mcpChecking }
       ]
     }
 
-    // Responsive tests list
-    if (path === '/responsive-tests') {
+    // Responsive merges list
+    if (path === '/responsive-merges') {
       return [
         { label: 'Dashboard', href: '/', isLast: false },
-        { label: 'Responsive Tests', href: '/responsive-tests', isLast: true }
+        { label: 'Responsive Merges', href: '/responsive-merges', isLast: true }
       ]
     }
 
-    // Responsive test detail
-    if (path.startsWith('/responsive-tests/')) {
+    // Responsive merge detail
+    if (path.startsWith('/responsive-merges/')) {
       const mergeId = path.split('/')[2]
       return [
         { label: 'Dashboard', href: '/', isLast: false },
-        { label: 'Responsive Tests', href: '/responsive-tests', isLast: false },
+        { label: 'Responsive Merges', href: '/responsive-merges', isLast: false },
         { label: mergeId.substring(0, 20) + '...', href: path, isLast: true }
       ]
     }

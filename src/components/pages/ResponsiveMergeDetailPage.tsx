@@ -1,5 +1,5 @@
 /**
- * ResponsiveTestDetailPage - Vue détaillée d'un merge responsive
+ * ResponsiveMergeDetailPage - Vue détaillée d'un merge responsive
  *
  * 4 onglets :
  * 1. Preview - iframe vers Puck preview (rendu responsive)
@@ -84,7 +84,7 @@ interface ResponsiveMetadata {
   }
 }
 
-export default function ResponsiveTestDetailPage() {
+export default function ResponsiveMergeDetailPage() {
   const { mergeId } = useParams<{ mergeId: string }>()
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -111,7 +111,7 @@ export default function ResponsiveTestDetailPage() {
       setLoading(true)
 
       // Load merge data via API
-      const response = await fetch(`/api/responsive-tests/${mergeId}/data`)
+      const response = await fetch(`/api/responsive-merges/${mergeId}/data`)
 
       if (!response.ok) {
         throw new Error('Failed to fetch merge data')
@@ -150,7 +150,7 @@ export default function ResponsiveTestDetailPage() {
             {t('detail.error.title')}
           </h3>
           <p className="mb-6 text-muted-foreground">{error || 'Merge not found'}</p>
-          <Button onClick={() => navigate('/responsive-tests')}>
+          <Button onClick={() => navigate('/responsive-merges')}>
             {t('detail.error.back')}
           </Button>
         </div>
@@ -173,7 +173,7 @@ export default function ResponsiveTestDetailPage() {
     },
     {
       label: 'Download',
-      href: `/api/responsive-tests/${mergeId}/download`,
+      href: `/api/responsive-merges/${mergeId}/download`,
       icon: Download,
       variant: 'outline',
       download: `${mergeId}.zip`,
@@ -382,7 +382,7 @@ function PreviewTab({ mergeId }: PreviewTabProps) {
           }}
         >
           <iframe
-            src={`/responsive-tests/${mergeId}/preview`}
+            src={`/responsive-merges/${mergeId}/preview`}
             className="w-full border-0"
             style={{ height: `${iframeHeight}px` }}
             title="Responsive Preview"
