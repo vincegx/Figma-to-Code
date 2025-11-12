@@ -1,5 +1,7 @@
 # 🎨 MCP Figma to Code
 
+https://github.com/user-attachments/assets/823e50c7-fb4d-4ea2-a6da-b2a8413bf1a7
+
 > Transform your Figma designs into pixel-perfect React + Tailwind components using the Model Context Protocol
 
 <div align="center">
