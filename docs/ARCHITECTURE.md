@@ -322,6 +322,283 @@ test-dir/
 
 ---
 
+## Responsive Merge Pipeline
+
+**Multi-Screen Fusion System** - Combines 3 Figma exports (Desktop, Tablet, Mobile) into a single responsive component.
+
+### Overview
+
+The Responsive Merge feature extends the standard pipeline with a specialized **responsive transformation pipeline** that intelligently merges three complete screen designs while preserving visual fidelity across all breakpoints.
+
+```
+Desktop Export (1440px) ──┐
+                          ├──> Responsive Merger ──> Page.tsx + Subcomponents/
+Tablet Export (960px)   ──┤         ↓
+                          │    Responsive Pipeline (7 transforms)
+Mobile Export (420px)   ──┘         ↓
+                                Pure CSS Media Queries
+```
+
+### Pipeline Phases
+
+#### Phase 1: Detection & Validation
+```javascript
+// 1. Validate all 3 exports have modular/ directory
+validateBreakpoint(desktop.id, 'Desktop', 1440)
+validateBreakpoint(tablet.id, 'Tablet', 960)
+validateBreakpoint(mobile.id, 'Mobile', 420)
+
+// 2. Detect common components across breakpoints
+const common = detectCommonComponents(desktop, tablet, mobile)
+// → Only components present in all 3 breakpoints
+
+// 3. Get component order from Desktop metadata.xml
+const order = await getComponentOrder(desktop.testDir, common)
+// → Preserves visual hierarchy from Figma
+
+// 4. Extract helper functions from Desktop
+const helpers = extractHelperFunctions(desktop.testDir, order)
+// → Shared utilities like formatCurrency(), IconComponent, etc.
+```
+
+#### Phase 2: Component Merging (AST Pipeline)
+
+For each common component:
+
+```javascript
+// 1. Parse all 3 TSX files
+const desktopAST = parse(desktopTSX)
+const tabletAST = parse(tabletTSX)
+const mobileAST = parse(mobileTSX)
+
+// 2. Run Responsive Pipeline (7 transforms)
+const context = await runResponsivePipeline(
+  desktopAST,
+  tabletAST,
+  mobileAST,
+  { desktop: 1440, tablet: 960, mobile: 420 },
+  config
+)
+
+// 3. Generate merged code
+const mergedCode = generate(context.desktopAST)
+
+// 4. Inject helpers if needed
+const usedHelpers = findUsedHelpers(mergedCode, helpers)
+const finalCode = injectHelpersIntoComponent(mergedCode, usedHelpers, helpers)
+
+// 5. Fix image paths: ./img/ → ../img/
+finalCode = finalCode.replace(/from ["']\.\/img\//g, 'from "../img/')
+```
+
+#### Phase 3: CSS Merging
+
+```javascript
+// 1. Parse all 3 CSS files into sections
+const desktopSections = parseCSSIntoSections(desktopCSS)
+const tabletSections = parseCSSIntoSections(tabletCSS)
+const mobileSections = parseCSSIntoSections(mobileCSS)
+
+// 2. Merge :root variables (deduplicate)
+const rootVars = mergeRootVariables([
+  desktopSections.root,
+  tabletSections.root,
+  mobileSections.root
+])
+
+// 3. Desktop styles (baseline, no media query)
+merged += desktopSections.customClasses
+
+// 4. Tablet overrides (calculate differences)
+const tabletDiff = getClassDifferences(
+  desktopSections.customClasses,
+  tabletSections.customClasses
+)
+merged += `@media (max-width: 960px) {\n${tabletDiff}\n}`
+
+// 5. Mobile overrides (calculate differences from tablet)
+const mobileDiff = getClassDifferences(
+  tabletSections.customClasses,
+  mobileSections.customClasses
+)
+merged += `@media (max-width: 420px) {\n${mobileDiff}\n}`
+```
+
+#### Phase 4: Page Generation
+
+```javascript
+// 1. Merge Page structure from all 3 Component-clean.tsx files
+const pageResult = await mergeTSXStructure(
+  desktopComponentClean,
+  tabletComponentClean,
+  mobileComponentClean,
+  breakpoints
+)
+
+// 2. Replace <div data-name="..."> with <ComponentName />
+// Desktop Component-clean.tsx:
+// <div data-name="title section">...</div>
+// → Becomes: <Titlesection />
+
+// 3. Generate Page.css with component imports
+const pageCSS = `
+  @import './Subcomponents/Header.css';
+  @import './Subcomponents/Hero.css';
+  /* ... parent container CSS ... */
+  /* ... compiled responsive classes ... */
+`
+
+// 4. Compile responsive classes to pure CSS
+const compiledCSS = compileResponsiveClasses(outputDir)
+// max-md:w-80 → .max-md-w-custom-80 { width: 20rem; }
+```
+
+### Responsive Transforms (Priority Order)
+
+| Priority | Transform | Purpose |
+|----------|-----------|---------|
+| **10** | `detect-missing-elements` | Find elements missing in tablet/mobile (e.g., desktop-only sidebar) |
+| **20** | `normalize-identical-classes` | Normalize className formatting across breakpoints |
+| **30** | `detect-class-conflicts` | Detect className differences using data-name or position matching |
+| **40** | `merge-desktop-first` | Merge classNames (Desktop base + Tablet/Mobile overrides) |
+| **50** | `add-horizontal-scroll` | Add `overflow-x: auto` to prevent layout breaks on narrow screens |
+| **60** | `reset-dependent-properties` | Reset conflicting properties (width, height, flex-basis) |
+| **70** | `inject-visibility-classes` | Add visibility classes (max-md:hidden, max-lg:block) |
+
+**Transform Implementation:**
+
+```javascript
+// scripts/responsive-transformations/detect-class-conflicts.js
+export const meta = {
+  name: 'detect-class-conflicts',
+  priority: 30
+}
+
+export function execute(desktopAST, tabletAST, mobileAST, context) {
+  const conflicts = []
+
+  // 1. Match elements by data-name attribute
+  const desktopElements = findAllJSXElements(desktopAST)
+  const tabletElements = findAllJSXElements(tabletAST)
+  const mobileElements = findAllJSXElements(mobileAST)
+
+  for (const desktopEl of desktopElements) {
+    const dataName = getDataName(desktopEl)
+    const tabletEl = tabletElements.find(el => getDataName(el) === dataName)
+    const mobileEl = mobileElements.find(el => getDataName(el) === dataName)
+
+    if (tabletEl && mobileEl) {
+      const desktopClasses = getClassName(desktopEl)
+      const tabletClasses = getClassName(tabletEl)
+      const mobileClasses = getClassName(mobileEl)
+
+      if (desktopClasses !== tabletClasses || tabletClasses !== mobileClasses) {
+        conflicts.push({ dataName, desktopClasses, tabletClasses, mobileClasses })
+      }
+    }
+  }
+
+  return {
+    elementsWithConflicts: conflicts.length,
+    totalConflicts: conflicts.reduce((sum, c) => sum + diffCount(c), 0),
+    matchedByDataName: conflicts.filter(c => c.dataName).length,
+    matchedByPosition: conflicts.filter(c => !c.dataName).length
+  }
+}
+```
+
+### Output Structure
+
+```
+responsive-merger-{timestamp}/
+├── Page.tsx                      # Main page with all imports
+├── Page.css                      # Consolidated CSS with media queries
+├── Subcomponents/                # Modular responsive components
+│   ├── Header.tsx                # Desktop-first with responsive classes
+│   ├── Header.css                # Media queries for tablet/mobile
+│   ├── Hero.tsx
+│   ├── Hero.css
+│   └── Footer.tsx
+│   └── Footer.css
+├── img/                          # Images from Desktop export
+├── puck/                         # Visual editor components
+│   ├── components/               # Puck-wrapped components
+│   ├── config.tsx                # Puck configuration
+│   └── data.json                 # Initial Puck data
+├── responsive-metadata.json      # Merge stats & transformation details
+├── responsive-analysis.md        # Technical analysis report
+└── responsive-report.html        # Visual comparison (Desktop/Tablet/Mobile)
+```
+
+### Puck Integration
+
+**Puck** is a visual editor for React. The merge generates Puck-ready components:
+
+```javascript
+// puck/config.tsx
+import { Config } from '@measured/puck'
+import Header from './components/Header'
+import Hero from './components/Hero'
+
+export const config: Config = {
+  components: {
+    Header: {
+      fields: {
+        title: { type: 'text' },
+        logo: { type: 'text' }
+      },
+      render: ({ title, logo }) => <Header title={title} logo={logo} />
+    },
+    Hero: { /* ... */ }
+  }
+}
+```
+
+**Usage:**
+1. Navigate to Responsive Merge detail page
+2. Open "Puck Editor" tab
+3. Drag/drop components, edit props
+4. Save changes to `puck/data.json`
+
+### API Endpoints
+
+```javascript
+// Create responsive merge
+POST /api/responsive-merges
+Body: {
+  desktop: { size: '1440', exportId: 'node-xxx' },
+  tablet: { size: '960', exportId: 'node-yyy' },
+  mobile: { size: '420', exportId: 'node-zzz' }
+}
+
+// Stream merge logs (SSE)
+GET /api/responsive-merges/logs/:jobId
+
+// Get merge data
+GET /api/responsive-merges/:mergeId/data
+
+// Puck endpoints
+GET /api/responsive-merges/:mergeId/puck-config
+GET /api/responsive-merges/:mergeId/puck-data
+POST /api/responsive-merges/:mergeId/puck-save
+
+// Download merge as ZIP
+GET /api/responsive-merges/:mergeId/download
+```
+
+### Performance Optimizations
+
+1. **Parallel Processing** - Components merged in parallel where possible
+2. **CSS Deduplication** - Only differences included in media queries
+3. **Helper Caching** - Helper functions extracted once, reused across components
+4. **Incremental CSS Compilation** - Only responsive classes compiled, not full CSS
+
+### For More Details
+
+See [Responsive Merge Guide](RESPONSIVE_MERGE.md) for complete documentation.
+
+---
+
 ## Component Architecture
 
 ### Frontend (Dashboard)

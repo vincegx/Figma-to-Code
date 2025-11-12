@@ -109,6 +109,25 @@ Both versions generated automatically via CLI `--clean` flag or dashboard.
 - **TypeScript** - Full type safety across codebase
 - **Modular Architecture** - Features organized by domain
 
+### 📱 Responsive Merge (Multi-Screen Fusion)
+
+**Combine 3 Figma screens (Desktop, Tablet, Mobile) into a single responsive component:**
+
+- **Intelligent Merging** - Detects common components across breakpoints
+- **Pure CSS Media Queries** - No framework dependencies, works everywhere
+- **Conflict Detection** - Identifies and resolves className conflicts
+- **Modular Output** - Generates `Page.tsx` + `Subcomponents/` structure
+- **Puck Integration** - Visual editor-ready components
+- **Visual Reports** - Side-by-side comparison across breakpoints
+
+**Process:**
+1. Export 3 Figma screens (Desktop 1440px, Tablet 960px, Mobile 420px)
+2. Use dashboard to create a responsive merge
+3. Get a single responsive component with media queries
+4. Visual editor (Puck) for easy customization
+
+**For details:** See [Responsive Merge Guide](docs/RESPONSIVE_MERGE.md)
+
 ---
 
 ![Dashboard Interface](docs/images/image02.png)
@@ -202,6 +221,7 @@ Comprehensive guides available in the `/docs` folder:
 | **[Architecture](docs/ARCHITECTURE.md)** | Detailed system architecture, tech stack, pipeline flow |
 | **[Development](docs/DEVELOPMENT.md)** | Developer guide, adding transforms, contributing |
 | **[Transformations](docs/TRANSFORMATIONS.md)** | Complete AST transform reference |
+| **[Responsive Merge](docs/RESPONSIVE_MERGE.md)** | Multi-screen fusion, responsive pipeline, Puck integration |
 | **[Troubleshooting](docs/TROUBLESHOOTING.md)** | Common issues and solutions |
 | **[API Reference](docs/API.md)** | REST API & SSE endpoints documentation |
 | **[CLAUDE.md](CLAUDE.md)** | AI assistant guidance (for Claude Code) |

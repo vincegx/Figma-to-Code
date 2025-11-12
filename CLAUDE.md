@@ -89,6 +89,30 @@ node scripts/reporting/generate-analysis.js <testDir>
 node scripts/reporting/generate-report.js <testDir>
 ```
 
+### Responsive Merge Commands
+
+```bash
+# Create responsive merge from 3 exports
+node scripts/responsive-merger.js \
+  --desktop 1440 node-6055-2436-1762733564 \
+  --tablet 960 node-6055-2654-1762712319 \
+  --mobile 420 node-6055-2872-1762733537
+
+# Prerequisites: All 3 exports must have modular/ directory
+# Run with --split-components when exporting:
+./cli/figma-analyze "URL" --split-components
+
+# Generate Puck components from responsive merge
+node scripts/puck-generator.js --sourceDir <mergeDir>/Subcomponents --outputDir <mergeDir>/puck
+
+# Generate responsive reports
+node scripts/reporting/generate-responsive-report.js <mergeDir>
+node scripts/reporting/generate-responsive-analysis.js <mergeDir>
+
+# Compile responsive classes to pure CSS
+node scripts/responsive-css-compiler.js <mergeDir>
+```
+
 ## Code Architecture
 
 ### High-Level Pipeline
@@ -126,12 +150,94 @@ The system processes Figma designs through a 4-phase pipeline:
 - Generate analysis.md (technical report with transform stats)
 - Generate report.html (visual comparison: Figma vs Web)
 
+### Responsive Merge Pipeline (Multi-Screen Fusion)
+
+The system includes a **responsive merge** feature that combines 3 Figma exports (Desktop, Tablet, Mobile) into a single responsive component.
+
+**Prerequisites:**
+- 3 separate Figma exports (Desktop, Tablet, Mobile)
+- Each export processed with `--split-components` flag
+- Modular components with matching names across breakpoints
+
+**Pipeline Phases:**
+
+**Phase 1: Detection & Validation**
+- Validate all 3 exports have `modular/` directory
+- Detect common components across breakpoints
+- Extract component order from Desktop `metadata.xml`
+- Extract helper functions from Desktop `Component-clean.tsx`
+
+**Phase 2: Component Merging (Responsive AST Pipeline)**
+- Parse Desktop, Tablet, Mobile `.tsx` files into AST
+- Run 7 responsive transforms in priority order (10-70):
+  1. `detect-missing-elements` (Priority 10) - Find elements missing in tablet/mobile
+  2. `normalize-identical-classes` (Priority 20) - Normalize className formatting
+  3. `detect-class-conflicts` (Priority 30) - Detect className differences
+  4. `merge-desktop-first` (Priority 40) - Merge classNames (Desktop base + overrides)
+  5. `add-horizontal-scroll` (Priority 50) - Add overflow-x to prevent breaks
+  6. `reset-dependent-properties` (Priority 60) - Reset conflicting properties
+  7. `inject-visibility-classes` (Priority 70) - Add visibility classes
+- Inject helper functions if needed
+- Fix image paths (`./img/` → `../img/`)
+
+**Phase 3: CSS Merging**
+- Parse all 3 CSS files into sections (imports, :root, utilities, custom)
+- Desktop styles = baseline (no media query)
+- Tablet overrides = differences from Desktop (`@media (max-width: 960px)`)
+- Mobile overrides = differences from Tablet (`@media (max-width: 420px)`)
+
+**Phase 4: Page Generation**
+- Merge Page structure from all 3 `Component-clean.tsx` files
+- Replace `<div data-name="...">` with `<ComponentName />`
+- Generate `Page.tsx` with component imports
+- Generate `Page.css` with media queries
+- Compile responsive classes to pure CSS (max-md:*, max-lg:*)
+- Generate Puck-ready components for visual editor
+- Create visual report + technical analysis
+
+**Output Structure:**
+```
+responsive-merger-{timestamp}/
+├── Page.tsx                      # Main page
+├── Page.css                      # Consolidated CSS with media queries
+├── Subcomponents/                # Responsive components
+│   ├── Header.tsx
+│   ├── Header.css
+│   └── ...
+├── img/                          # Images (from Desktop)
+├── puck/                         # Puck editor components
+│   ├── components/
+│   ├── config.tsx
+│   └── data.json
+├── responsive-metadata.json      # Merge stats
+├── responsive-analysis.md        # Technical report
+└── responsive-report.html        # Visual comparison
+```
+
+**Key Scripts:**
+- `scripts/responsive-merger.js` - Main orchestrator
+- `scripts/responsive-pipeline.js` - Responsive AST transforms
+- `scripts/responsive-transformations/` - Individual transforms
+- `scripts/responsive-css-compiler.js` - Compile responsive classes to CSS
+- `scripts/puck-generator.js` - Generate Puck components
+
+**Dashboard Pages:**
+- `ResponsiveMergesPage.tsx` - List all merges (grid/list view)
+- `ResponsiveMergeDetailPage.tsx` - Merge detail with 4 tabs (Preview, Code, Report, Puck)
+- `MergeDialog.tsx` - Create new merge dialog
+- `PuckEditorPage.tsx` - Visual editor for merged components
+- `ResponsivePreviewPage.tsx` - Responsive preview with breakpoint slider
+
+**For complete documentation:** See [docs/RESPONSIVE_MERGE.md](docs/RESPONSIVE_MERGE.md)
+
 ### Directory Structure
 
 ```
 scripts/
 ├── figma-cli.js              # Main orchestrator (MCP SDK, phases 1-4)
+├── responsive-merger.js      # Responsive merge orchestrator (multi-screen fusion)
 ├── pipeline.js               # Transform pipeline executor (loads and runs transforms)
+├── responsive-pipeline.js    # Responsive transform pipeline (7 transforms)
 ├── unified-processor.js      # AST processor (individual chunks + consolidation)
 ├── config.js                 # Transform configuration (enable/disable)
 ├── transformations/          # AST transforms (priority 10-100)
@@ -149,6 +255,16 @@ scripts/
 ├── utils/
 │   ├── chunking.js           # Chunk extraction & assembly logic
 │   └── usage-tracker.js      # API usage monitoring (30-day history)
+├── responsive-transformations/   # Responsive merge transforms (priority 10-70)
+│   ├── detect-missing-elements.js     # Find missing elements in breakpoints
+│   ├── normalize-identical-classes.js # Normalize className formatting
+│   ├── detect-class-conflicts.js      # Detect className differences
+│   ├── merge-desktop-first.js         # Merge classNames (Desktop + overrides)
+│   ├── add-horizontal-scroll.js       # Add overflow-x for narrow screens
+│   ├── reset-dependent-properties.js  # Reset conflicting properties
+│   └── inject-visibility-classes.js   # Add visibility classes
+├── responsive-css-compiler.js    # Compile responsive classes to pure CSS
+├── puck-generator.js             # Generate Puck editor components
 ├── post-processing/
 │   ├── organize-images.js    # Rename image hashes to Figma layer names
 │   ├── fix-svg-vars.js       # Fix CSS vars in SVG path data
@@ -156,22 +272,31 @@ scripts/
 └── reporting/
     ├── generate-metadata.js  # Dashboard metadata (nodeId, stats, timestamp)
     ├── generate-analysis.md  # Technical report (transforms, timings)
-    └── generate-report.html  # Visual fidelity report (side-by-side)
+    ├── generate-report.html  # Visual fidelity report (side-by-side)
+    ├── generate-responsive-report.js   # Responsive merge visual report
+    └── generate-responsive-analysis.js # Responsive merge technical analysis
 
 src/
 ├── components/
 │   ├── features/
 │   │   ├── analysis/         # AnalysisForm (trigger analyses via API)
 │   │   ├── stats/            # UsageBar (real-time API usage widget)
-│   │   └── export_figma/     # ExportFigmaCard, ExportFigmaGrid, ExportFigmaTable, PaginationControls
+│   │   ├── export_figma/     # ExportFigmaCard, ExportFigmaGrid, ExportFigmaTable, PaginationControls
+│   │   └── responsive-merges/# MergeDialog, ResponsiveMergesGrid, ResponsiveMergesTable
 │   ├── pages/
 │   │   ├── DashboardPage.tsx # Main dashboard with MCP status
 │   │   ├── ExportFigmaPage.tsx     # Export Figma list (grid/list view, pagination, sorting)
 │   │   ├── ExportFigmaDetailPage.tsx# 4-tab detail view (Preview, Code, Report, Technical)
-│   │   └── AnalyzePage.tsx   # Analysis form page
+│   │   ├── AnalyzePage.tsx   # Analysis form page
+│   │   ├── ResponsiveMergesPage.tsx  # Responsive merges list (grid/list view)
+│   │   ├── ResponsiveMergeDetailPage.tsx # 4-tab detail (Preview, Code, Report, Puck)
+│   │   ├── ResponsivePreviewPage.tsx # Responsive preview with breakpoint slider
+│   │   ├── PuckEditorPage.tsx        # Puck visual editor
+│   │   └── PuckRenderPage.tsx        # Puck render view
 │   └── ui/                   # shadcn/ui components (Button, Card, Tabs, etc.)
-├── generated/export_figma/   # Output directory (git-ignored)
-│   └── node-{id}-{ts}/       # Each analysis creates a folder
+├── generated/
+│   ├── export_figma/         # Single-screen exports (git-ignored)
+│   │   └── node-{id}-{ts}/   # Each analysis creates a folder
 │       ├── Component.tsx              # Original assembled component
 │       ├── Component-fixed.tsx        # Post-processed (Tailwind version)
 │       ├── Component-clean.tsx        # Production version (no Tailwind)
@@ -189,6 +314,16 @@ src/
 │       ├── report.html                # Visual report
 │       ├── figma-render.png           # Figma screenshot
 │       └── web-render.png             # Web screenshot
+│   └── responsive-screens/   # Responsive merges (git-ignored)
+│       └── responsive-merger-{ts}/    # Each merge creates a folder
+│           ├── Page.tsx               # Main page
+│           ├── Page.css               # Consolidated CSS with media queries
+│           ├── Subcomponents/         # Modular responsive components
+│           ├── img/                   # Images (from Desktop)
+│           ├── puck/                  # Puck editor components
+│           ├── responsive-metadata.json # Merge stats
+│           ├── responsive-analysis.md  # Technical report
+│           └── responsive-report.html  # Visual comparison
 └── main.tsx                  # Entry point
 
 server.js                     # Express API server with SSE support
@@ -358,6 +493,15 @@ server: {
 - GET /api/mcp/health → MCP server health check
 - DELETE /api/export_figma/:exportId → Delete export
 - GET /api/download/:exportId → Download export as ZIP
+- POST /api/responsive-merges → Create responsive merge
+- GET /api/responsive-merges → List all merges
+- GET /api/responsive-merges/logs/:jobId → SSE stream of merge logs
+- GET /api/responsive-merges/:mergeId/data → Get merge metadata + analysis
+- GET /api/responsive-merges/:mergeId/puck-config → Get Puck configuration
+- GET /api/responsive-merges/:mergeId/puck-data → Get Puck data
+- POST /api/responsive-merges/:mergeId/puck-save → Save Puck data
+- DELETE /api/responsive-merges/:mergeId → Delete merge
+- GET /api/responsive-merges/:mergeId/download → Download merge as ZIP
 
 ### Docker Environment
 
@@ -434,6 +578,43 @@ await tracker.trackCall('get_design_context', { tokens: 1234 }) // Use actual to
 const usage = tracker.getUsage() // { today: { ... }, historical: [...], status: { ... } }
 ```
 
+**Creating responsive merge:**
+```javascript
+// API call
+const response = await fetch('/api/responsive-merges', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    desktop: { size: '1440', exportId: 'node-6055-2436-1762733564' },
+    tablet: { size: '960', exportId: 'node-6055-2654-1762712319' },
+    mobile: { size: '420', exportId: 'node-6055-2872-1762733537' }
+  })
+})
+
+const { jobId, mergeId } = await response.json()
+
+// Stream logs via SSE
+const eventSource = new EventSource(`/api/responsive-merges/logs/${jobId}`)
+eventSource.onmessage = (event) => {
+  const data = JSON.parse(event.data)
+  if (data.type === 'log') console.log(data.message)
+  if (data.type === 'done') {
+    console.log('Merge completed:', data.success)
+    eventSource.close()
+  }
+}
+```
+
+**Loading responsive merge data:**
+```javascript
+const mergeId = 'responsive-merger-1736762400000'
+const response = await fetch(`/api/responsive-merges/${mergeId}/data`)
+const { metadata, analysis } = await response.json()
+
+// metadata: { breakpoints, components, transformations, ... }
+// analysis: "# Responsive Merge Analysis\n..."
+```
+
 ## Important Notes
 
 ### MCP Server Requirements
@@ -475,3 +656,9 @@ const usage = tracker.getUsage() // { today: { ... }, historical: [...], status:
 - **Chunks not consolidating**: Only applies in Chunk Mode; check if design triggered chunking (large/complex), verify chunks/ directory exists and metadata.xml structure
 - **Screenshot failed**: Check Puppeteer/Chromium installed, verify preview URL accessible
 - **Usage tracking issues**: Check data/figma-usage.json exists and is valid JSON
+- **Responsive merge: "Missing modular/ directory"**: Export was not split. Re-export with `--split-components` flag
+- **Responsive merge: "No common components found"**: Component names don't match across breakpoints. Ensure Figma layer names are identical
+- **Responsive merge: "Invalid breakpoint order"**: Breakpoint widths must be descending (Desktop > Tablet > Mobile)
+- **Responsive merge: CSS classes not compiling**: Check `responsive-css-compiler.js` is running, verify `Page.css` includes compiled classes
+- **Responsive merge: Puck editor not loading**: Check `puck/config.tsx` exists and `puck/data.json` is valid JSON
+- **Responsive merge: Images not loading in subcomponents**: Images copied from Desktop only, subcomponents use `../img/` path
