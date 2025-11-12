@@ -1,12 +1,12 @@
 /**
- * useTests - Hook to load and manage test data
+ * useExports - Hook to load and manage export data
  * Extracted from HomePage.tsx for reusability
  */
 
 import { useState, useEffect } from 'react'
 
-export interface Test {
-  testId: string
+export interface ExportFigma {
+  exportId: string
   fileName?: string
   layerName?: string
   timestamp: string | number
@@ -47,36 +47,36 @@ export interface Test {
   }
 }
 
-export function useTests() {
-  const [tests, setTests] = useState<Test[]>([])
+export function useExports() {
+  const [exports, setExports] = useState<ExportFigma[]>([])
   const [loading, setLoading] = useState<boolean>(true)
 
-  const loadTests = async () => {
+  const loadExports = async () => {
     try {
-      // Load tests via API instead of import.meta.glob to avoid HMR reload
-      const response = await fetch('/api/tests')
+      // Load exports via API instead of import.meta.glob to avoid HMR reload
+      const response = await fetch('/api/export_figma')
 
       if (!response.ok) {
-        throw new Error('Failed to fetch tests')
+        throw new Error('Failed to fetch exports')
       }
 
-      const loadedTests = await response.json()
-      setTests(loadedTests)
+      const loadedExports = await response.json()
+      setExports(loadedExports)
       setLoading(false)
     } catch (error) {
-      console.error('Error loading tests:', error)
-      setTests([])
+      console.error('Error loading exports:', error)
+      setExports([])
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    loadTests()
+    loadExports()
   }, [])
 
   return {
-    tests,
+    exports,
     loading,
-    reload: loadTests
+    reload: loadExports
   }
 }

@@ -7,8 +7,8 @@ description: Validation visuelle Figma → Web
 ## Tâche
 
 1. **Lire les screenshots**
-   - `src/generated/tests/{{test_id}}/img/figma-screenshot.png` (référence Figma)
-   - `src/generated/tests/{{test_id}}/{{web_screenshot}}` (rendu actuel à valider)
+   - `src/generated/export_figma/{{test_id}}/img/figma-screenshot.png` (référence Figma)
+   - `src/generated/export_figma/{{test_id}}/{{web_screenshot}}` (rendu actuel à valider)
 
 2. **Comparer pixel par pixel - Checklist complète**
 

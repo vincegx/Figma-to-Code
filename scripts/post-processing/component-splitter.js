@@ -18,7 +18,7 @@
  *   node component-splitter.js <testDir>
  *
  * Example:
- *   node component-splitter.js src/generated/tests/node-6055-2436-1762733564
+ *   node component-splitter.js src/generated/export_figma/node-6055-2436-1762733564
  *
  * Output:
  *   testDir/modular/
@@ -501,7 +501,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
   if (!testDir) {
     console.error('Usage: node component-splitter.js <testDir>');
-    console.error('Example: node component-splitter.js src/generated/tests/node-6055-2436-1762733564');
+    console.error('Example: node component-splitter.js src/generated/export_figma/node-6055-2436-1762733564');
     process.exit(1);
   }
 

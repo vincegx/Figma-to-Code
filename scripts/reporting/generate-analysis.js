@@ -14,7 +14,7 @@
  *
  * Example:
  *   node scripts/generate-analysis.js \
- *     src/generated/tests/test-123 \
+ *     src/generated/export_figma/test-123 \
  *     "https://www.figma.com/design/ABC/file?node-id=1-2" \
  *     '{"classesOptimized":105,"gradientsFixed":3,"imagesOrganized":26}'
  */
@@ -697,7 +697,7 @@ function main() {
     console.log('  node scripts/generate-analysis.js <testDir> <figmaUrl> <statsJson>')
     console.log('\nExample:')
     console.log('  node scripts/generate-analysis.js \\')
-    console.log('    src/generated/tests/test-123 \\')
+    console.log('    src/generated/export_figma/test-123 \\')
     console.log('    "https://www.figma.com/design/ABC/file?node-id=1-2" \\')
     console.log('    \'{"classesOptimized":105,"gradientsFixed":3,"imagesOrganized":26}\'')
     process.exit(1)

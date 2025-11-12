@@ -326,7 +326,7 @@ const timeout = 60000  // 60 seconds
 
 ```bash
 # 1. Check file exists
-ls src/generated/tests/node-*/Component-fixed.tsx
+ls src/generated/export_figma/node-*/Component-fixed.tsx
 
 # 2. Check for syntax errors
 docker exec mcp-figma-v1 npm run lint
@@ -335,16 +335,16 @@ docker exec mcp-figma-v1 npm run lint
 # Look for import errors
 
 # 4. Verify CSS exists
-ls src/generated/tests/node-*/Component-fixed.css
+ls src/generated/export_figma/node-*/Component-fixed.css
 ```
 
 **Fix:**
 ```bash
 # Re-run processing
 docker exec mcp-figma-v1 node scripts/unified-processor.js \
-  src/generated/tests/node-{id}/Component.tsx \
-  src/generated/tests/node-{id}/Component-fixed.tsx \
-  src/generated/tests/node-{id}/metadata.xml
+  src/generated/export_figma/node-{id}/Component.tsx \
+  src/generated/export_figma/node-{id}/Component-fixed.tsx \
+  src/generated/export_figma/node-{id}/metadata.xml
 ```
 
 ### Component Renders Incorrectly
@@ -359,25 +359,25 @@ docker exec mcp-figma-v1 node scripts/unified-processor.js \
 1. **Compare with Figma Screenshot**
    ```bash
    # Open report.html
-   open src/generated/tests/node-*/report.html
+   open src/generated/export_figma/node-*/report.html
    ```
 
 2. **Check Transform Stats**
    ```bash
    # View analysis.md
-   cat src/generated/tests/node-*/analysis.md
+   cat src/generated/export_figma/node-*/analysis.md
    ```
 
 3. **Inspect Generated Code**
    ```bash
    # Check Component-fixed.tsx
-   cat src/generated/tests/node-*/Component-fixed.tsx
+   cat src/generated/export_figma/node-*/Component-fixed.tsx
    ```
 
 4. **Test Individual Chunks**
    ```bash
    # Check chunks-fixed/
-   ls src/generated/tests/node-*/chunks-fixed/
+   ls src/generated/export_figma/node-*/chunks-fixed/
    ```
 
 **Common Issues:**
@@ -425,14 +425,14 @@ docker exec mcp-figma-v1 node scripts/unified-processor.js \
 
 ```bash
 # 1. Check img/ directory exists
-ls src/generated/tests/node-*/img/
+ls src/generated/export_figma/node-*/img/
 
 # 2. Check images have proper names (not hashes)
 # ✅ logo.png
 # ❌ a1b2c3d4e5f6.png
 
 # 3. Check metadata.xml has layer names
-cat src/generated/tests/node-*/metadata.xml | grep name=
+cat src/generated/export_figma/node-*/metadata.xml | grep name=
 ```
 
 **Fix:**
@@ -440,7 +440,7 @@ cat src/generated/tests/node-*/metadata.xml | grep name=
 ```bash
 # Re-organize images
 docker exec mcp-figma-v1 node scripts/post-processing/organize-images.js \
-  src/generated/tests/node-{id}
+  src/generated/export_figma/node-{id}
 ```
 
 **If still failing:**
@@ -485,7 +485,7 @@ ls tmp/figma-assets/
    ```bash
    # Run fix-svg-vars script
    docker exec mcp-figma-v1 node scripts/post-processing/fix-svg-vars.js \
-     src/generated/tests/node-{id}
+     src/generated/export_figma/node-{id}
    ```
 
 ---
@@ -502,7 +502,7 @@ ls tmp/figma-assets/
 
 ```bash
 # 1. Check Component-fixed.css has Google Fonts import
-head -n 10 src/generated/tests/node-*/Component-fixed.css
+head -n 10 src/generated/export_figma/node-*/Component-fixed.css
 
 # Expected:
 # @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
@@ -512,7 +512,7 @@ head -n 10 src/generated/tests/node-*/Component-fixed.css
 
 ```bash
 # 1. Check variables.json
-cat src/generated/tests/node-*/variables.json | grep Font
+cat src/generated/export_figma/node-*/variables.json | grep Font
 
 # 2. Re-run processing with font-detection enabled
 grep "font-detection" scripts/config.js
@@ -555,7 +555,7 @@ const styleMap = {
 
 ```bash
 # Check inline styles
-grep "fontWeight" src/generated/tests/node-*/Component-fixed.tsx
+grep "fontWeight" src/generated/export_figma/node-*/Component-fixed.tsx
 ```
 
 ---
@@ -608,16 +608,16 @@ grep "css-vars" scripts/config.js
 
 ```bash
 # Check variables.json exists and has data
-cat src/generated/tests/node-*/variables.json
+cat src/generated/export_figma/node-*/variables.json
 ```
 
 **Re-run Processing:**
 
 ```bash
 docker exec mcp-figma-v1 node scripts/unified-processor.js \
-  src/generated/tests/node-{id}/Component.tsx \
-  src/generated/tests/node-{id}/Component-fixed.tsx \
-  src/generated/tests/node-{id}/metadata.xml
+  src/generated/export_figma/node-{id}/Component.tsx \
+  src/generated/export_figma/node-{id}/Component-fixed.tsx \
+  src/generated/export_figma/node-{id}/metadata.xml
 ```
 
 ---
@@ -672,7 +672,7 @@ docker exec mcp-figma-v1 node scripts/unified-processor.js \
    ```bash
    # Delete old tests from dashboard
    # Or manually:
-   rm -rf src/generated/tests/node-*-old-timestamp
+   rm -rf src/generated/export_figma/node-*-old-timestamp
    ```
 
 3. **Lazy Load Images**
@@ -703,7 +703,7 @@ docker logs mcp-figma-v1
 
 # 3. Permission denied
 # Fix: Check file permissions
-chmod -R 755 src/generated/tests/
+chmod -R 755 src/generated/export_figma/
 ```
 
 ### 404 Not Found
@@ -722,7 +722,7 @@ docker-compose restart
 
 ```bash
 # Check file exists
-ls src/generated/tests/node-*/filename
+ls src/generated/export_figma/node-*/filename
 
 # Check Vite public directory
 ls public/
@@ -761,7 +761,7 @@ eventSource.addEventListener('error', (e) => {
 
 **Cause:**
 
-Vite's HMR (Hot Module Replacement) detects new files being created in `src/generated/tests/` and triggers a full page reload.
+Vite's HMR (Hot Module Replacement) detects new files being created in `src/generated/export_figma/` and triggers a full page reload.
 
 **Solution:**
 
@@ -809,7 +809,7 @@ server: {
 
 **Cause:**
 
-When `watch.ignored` is configured, Vite doesn't detect file deletions in `src/generated/tests/`. Components used to call `window.location.reload()`, which relied on Vite's cache, but Vite doesn't know the file was deleted.
+When `watch.ignored` is configured, Vite doesn't detect file deletions in `src/generated/export_figma/`. Components used to call `window.location.reload()`, which relied on Vite's cache, but Vite doesn't know the file was deleted.
 
 **Solution:**
 
@@ -850,7 +850,7 @@ if (onRefresh) {
 **Symptoms:**
 - Analysis completes successfully
 - Old tests (created before recent changes) preview correctly
-- New tests (freshly created) show error: "Unknown variable dynamic import: ../../generated/tests/node-XXX/Component.jsx"
+- New tests (freshly created) show error: "Unknown variable dynamic import: ../../generated/export_figma/node-XXX/Component.jsx"
 - Error message: "Le composant est peut-être manquant ou invalide"
 
 **Cause:**
@@ -927,7 +927,7 @@ docker logs -f mcp-figma-v1
 docker-compose down -v
 
 # 2. Remove generated files
-rm -rf src/generated/tests/*
+rm -rf src/generated/export_figma/*
 rm -rf tmp/*
 rm -rf data/*
 

@@ -128,7 +128,7 @@ docker-compose restart
 
 #### Vite HMR & Generated Files
 
-**Challenge:** When Figma analyses complete, new files are created in `src/generated/tests/`. Vite's HMR (Hot Module Replacement) detects these new files and triggers a full page reload, causing logs to disappear on the `/analyze` page.
+**Challenge:** When Figma analyses complete, new files are created in `src/generated/export_figma/`. Vite's HMR (Hot Module Replacement) detects these new files and triggers a full page reload, causing logs to disappear on the `/analyze` page.
 
 **Solution:** Selective file watching in `vite.config.js`
 
@@ -159,7 +159,7 @@ export default defineConfig({
 
 1. **Non-code files ignored:** HTML, images, JSON, XML, Markdown, and CSS files don't trigger HMR
 2. **Code files watched:** `.tsx/.jsx` files are NOT ignored, so Vite can transform them for dynamic imports
-3. **API-based data loading:** Tests list uses `fetch('/api/tests')` instead of `import.meta.glob`
+3. **API-based data loading:** Tests list uses `fetch('/api/export_figma')` instead of `import.meta.glob`
 4. **Callback-based refresh:** DELETE operations call `onRefresh()` instead of `window.location.reload()`
 
 **Architecture:**
@@ -167,7 +167,7 @@ export default defineConfig({
 ```
 Analysis Complete → New files created → Vite ignores non-code → No reload ✅
 User clicks test → import(`../../generated/.../Component.jsx`) → Vite transforms → Works ✅
-User deletes test → DELETE API → onRefresh() callback → fetch('/api/tests') → List updated ✅
+User deletes test → DELETE API → onRefresh() callback → fetch('/api/export_figma') → List updated ✅
 ```
 
 **Important:** Never add `.tsx` or `.jsx` to the `ignored` list, as Vite needs to watch and transform these files for dynamic imports to work.
@@ -571,7 +571,7 @@ import { cn } from '@/lib/utils'
 ./cli/figma-analyze "https://www.figma.com/design/FILE_ID?node-id=X-Y"
 
 # Check outputs
-ls -la src/generated/tests/node-*
+ls -la src/generated/export_figma/node-*
 ```
 
 **2. Test Individual Scripts:**
@@ -579,15 +579,15 @@ ls -la src/generated/tests/node-*
 ```bash
 # Test image organization
 docker exec mcp-figma-v1 node scripts/post-processing/organize-images.js \
-  src/generated/tests/node-X-Y
+  src/generated/export_figma/node-X-Y
 
 # Test screenshot capture
 docker exec mcp-figma-v1 node scripts/post-processing/capture-screenshot.js \
-  src/generated/tests/node-X-Y 5173
+  src/generated/export_figma/node-X-Y 5173
 
 # Test report generation
 docker exec mcp-figma-v1 node scripts/reporting/generate-report.js \
-  src/generated/tests/node-X-Y
+  src/generated/export_figma/node-X-Y
 ```
 
 **3. Test API Endpoints:**

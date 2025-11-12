@@ -21,19 +21,19 @@ if [ -z "$1" ]; then
   echo "  ./figma-validate node-9-2654-1730728354"
   echo ""
   echo "Liste des tests disponibles:"
-  ls -1 src/generated/tests/ 2>/dev/null | grep "^node-" | head -5
+  ls -1 src/generated/export_figma/ 2>/dev/null | grep "^node-" | head -5
   exit 1
 fi
 
 TEST_ID="$1"
-TEST_DIR="src/generated/tests/$TEST_ID"
+TEST_DIR="src/generated/export_figma/$TEST_ID"
 
 # Check test directory exists
 if [ ! -d "$TEST_DIR" ]; then
   echo -e "${RED}❌ Test non trouvé: $TEST_DIR${NC}"
   echo ""
   echo "Tests disponibles:"
-  ls -1 src/generated/tests/ 2>/dev/null | grep "^node-" | head -10
+  ls -1 src/generated/export_figma/ 2>/dev/null | grep "^node-" | head -10
   exit 1
 fi
 

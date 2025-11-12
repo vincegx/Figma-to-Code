@@ -15,7 +15,7 @@
  *   node scripts/fix-svg-vars.js <directory>
  *
  * Example:
- *   node scripts/fix-svg-vars.js src/generated/tests/test-123/img
+ *   node scripts/fix-svg-vars.js src/generated/export_figma/test-123/img
  */
 
 import fs from 'fs'

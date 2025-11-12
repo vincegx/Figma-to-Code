@@ -5,7 +5,7 @@
 
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useTests } from '../../hooks/useTests'
+import { useExports } from '../../hooks/useExports'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell } from "recharts"
@@ -15,27 +15,27 @@ import { useTranslation } from '../../i18n/I18nContext'
 export default function DashboardPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { tests, loading } = useTests()
+  const { exports, loading } = useExports()
 
   // KPIs calculation
   const kpis = useMemo(() => {
-    const totalNodes = tests.reduce((acc, test) => acc + (test.stats?.totalNodes || 0), 0)
-    const totalImages = tests.reduce((acc, test) => acc + (test.stats?.imagesOrganized || 0), 0)
-    const totalFixes = tests.reduce((acc, test) => acc + (test.stats?.totalFixes || test.stats?.classesOptimized || 0), 0)
-    const totalExecutionTime = tests.reduce((acc, test) => acc + (test.stats?.executionTime || 0), 0)
+    const totalNodes = exports.reduce((acc, test) => acc + (test.stats?.totalNodes || 0), 0)
+    const totalImages = exports.reduce((acc, test) => acc + (test.stats?.imagesOrganized || 0), 0)
+    const totalFixes = exports.reduce((acc, test) => acc + (test.stats?.totalFixes || test.stats?.classesOptimized || 0), 0)
+    const totalExecutionTime = exports.reduce((acc, test) => acc + (test.stats?.executionTime || 0), 0)
 
     return {
-      totalTests: tests.length,
+      totalTests: exports.length,
       totalNodes,
       totalImages,
       totalFixes,
-      avgExecutionTime: tests.length > 0 ? Math.round(totalExecutionTime / tests.length) : 0
+      avgExecutionTime: exports.length > 0 ? Math.round(totalExecutionTime / exports.length) : 0
     }
-  }, [tests])
+  }, [exports])
 
   // Timeline data: tests per day
   const timelineData = useMemo(() => {
-    const grouped = tests.reduce((acc, test) => {
+    const grouped = exports.reduce((acc, test) => {
       const date = new Date(typeof test.timestamp === 'number' && test.timestamp < 10000000000
         ? test.timestamp * 1000
         : test.timestamp)
@@ -48,11 +48,11 @@ export default function DashboardPage() {
       .map(([date, count]) => ({ date, count }))
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(-14) // Last 14 days
-  }, [tests])
+  }, [exports])
 
   // Top 10 tests by nodes
   const topTestsByNodes = useMemo(() => {
-    return [...tests]
+    return [...exports]
       .sort((a, b) => (b.stats?.totalNodes || 0) - (a.stats?.totalNodes || 0))
       .slice(0, 10)
       .map(test => ({
@@ -60,11 +60,11 @@ export default function DashboardPage() {
         nodes: test.stats?.totalNodes || 0,
         testId: test.testId
       }))
-  }, [tests])
+  }, [exports])
 
   // Transformation Activity Over Time (Stacked Area Chart)
   const transformationActivityData = useMemo(() => {
-    const grouped = tests.reduce((acc, test) => {
+    const grouped = exports.reduce((acc, test) => {
       const date = new Date(typeof test.timestamp === 'number' && test.timestamp < 10000000000
         ? test.timestamp * 1000
         : test.timestamp)
@@ -94,11 +94,11 @@ export default function DashboardPage() {
     return Object.values(grouped)
       .sort((a: any, b: any) => a.date.localeCompare(b.date))
       .slice(-14) // Last 14 days
-  }, [tests])
+  }, [exports])
 
   // Transformation Breakdown (Donut Chart)
   const transformationBreakdownData = useMemo(() => {
-    const totals = tests.reduce((acc, test) => {
+    const totals = exports.reduce((acc, test) => {
       acc.fonts += (test.stats?.fontsConverted || 0) + (test.stats?.fontClassesGenerated || 0)
       acc.classes += (test.stats?.classesFixed || 0) + (test.stats?.classesOptimized || 0) + (test.stats?.customClassesGenerated || 0)
       acc.variables += test.stats?.varsConverted || 0
@@ -114,14 +114,14 @@ export default function DashboardPage() {
       { name: 'Assets', value: totals.assets, fill: 'hsl(var(--chart-4))' },
       { name: 'Cleanup', value: totals.cleanup, fill: 'hsl(var(--chart-5))' }
     ].filter(item => item.value > 0) // Only show non-zero categories
-  }, [tests])
+  }, [exports])
 
   // Recent tests
   const recentTests = useMemo(() => {
-    return [...tests]
+    return [...exports]
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 5)
-  }, [tests])
+  }, [exports])
 
   if (loading) {
     return (
@@ -375,7 +375,7 @@ export default function DashboardPage() {
                 <div
                   key={test.testId}
                   className="flex items-center justify-between rounded-lg border p-3 hover:bg-accent cursor-pointer transition-colors"
-                  onClick={() => navigate(`/tests/${test.testId}`)}
+                  onClick={() => navigate(`/export_figma/${exportFigma.exportId}`)}
                 >
                   <div className="flex-1">
                     <p className="font-medium">{test.layerName || test.fileName || 'Untitled'}</p>
@@ -400,7 +400,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="py-12 text-center text-muted-foreground">
-              No tests found
+              No exports found
             </div>
           )}
         </CardContent>

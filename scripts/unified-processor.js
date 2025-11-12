@@ -836,7 +836,7 @@ if (inputFile.includes('/chunks/')) {
 // ═══════════════════════════════════════════════════════════════
 
 // Only update safelist for actual test directories (not temp files or chunks)
-if (!inputFile.includes('/chunks/') && outputFile.includes('/generated/tests/')) {
+if (!inputFile.includes('/chunks/') && outputFile.includes('/generated/export_figma/')) {
   console.log('\n🎨 Updating Tailwind safelist...')
   try {
     const { updateSafelistForTest } = await import('./post-processing/update-tailwind-safelist.js')

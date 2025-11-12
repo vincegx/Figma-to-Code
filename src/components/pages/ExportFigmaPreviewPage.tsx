@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 
 /**
- * TestPreviewPage - Renders only the generated component without layout
+ * ExportFigmaPreviewPage - Renders only the generated component without layout
  * Used as iframe content in PreviewMode
  */
-export default function TestPreviewPage() {
-  const { testId } = useParams<{ testId: string }>()
+export default function ExportFigmaPreviewPage() {
+  const { exportId } = useParams<{ exportId: string }>()
   const [searchParams] = useSearchParams()
   const version = searchParams.get('version') === 'fixed' ? 'fixed' : 'clean'
 
@@ -15,14 +15,14 @@ export default function TestPreviewPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!testId) {
-      setError('Test ID is required')
+    if (!exportId) {
+      setError('Export ID is required')
       setLoading(false)
       return
     }
 
     loadComponent()
-  }, [testId, version])
+  }, [exportId, version])
 
   async function loadComponent() {
     try {
@@ -32,18 +32,18 @@ export default function TestPreviewPage() {
       // Load CSS
       const link = document.createElement('link')
       link.rel = 'stylesheet'
-      link.href = `/src/generated/tests/${testId}/Component-${version}.css`
-      link.id = `test-css-${testId}`
+      link.href = `/src/generated/export_figma/${exportId}/Component-${version}.css`
+      link.id = `export-css-${exportId}`
       document.head.appendChild(link)
 
       // Dynamically import the generated component
-      const module = await import(`../../generated/tests/${testId}/Component-${version}.tsx`)
+      const module = await import(`../../generated/export_figma/${exportId}/Component-${version}.tsx`)
       setComponent(() => module.default)
       setLoading(false)
 
       // Cleanup function
       return () => {
-        const existingLink = document.getElementById(`test-css-${testId}`)
+        const existingLink = document.getElementById(`export-css-${exportId}`)
         if (existingLink) {
           document.head.removeChild(existingLink)
         }

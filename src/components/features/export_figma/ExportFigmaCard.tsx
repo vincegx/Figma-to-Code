@@ -8,8 +8,8 @@ import { useTranslation } from '../../../i18n/I18nContext'
 import { useConfirm } from '../../../hooks/useConfirm'
 import { useAlert } from '../../../hooks/useAlert'
 
-interface Test {
-  testId: string
+interface ExportFigma {
+  exportId: string
   fileName?: string
   layerName?: string
   timestamp: string | number
@@ -23,15 +23,15 @@ interface Test {
   }
 }
 
-interface TestCardProps {
-  test: Test
+interface ExportFigmaCardProps {
+  exportFigma: ExportFigma
   onSelect: () => void
   onRefresh?: () => void
   isSelected?: boolean
   onToggleSelection?: () => void
 }
 
-export const TestCard = memo(function TestCard({ test, onSelect, onRefresh, isSelected, onToggleSelection }: TestCardProps) {
+export const ExportFigmaCard = memo(function ExportFigmaCard({ exportFigma, onSelect, onRefresh, isSelected, onToggleSelection }: ExportFigmaCardProps) {
   const { t } = useTranslation()
   const { confirm, ConfirmDialog } = useConfirm()
   const { alert, AlertDialogComponent } = useAlert()
@@ -39,8 +39,8 @@ export const TestCard = memo(function TestCard({ test, onSelect, onRefresh, isSe
 
   const handleOpenPreview = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    window.location.href = `/preview?test=${test.testId}&version=fixed`
-  }, [test.testId])
+    window.location.href = `/preview?export=${exportFigma.exportId}&version=fixed`
+  }, [exportFigma.exportId])
 
   const handleDelete = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -57,7 +57,7 @@ export const TestCard = memo(function TestCard({ test, onSelect, onRefresh, isSe
 
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/tests/${test.testId}`, { method: 'DELETE' })
+      const response = await fetch(`/api/export_figma/${exportFigma.exportId}`, { method: 'DELETE' })
       if (response.ok) {
         // Call refresh callback instead of window.location.reload()
         // This allows proper refresh when watch.ignored is enabled
@@ -82,23 +82,23 @@ export const TestCard = memo(function TestCard({ test, onSelect, onRefresh, isSe
       })
       setIsDeleting(false)
     }
-  }, [test.testId, t, confirm, alert, onRefresh])
+  }, [exportFigma.exportId, t, confirm, alert, onRefresh])
 
   const thumbnailPath = useMemo(
-    () => `/src/generated/tests/${test.testId}/img/figma-screenshot.png`,
-    [test.testId]
+    () => `/src/generated/export_figma/${exportFigma.exportId}/img/figma-screenshot.png`,
+    [exportFigma.exportId]
   )
 
   const nodeIdDisplay = useMemo(() => {
-    const match = test.testId?.match(/^node-(.+)-\d+$/)
-    return match ? match[1] : test.testId?.replace('node-', '')
-  }, [test.testId])
+    const match = exportFigma.exportId?.match(/^node-(.+)-\d+$/)
+    return match ? match[1] : exportFigma.exportId?.replace('node-', '')
+  }, [exportFigma.exportId])
 
   const formattedDate = useMemo(() => {
-    if (!test.timestamp) return ''
-    const dateValue = typeof test.timestamp === 'number' && test.timestamp < 10000000000
-      ? test.timestamp * 1000
-      : test.timestamp
+    if (!exportFigma.timestamp) return ''
+    const dateValue = typeof exportFigma.timestamp === 'number' && exportFigma.timestamp < 10000000000
+      ? exportFigma.timestamp * 1000
+      : exportFigma.timestamp
     const date = new Date(dateValue)
     return new Intl.DateTimeFormat('fr-FR', {
       day: '2-digit',
@@ -107,7 +107,7 @@ export const TestCard = memo(function TestCard({ test, onSelect, onRefresh, isSe
       hour: '2-digit',
       minute: '2-digit'
     }).format(date)
-  }, [test.timestamp])
+  }, [exportFigma.timestamp])
 
   return (
     <>
@@ -124,7 +124,7 @@ export const TestCard = memo(function TestCard({ test, onSelect, onRefresh, isSe
       <div className="relative h-52 w-full overflow-hidden bg-muted">
         <img
           src={thumbnailPath}
-          alt={test.layerName || test.fileName || 'Preview'}
+          alt={exportFigma.layerName || exportFigma.fileName || 'Preview'}
           loading="lazy"
           decoding="async"
           className="h-full w-full object-cover object-top transition-transform duration-200 ease-out group-hover:scale-105"
@@ -187,26 +187,26 @@ export const TestCard = memo(function TestCard({ test, onSelect, onRefresh, isSe
       {/* Card Content */}
       <CardContent className="p-5">
         {/* Stats Badges - First Line */}
-        {test.stats && (
+        {exportFigma.stats && (
           <div className="mb-3 flex flex-wrap gap-1.5">
-            {test.stats.totalNodes !== undefined && (
+            {exportFigma.stats.totalNodes !== undefined && (
               <Badge variant="secondary" className="text-[10px]">
-                {test.stats.totalNodes}
+                {exportFigma.stats.totalNodes}
               </Badge>
             )}
-            {test.stats.sectionsDetected !== undefined && test.stats.sectionsDetected > 0 && (
+            {exportFigma.stats.sectionsDetected !== undefined && exportFigma.stats.sectionsDetected > 0 && (
               <Badge variant="statSection" className="text-[10px]">
-                {test.stats.sectionsDetected}
+                {exportFigma.stats.sectionsDetected}
               </Badge>
             )}
-            {test.stats.imagesOrganized !== undefined && test.stats.imagesOrganized > 0 && (
+            {exportFigma.stats.imagesOrganized !== undefined && exportFigma.stats.imagesOrganized > 0 && (
               <Badge variant="statImage" className="text-[10px]">
-                {test.stats.imagesOrganized}
+                {exportFigma.stats.imagesOrganized}
               </Badge>
             )}
-            {(test.stats.totalFixes !== undefined || test.stats.classesOptimized !== undefined) && (
+            {(exportFigma.stats.totalFixes !== undefined || exportFigma.stats.classesOptimized !== undefined) && (
               <Badge variant="statFix" className="text-[10px]">
-                {test.stats.totalFixes || test.stats.classesOptimized || 0}
+                {exportFigma.stats.totalFixes || exportFigma.stats.classesOptimized || 0}
               </Badge>
             )}
           </div>
@@ -215,14 +215,14 @@ export const TestCard = memo(function TestCard({ test, onSelect, onRefresh, isSe
         {/* Title + Date/ID - Second Line */}
         <div className="mb-4 flex items-start justify-between gap-3">
           <h3 className="truncate text-base font-semibold flex-1 min-w-0">
-            {test.layerName || test.fileName || t('home.card.no_title')}
+            {exportFigma.layerName || exportFigma.fileName || t('home.card.no_title')}
           </h3>
           <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
             <span className="text-xs text-muted-foreground whitespace-nowrap">
               {formattedDate}
             </span>
             <span className="font-mono text-[9px] text-muted-foreground">
-              {test.testId}
+              {exportFigma.exportId}
             </span>
           </div>
         </div>

@@ -17,7 +17,7 @@ type SortOption = 'date-desc' | 'date-asc' | 'name-asc' | 'name-desc'
 interface ControlsBarProps {
   viewMode: ViewMode
   setViewMode: (mode: ViewMode) => void
-  testsCount: number
+  exportsCount: number
   sortOption: SortOption
   setSortOption: (option: SortOption) => void
   itemsPerPage: number
@@ -28,7 +28,7 @@ interface ControlsBarProps {
 export function ControlsBar({
   viewMode,
   setViewMode,
-  testsCount,
+  exportsCount,
   sortOption,
   setSortOption,
   itemsPerPage,
@@ -60,7 +60,7 @@ export function ControlsBar({
         </ToggleGroup>
 
         <Badge variant="secondary">
-          {testsCount} {testsCount > 1 ? t('common.tests_plural') : t('common.tests')}
+          {exportsCount} {exportsCount > 1 ? t('common.tests_plural') : t('common.tests')}
         </Badge>
       </div>
 

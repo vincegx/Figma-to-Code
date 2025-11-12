@@ -21,8 +21,8 @@
  *
  * Example:
  *   node scripts/organize-images.js \
- *     src/generated/tests/test-123 \
- *     src/generated/tests/test-123/Component.tsx
+ *     src/generated/export_figma/test-123 \
+ *     src/generated/export_figma/test-123/Component.tsx
  */
 
 import fs from 'fs'
@@ -38,7 +38,7 @@ const componentFile = process.argv[3]
 if (!testDir) {
   console.error('Usage: node organize-images.js <test-directory> [component-file]')
   console.error('\nExample:')
-  console.error('  node scripts/organize-images.js src/generated/tests/test-123')
+  console.error('  node scripts/organize-images.js src/generated/export_figma/test-123')
   console.error('\nAuto-detects chunking mode:')
   console.error('  - If chunks/ exists: processes all chunks/*.tsx')
   console.error('  - Otherwise: processes Component.tsx or specified file')

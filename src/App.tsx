@@ -3,9 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate, useSearchParams, useParams, use
 import './App.css'
 import MainLayout from './components/layout/MainLayout'
 import DashboardPage from './components/pages/DashboardPage'
-import TestsPage from './components/pages/TestsPage'
-import TestDetailPage from './components/pages/TestDetailPage'
-import TestPreviewPage from './components/pages/TestPreviewPage'
+import ExportFigmaPage from './components/pages/ExportFigmaPage'
+import ExportFigmaDetailPage from './components/pages/ExportFigmaDetailPage'
+import ExportFigmaPreviewPage from './components/pages/ExportFigmaPreviewPage'
 import ResponsiveTestsPage from './components/pages/ResponsiveTestsPage'
 import ResponsiveTestDetailPage from './components/pages/ResponsiveTestDetailPage'
 import ResponsivePreviewPage from './components/pages/ResponsivePreviewPage'
@@ -21,8 +21,8 @@ function App() {
         {/* Preview mode route (no layout) */}
         <Route path="/preview" element={<PreviewModeWrapper />} />
 
-        {/* Test Preview iframe route (no layout) */}
-        <Route path="/tests/:testId/preview" element={<TestPreviewPage />} />
+        {/* Export Figma Preview iframe route (no layout) */}
+        <Route path="/export_figma/:exportId/preview" element={<ExportFigmaPreviewPage />} />
 
         {/* Responsive Preview iframe route (no layout) */}
         <Route path="/responsive-tests/:mergeId/preview" element={<ResponsivePreviewPage />} />
@@ -36,8 +36,8 @@ function App() {
         {/* Main app routes with layout */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<DashboardPage />} />
-          <Route path="/tests" element={<TestsPage />} />
-          <Route path="/tests/:testId" element={<TestDetailWrapper />} />
+          <Route path="/export_figma" element={<ExportFigmaPage />} />
+          <Route path="/export_figma/:exportId" element={<ExportFigmaDetailWrapper />} />
           <Route path="/responsive-tests" element={<ResponsiveTestsPage />} />
           <Route path="/responsive-tests/:mergeId" element={<ResponsiveTestDetailPage />} />
           <Route path="/settings" element={<SettingsPage />} />
@@ -53,7 +53,7 @@ function App() {
 // Wrapper for preview mode to check URL params
 function PreviewModeWrapper() {
   const [searchParams] = useSearchParams()
-  const testId = searchParams.get('test')
+  const exportId = searchParams.get('export')
   const responsiveMergeId = searchParams.get('responsive')
 
   // Check for responsive merge preview
@@ -61,28 +61,28 @@ function PreviewModeWrapper() {
     return <ResponsivePreviewMode mergeId={responsiveMergeId} />
   }
 
-  // Check for regular test preview
-  if (!testId) {
+  // Check for regular export preview
+  if (!exportId) {
     return <Navigate to="/" replace />
   }
 
-  return <PreviewMode testId={testId} />
+  return <PreviewMode exportId={exportId} />
 }
 
-// Wrapper for TestDetail to get testId from URL params
-function TestDetailWrapper() {
-  const { testId } = useParams<{ testId: string }>()
+// Wrapper for ExportFigmaDetail to get exportId from URL params
+function ExportFigmaDetailWrapper() {
+  const { exportId } = useParams<{ exportId: string }>()
   const navigate = useNavigate()
 
-  if (!testId) {
-    return <Navigate to="/tests" replace />
+  if (!exportId) {
+    return <Navigate to="/export_figma" replace />
   }
 
-  return <TestDetailPage testId={testId} onBack={() => navigate('/tests')} />
+  return <ExportFigmaDetailPage exportId={exportId} onBack={() => navigate('/export_figma')} />
 }
 
 // Preview mode component - renders component via iframe with responsive controls
-function PreviewMode({ testId }: { testId: string }) {
+function PreviewMode({ exportId }: { exportId: string }) {
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null)
   const [viewportWidth, setViewportWidth] = useState(1440)
   const [iframeHeight, setIframeHeight] = useState<number>(800)
@@ -95,9 +95,9 @@ function PreviewMode({ testId }: { testId: string }) {
 
   useEffect(() => {
     // Load metadata to get default dimensions
-    import(`./generated/tests/${testId}/metadata.xml?raw`)
-      .then((module) => {
-        const xmlContent = module.default
+    fetch(`/src/generated/export_figma/${exportId}/metadata.xml`)
+      .then((response) => response.text())
+      .then((xmlContent) => {
         const firstFrame = xmlContent.match(/<frame[^>]*>/)?.[0]
 
         if (firstFrame) {
@@ -116,7 +116,7 @@ function PreviewMode({ testId }: { testId: string }) {
       .catch((err) => {
         console.error('Failed to load metadata:', err)
       })
-  }, [testId])
+  }, [exportId])
 
   // Listen for iframe resize messages
   useEffect(() => {
@@ -168,12 +168,12 @@ function PreviewMode({ testId }: { testId: string }) {
       backgroundColor: '#ffffff'
     }}>
       <PreviewNavbar
-        id={testId}
+        id={exportId}
         mode={mode}
         onModeChange={setMode}
         version={version}
         onVersionChange={handleVersionChange}
-        detailUrl={`/tests/${testId}`}
+        detailUrl={`/export_figma/${exportId}`}
         showNavbar={showNavbar}
         onShowNavbar={setShowNavbar}
         viewportWidth={viewportWidth}
@@ -190,10 +190,10 @@ function PreviewMode({ testId }: { testId: string }) {
         }}
       >
         <iframe
-          src={`/tests/${testId}/preview?version=${version}`}
+          src={`/export_figma/${exportId}/preview?version=${version}`}
           className="w-full border-0"
           style={{ height: `${iframeHeight}px` }}
-          title="Test Preview"
+          title="Export Preview"
         />
       </div>
     </div>

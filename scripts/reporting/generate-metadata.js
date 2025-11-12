@@ -8,7 +8,7 @@
  *
  * Example:
  *   node scripts/generate-metadata.js \
- *     src/generated/tests/node-9-2654 \
+ *     src/generated/export_figma/node-9-2654 \
  *     "https://www.figma.com/design/ABC/file?node-id=9-2654" \
  *     '{"classesOptimized":105,"gradientsFixed":3}'
  *
@@ -215,7 +215,7 @@ function main() {
     console.log('  node scripts/generate-metadata.js <testDir> <figmaUrl> <statsJson>')
     console.log('\nExample:')
     console.log('  node scripts/generate-metadata.js \\')
-    console.log('    src/generated/tests/node-9-2654 \\')
+    console.log('    src/generated/export_figma/node-9-2654 \\')
     console.log('    "https://www.figma.com/design/ABC/file?node-id=9-2654" \\')
     console.log('    \'{"classesOptimized":105,"gradientsFixed":3}\'')
     process.exit(1)

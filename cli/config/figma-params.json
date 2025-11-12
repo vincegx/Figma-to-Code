@@ -14,7 +14,7 @@
   },
   "directories": {
     "tmpAssets": "tmp/figma-assets",
-    "testsOutput": "src/generated/tests",
+    "testsOutput": "src/generated/export_figma",
     "designRules": "cli/config/design-rules.json"
   },
   "chunking": {

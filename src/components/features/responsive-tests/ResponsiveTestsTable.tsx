@@ -191,7 +191,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                     <div className="flex flex-col items-center gap-0.5">
                       <div className="w-12 h-9 rounded border overflow-hidden bg-muted">
                         <img
-                          src={`/src/generated/tests/${test.breakpoints.desktop.testId}/img/figma-screenshot.png`}
+                          src={`/src/generated/export_figma/${test.breakpoints.desktop.testId}/img/figma-screenshot.png`}
                           alt="Desktop"
                           className="w-full h-full object-cover object-top"
                           onError={(e) => {
@@ -210,7 +210,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                     <div className="flex flex-col items-center gap-0.5">
                       <div className="w-9 h-9 rounded border overflow-hidden bg-muted">
                         <img
-                          src={`/src/generated/tests/${test.breakpoints.tablet.testId}/img/figma-screenshot.png`}
+                          src={`/src/generated/export_figma/${test.breakpoints.tablet.testId}/img/figma-screenshot.png`}
                           alt="Tablet"
                           className="w-full h-full object-cover object-top"
                           onError={(e) => {
@@ -229,7 +229,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                     <div className="flex flex-col items-center gap-0.5">
                       <div className="w-7 h-9 rounded border overflow-hidden bg-muted">
                         <img
-                          src={`/src/generated/tests/${test.breakpoints.mobile.testId}/img/figma-screenshot.png`}
+                          src={`/src/generated/export_figma/${test.breakpoints.mobile.testId}/img/figma-screenshot.png`}
                           alt="Mobile"
                           className="w-full h-full object-cover object-top"
                           onError={(e) => {
@@ -256,7 +256,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                       <div className="flex flex-col items-center gap-1">
                         <div className="w-32 h-24 rounded border overflow-hidden bg-muted">
                           <img
-                            src={`/src/generated/tests/${test.breakpoints.desktop.testId}/img/figma-screenshot.png`}
+                            src={`/src/generated/export_figma/${test.breakpoints.desktop.testId}/img/figma-screenshot.png`}
                             alt="Desktop"
                             className="w-full h-full object-cover object-top"
                             onError={(e) => {
@@ -277,7 +277,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                       <div className="flex flex-col items-center gap-1">
                         <div className="w-24 h-24 rounded border overflow-hidden bg-muted">
                           <img
-                            src={`/src/generated/tests/${test.breakpoints.tablet.testId}/img/figma-screenshot.png`}
+                            src={`/src/generated/export_figma/${test.breakpoints.tablet.testId}/img/figma-screenshot.png`}
                             alt="Tablet"
                             className="w-full h-full object-cover object-top"
                             onError={(e) => {
@@ -298,7 +298,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                       <div className="flex flex-col items-center gap-1">
                         <div className="w-20 h-24 rounded border overflow-hidden bg-muted">
                           <img
-                            src={`/src/generated/tests/${test.breakpoints.mobile.testId}/img/figma-screenshot.png`}
+                            src={`/src/generated/export_figma/${test.breakpoints.mobile.testId}/img/figma-screenshot.png`}
                             alt="Mobile"
                             className="w-full h-full object-cover object-top"
                             onError={(e) => {

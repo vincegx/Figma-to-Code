@@ -4,7 +4,7 @@
  * Capture screenshot du rendu web HTML
  * Usage: node scripts/capture-web-screenshot.js <test-dir> <port> [width] [height]
  *
- * Exemple: node scripts/capture-web-screenshot.js src/generated/tests/test-123 5173 1426 734
+ * Exemple: node scripts/capture-web-screenshot.js src/generated/export_figma/test-123 5173 1426 734
  */
 
 import puppeteer from 'puppeteer';
@@ -18,7 +18,7 @@ async function captureWebScreenshot(testDir, port = 5173, fixedWidth = null, fix
     console.log(`   Fixed dimensions: ${fixedWidth}x${fixedHeight} (from Figma node)`);
   }
 
-  // Extract testId from testDir (e.g., "src/generated/tests/test-123" -> "test-123")
+  // Extract testId from testDir (e.g., "src/generated/export_figma/test-123" -> "test-123")
   const testId = path.basename(testDir);
 
   const browser = await puppeteer.launch({
@@ -107,8 +107,8 @@ const [testDir, port, width, height] = process.argv.slice(2);
 
 if (!testDir) {
   console.error('Usage: node scripts/capture-web-screenshot.js <test-dir> [port] [width] [height]');
-  console.error('Example: node scripts/capture-web-screenshot.js src/generated/tests/test-123 5173');
-  console.error('Example: node scripts/capture-web-screenshot.js src/generated/tests/test-123 5173 1426 734');
+  console.error('Example: node scripts/capture-web-screenshot.js src/generated/export_figma/test-123 5173');
+  console.error('Example: node scripts/capture-web-screenshot.js src/generated/export_figma/test-123 5173 1426 734');
   process.exit(1);
 }
 

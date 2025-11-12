@@ -1,15 +1,15 @@
 /**
- * TestsPage - List of all tests with grid/list view and pagination
- * Clean orchestrator that delegates to TestsGrid and TestsTable
+ * ExportFigmaPage - List of all exports with grid/list view and pagination
+ * Clean orchestrator that delegates to ExportFigmaGrid and ExportFigmaTable
  */
 
 import { useState, useEffect, useMemo, useCallback, startTransition } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useTests } from '../../hooks/useTests'
-import { ControlsBar } from '../features/tests/ControlsBar'
-import { PaginationControls } from '../features/tests/PaginationControls'
-import TestsGrid from '../features/tests/TestsGrid'
-import TestsTable from '../features/tests/TestsTable'
+import { useExports } from '../../hooks/useExports'
+import { ControlsBar } from '../features/export_figma/ControlsBar'
+import { PaginationControls } from '../features/export_figma/PaginationControls'
+import ExportFigmaGrid from '../features/export_figma/ExportFigmaGrid'
+import ExportFigmaTable from '../features/export_figma/ExportFigmaTable'
 import { AnalysisDialog } from '../features/analysis/AnalysisDialog'
 import { useTranslation } from '../../i18n/I18nContext'
 import { Card, CardContent } from "@/components/ui/card"
@@ -20,10 +20,10 @@ import { Inbox, Plus, Sparkles } from 'lucide-react'
 type ViewMode = 'grid' | 'list'
 type SortOption = 'date-desc' | 'date-asc' | 'name-asc' | 'name-desc'
 
-export default function TestsPage() {
+export default function ExportFigmaPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { tests, loading, reload } = useTests()
+  const { exports, loading, reload } = useExports()
   const [settingsLoaded, setSettingsLoaded] = useState<boolean>(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
@@ -45,8 +45,8 @@ export default function TestsPage() {
       .finally(() => setSettingsLoaded(true))
   }, [])
 
-  const sortedTests = useMemo(() => {
-    const sorted = [...tests]
+  const sortedExports = useMemo(() => {
+    const sorted = [...exports]
     switch (sortOption) {
       case 'date-desc':
         sorted.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
@@ -62,18 +62,18 @@ export default function TestsPage() {
         break
     }
     return sorted
-  }, [tests, sortOption])
+  }, [exports, sortOption])
 
-  const totalPages = useMemo(() => Math.ceil(sortedTests.length / itemsPerPage), [sortedTests.length, itemsPerPage])
+  const totalPages = useMemo(() => Math.ceil(sortedExports.length / itemsPerPage), [sortedExports.length, itemsPerPage])
 
-  const currentTests = useMemo(() => {
+  const currentExports = useMemo(() => {
     const indexOfLastItem = currentPage * itemsPerPage
     const indexOfFirstItem = indexOfLastItem - itemsPerPage
-    return sortedTests.slice(indexOfFirstItem, indexOfLastItem)
-  }, [sortedTests, currentPage, itemsPerPage])
+    return sortedExports.slice(indexOfFirstItem, indexOfLastItem)
+  }, [sortedExports, currentPage, itemsPerPage])
 
   const handleSelectTest = useCallback((testId: string) => {
-    navigate(`/tests/${testId}`)
+    navigate(`/export_figma/${testId}`)
   }, [navigate])
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
@@ -122,17 +122,17 @@ export default function TestsPage() {
     )
   }
 
-  if (tests.length === 0) {
+  if (exports.length === 0) {
     return (
       <div className="rounded-xl border-2 border-dashed p-12 text-center">
         <div className="mb-4 flex justify-center">
           <Inbox className="h-16 w-16 text-muted-foreground/50" strokeWidth={1.5} />
         </div>
         <h3 className="mb-2 text-xl font-semibold">
-          {t('home.no_tests.title')}
+          {t('home.no_exports.title')}
         </h3>
         <p className="text-muted-foreground">
-          {t('home.no_tests.message')}
+          {t('home.no_exports.message')}
         </p>
       </div>
     )
@@ -179,7 +179,7 @@ export default function TestsPage() {
       <ControlsBar
         viewMode={viewMode}
         setViewMode={handleViewModeChange}
-        testsCount={tests.length}
+        exportsCount={exports.length}
         sortOption={sortOption}
         setSortOption={handleSortOptionChange}
         itemsPerPage={itemsPerPage}
@@ -188,15 +188,15 @@ export default function TestsPage() {
       />
 
       {viewMode === 'grid' ? (
-        <TestsGrid
-          tests={currentTests}
-          onSelectTest={handleSelectTest}
+        <ExportFigmaGrid
+          exports={currentExports}
+          onSelectExport={handleSelectTest}
           onRefresh={reload}
         />
       ) : (
-        <TestsTable
-          tests={currentTests}
-          onSelectTest={handleSelectTest}
+        <ExportFigmaTable
+          exports={currentExports}
+          onSelectExport={handleSelectTest}
           onRefresh={reload}
         />
       )}
@@ -205,7 +205,7 @@ export default function TestsPage() {
         <PaginationControls
           currentPage={currentPage}
           totalPages={totalPages}
-          totalItems={sortedTests.length}
+          totalItems={sortedExports.length}
           itemsPerPage={itemsPerPage}
           onPageChange={handlePageChange}
         />

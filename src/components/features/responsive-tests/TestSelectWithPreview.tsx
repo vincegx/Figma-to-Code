@@ -45,7 +45,7 @@ export function TestSelectWithPreview({
                   {/* Thumbnail in list */}
                   <div className="w-12 h-8 flex-shrink-0 rounded border overflow-hidden bg-muted">
                     <img
-                      src={`/src/generated/tests/${test.testId}/img/figma-screenshot.png`}
+                      src={`/src/generated/export_figma/${test.testId}/img/figma-screenshot.png`}
                       alt="Thumbnail"
                       className="w-full h-full object-cover object-top"
                       onError={(e) => {
@@ -72,7 +72,7 @@ export function TestSelectWithPreview({
       {selectedTest && (
         <div className="w-24 h-16 flex-shrink-0 rounded border overflow-hidden bg-muted">
           <img
-            src={`/src/generated/tests/${selectedTest.testId}/img/figma-screenshot.png`}
+            src={`/src/generated/export_figma/${selectedTest.testId}/img/figma-screenshot.png`}
             alt="Preview"
             className="w-full h-full object-cover object-top"
             onError={(e) => {

@@ -5,7 +5,7 @@
 import { useState, useEffect, useMemo, useCallback, startTransition } from 'react'
 import { useResponsiveTests } from '../../hooks/useResponsiveTests'
 import { useTranslation } from '../../i18n/I18nContext'
-import { PaginationControls } from '../features/tests/PaginationControls'
+import { PaginationControls } from '../features/export_figma/PaginationControls'
 import ResponsiveTestsGrid from '../features/responsive-tests/ResponsiveTestsGrid'
 import ResponsiveTestsTable from '../features/responsive-tests/ResponsiveTestsTable'
 import { MergeDialog } from '../features/responsive-tests/MergeDialog'

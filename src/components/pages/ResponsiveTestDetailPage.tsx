@@ -187,21 +187,21 @@ export default function ResponsiveTestDetailPage() {
       dropdownItems: [
         {
           label: `Desktop (${metadata.breakpoints.desktop.testId})`,
-          href: `/tests/${metadata.breakpoints.desktop.testId}`,
+          href: `/export_figma/${metadata.breakpoints.desktop.testId}`,
           icon: Monitor,
           target: '_blank',
           rel: 'noopener noreferrer'
         },
         {
           label: `Tablet (${metadata.breakpoints.tablet.testId})`,
-          href: `/tests/${metadata.breakpoints.tablet.testId}`,
+          href: `/export_figma/${metadata.breakpoints.tablet.testId}`,
           icon: Tablet,
           target: '_blank',
           rel: 'noopener noreferrer'
         },
         {
           label: `Mobile (${metadata.breakpoints.mobile.testId})`,
-          href: `/tests/${metadata.breakpoints.mobile.testId}`,
+          href: `/export_figma/${metadata.breakpoints.mobile.testId}`,
           icon: Smartphone,
           target: '_blank',
           rel: 'noopener noreferrer'

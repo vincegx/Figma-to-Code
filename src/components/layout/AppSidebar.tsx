@@ -18,7 +18,7 @@ export function AppSidebar() {
 
   const menuItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/tests', icon: FileText, label: 'Tests' },
+    { to: '/export_figma', icon: FileText, label: 'Export Figma' },
     { to: '/responsive-tests', icon: MonitorSmartphone, label: 'Tests Responsive' },
   ]
 

@@ -24,8 +24,8 @@ import { useConfirm } from '../../../hooks/useConfirm'
 import { useAlert } from '../../../hooks/useAlert'
 import { useSelection } from '../../../hooks/useSelection'
 
-interface Test {
-  testId: string
+interface ExportFigma {
+  exportId: string
   fileName?: string
   layerName?: string
   timestamp: string | number
@@ -39,23 +39,23 @@ interface Test {
   }
 }
 
-interface TestsTableProps {
-  tests: Test[]
-  onSelectTest: (testId: string) => void
+interface ExportFigmaTableProps {
+  exports: ExportFigma[]
+  onSelectExport: (exportId: string) => void
   onRefresh?: () => void
 }
 
-const TestsTable = memo(function TestsTable({ tests, onSelectTest, onRefresh }: TestsTableProps) {
+const ExportFigmaTable = memo(function ExportFigmaTable({ exports, onSelectExport, onRefresh }: ExportFigmaTableProps) {
   const { t } = useTranslation()
   const { confirm, ConfirmDialog } = useConfirm()
   const { alert, AlertDialogComponent } = useAlert()
-  const [deletingTests, setDeletingTests] = useState<Set<string>>(new Set())
+  const [deletingExports, setDeletingExports] = useState<Set<string>>(new Set())
   const [isDeletingMultiple, setIsDeletingMultiple] = useState(false)
 
   // Use selection hook
-  const selection = useSelection(tests, (test) => test.testId)
+  const selection = useSelection(exports, (exportFigma) => exportFigma.exportId)
 
-  const handleDelete = async (testId: string) => {
+  const handleDelete = async (exportId: string) => {
     const confirmed = await confirm({
       title: t('home.card.delete'),
       description: t('home.card.delete_confirm'),
@@ -66,9 +66,9 @@ const TestsTable = memo(function TestsTable({ tests, onSelectTest, onRefresh }: 
 
     if (!confirmed) return
 
-    setDeletingTests(new Set(deletingTests).add(testId))
+    setDeletingTests(new Set(deletingExports).add(exportId))
     try {
-      const response = await fetch(`/api/tests/${testId}`, { method: 'DELETE' })
+      const response = await fetch(`/api/export_figma/${exportId}`, { method: 'DELETE' })
       if (response.ok) {
         // Call refresh callback instead of window.location.reload()
         if (onRefresh) {
@@ -84,7 +84,7 @@ const TestsTable = memo(function TestsTable({ tests, onSelectTest, onRefresh }: 
         })
         setDeletingTests(prev => {
           const next = new Set(prev)
-          next.delete(testId)
+          next.delete(exportId)
           return next
         })
       }
@@ -96,7 +96,7 @@ const TestsTable = memo(function TestsTable({ tests, onSelectTest, onRefresh }: 
       })
       setDeletingTests(prev => {
         const next = new Set(prev)
-        next.delete(testId)
+        next.delete(exportId)
         return next
       })
     }
@@ -117,8 +117,8 @@ const TestsTable = memo(function TestsTable({ tests, onSelectTest, onRefresh }: 
 
     setIsDeletingMultiple(true)
     try {
-      const deletePromises = Array.from(selection.selectedIds).map(testId =>
-        fetch(`/api/tests/${testId}`, { method: 'DELETE' })
+      const deletePromises = Array.from(selection.selectedIds).map(exportId =>
+        fetch(`/api/export_figma/${exportId}`, { method: 'DELETE' })
       )
       await Promise.all(deletePromises)
       selection.clearSelection()
@@ -139,8 +139,8 @@ const TestsTable = memo(function TestsTable({ tests, onSelectTest, onRefresh }: 
     }
   }
 
-  const handleOpenPreview = (testId: string) => {
-    window.location.href = `/preview?test=${testId}&version=fixed`
+  const handleOpenPreview = (exportId: string) => {
+    window.location.href = `/preview?test=${exportId}&version=fixed`
   }
 
   const formatDate = (timestamp: string | number) => {
@@ -158,9 +158,9 @@ const TestsTable = memo(function TestsTable({ tests, onSelectTest, onRefresh }: 
     }).format(date)
   }
 
-  const getNodeIdDisplay = (testId: string) => {
-    const match = testId?.match(/^node-(.+)-\d+$/)
-    return match ? match[1] : testId?.replace('node-', '')
+  const getNodeIdDisplay = (exportId: string) => {
+    const match = exportId?.match(/^node-(.+)-\d+$/)
+    return match ? match[1] : exportId?.replace('node-', '')
   }
 
   return (
@@ -197,21 +197,21 @@ const TestsTable = memo(function TestsTable({ tests, onSelectTest, onRefresh }: 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {tests.length === 0 ? (
+            {exports.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center">
-                  {t('home.no_tests.message')}
+                  {t('home.no_exports.message')}
                 </TableCell>
               </TableRow>
             ) : (
-              tests.map((test) => {
-                const thumbnailPath = `/src/generated/tests/${test.testId}/img/figma-screenshot.png`
-                const isDeleting = deletingTests.has(test.testId)
-                const isSelected = selection.isSelected(test.testId)
+              exports.map((exportFigma) => {
+                const thumbnailPath = `/src/generated/export_figma/${exportFigma.exportId}/img/figma-screenshot.png`
+                const isDeleting = deletingExports.has(exportFigma.exportId)
+                const isSelected = selection.isSelected(exportFigma.exportId)
 
                 return (
                   <TableRow
-                    key={test.testId}
+                    key={exportFigma.exportId}
                     data-state={isSelected ? "selected" : undefined}
                     className="cursor-pointer"
                     style={{ contain: 'layout style paint' }}
@@ -219,15 +219,15 @@ const TestsTable = memo(function TestsTable({ tests, onSelectTest, onRefresh }: 
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={isSelected}
-                        onCheckedChange={() => selection.toggleSelection(test.testId)}
+                        onCheckedChange={() => selection.toggleSelection(exportFigma.exportId)}
                         aria-label={t('home.table.select_row')}
                       />
                     </TableCell>
-                    <TableCell onClick={() => onSelectTest(test.testId)}>
+                    <TableCell onClick={() => onSelectExport(exportFigma.exportId)}>
                       <div className="relative h-14 w-16 overflow-hidden rounded border bg-muted">
                         <img
                           src={thumbnailPath}
-                          alt={test.layerName || test.fileName || 'Preview'}
+                          alt={exportFigma.layerName || exportFigma.fileName || 'Preview'}
                           loading="lazy"
                           decoding="async"
                           className="h-full w-full object-cover object-top transition-transform duration-200 ease-out hover:scale-105"
@@ -242,49 +242,49 @@ const TestsTable = memo(function TestsTable({ tests, onSelectTest, onRefresh }: 
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell onClick={() => onSelectTest(test.testId)}>
+                    <TableCell onClick={() => onSelectExport(exportFigma.exportId)}>
                       <div className="font-medium">
-                        {test.layerName || test.fileName || t('home.card.no_title')}
+                        {exportFigma.layerName || exportFigma.fileName || t('home.card.no_title')}
                       </div>
                       <div className="text-xs text-muted-foreground font-mono mt-1">
-                        {test.testId}
+                        {exportFigma.exportId}
                       </div>
                     </TableCell>
-                    <TableCell onClick={() => onSelectTest(test.testId)}>
+                    <TableCell onClick={() => onSelectExport(exportFigma.exportId)}>
                       <Badge variant="secondary" className="font-mono text-xs">
-                        #{getNodeIdDisplay(test.testId)}
+                        #{getNodeIdDisplay(exportFigma.exportId)}
                       </Badge>
                     </TableCell>
-                    <TableCell onClick={() => onSelectTest(test.testId)}>
+                    <TableCell onClick={() => onSelectExport(exportFigma.exportId)}>
                       <span className="text-sm text-muted-foreground">
-                        {formatDate(test.timestamp)}
+                        {formatDate(exportFigma.timestamp)}
                       </span>
                     </TableCell>
-                    <TableCell onClick={() => onSelectTest(test.testId)}>
-                      {test.stats && (
+                    <TableCell onClick={() => onSelectExport(exportFigma.exportId)}>
+                      {exportFigma.stats && (
                         <div className="flex items-center justify-center gap-3">
-                          {test.stats.totalNodes !== undefined && (
+                          {exportFigma.stats.totalNodes !== undefined && (
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Package className="h-3 w-3" />
-                              <span>{test.stats.totalNodes}</span>
+                              <span>{exportFigma.stats.totalNodes}</span>
                             </div>
                           )}
-                          {test.stats.sectionsDetected !== undefined && test.stats.sectionsDetected > 0 && (
+                          {exportFigma.stats.sectionsDetected !== undefined && exportFigma.stats.sectionsDetected > 0 && (
                             <div className="flex items-center gap-1 text-xs text-primary">
                               <Layers className="h-3 w-3" />
-                              <span>{test.stats.sectionsDetected}</span>
+                              <span>{exportFigma.stats.sectionsDetected}</span>
                             </div>
                           )}
-                          {test.stats.imagesOrganized !== undefined && test.stats.imagesOrganized > 0 && (
+                          {exportFigma.stats.imagesOrganized !== undefined && exportFigma.stats.imagesOrganized > 0 && (
                             <div className="flex items-center gap-1 text-xs text-chart-4">
                               <FileImage className="h-3 w-3" />
-                              <span>{test.stats.imagesOrganized}</span>
+                              <span>{exportFigma.stats.imagesOrganized}</span>
                             </div>
                           )}
-                          {(test.stats.totalFixes !== undefined || test.stats.classesOptimized !== undefined) && (
+                          {(exportFigma.stats.totalFixes !== undefined || exportFigma.stats.classesOptimized !== undefined) && (
                             <div className="flex items-center gap-1 text-xs text-chart-5">
                               <Zap className="h-3 w-3" />
-                              <span>{test.stats.totalFixes || test.stats.classesOptimized || 0}</span>
+                              <span>{exportFigma.stats.totalFixes || exportFigma.stats.classesOptimized || 0}</span>
                             </div>
                           )}
                         </div>
@@ -302,17 +302,17 @@ const TestsTable = memo(function TestsTable({ tests, onSelectTest, onRefresh }: 
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onSelectTest(test.testId)}>
+                          <DropdownMenuItem onClick={() => onSelectExport(exportFigma.exportId)}>
                             <Eye className="mr-2 h-4 w-4" />
                             {t('common.details')}
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleOpenPreview(test.testId)}>
+                          <DropdownMenuItem onClick={() => handleOpenPreview(exportFigma.exportId)}>
                             <ExternalLink className="mr-2 h-4 w-4" />
                             {t('home.card.open_preview')}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
-                            onClick={() => handleDelete(test.testId)}
+                            onClick={() => handleDelete(exportFigma.exportId)}
                             className="text-destructive focus:text-destructive"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
@@ -333,4 +333,4 @@ const TestsTable = memo(function TestsTable({ tests, onSelectTest, onRefresh }: 
   )
 })
 
-export default TestsTable
+export default ExportFigmaTable

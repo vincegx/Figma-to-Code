@@ -68,7 +68,7 @@ interface Metadata {
 }
 
 interface TestDetailProps {
-  testId: string
+  exportId: string
   onBack: () => void
 }
 
@@ -86,7 +86,7 @@ function formatDate(timestamp: string | number) {
   })
 }
 
-export default function TestDetail({ testId, onBack }: TestDetailProps) {
+export default function TestDetail({ exportId, onBack }: TestDetailProps) {
   const { t } = useTranslation()
   const { setOpen } = useSidebar()
   const [activeTab, setActiveTab] = useState<Tab>('preview')
@@ -102,14 +102,14 @@ export default function TestDetail({ testId, onBack }: TestDetailProps) {
 
   useEffect(() => {
     loadTestData()
-  }, [testId])
+  }, [exportId])
 
   const loadTestData = async () => {
     try {
       setLoading(true)
 
       // Load test data via API instead of dynamic imports to avoid HMR issues
-      const response = await fetch(`/api/tests/${testId}/data`)
+      const response = await fetch(`/api/export_figma/${exportId}/data`)
 
       if (!response.ok) {
         throw new Error('Failed to fetch test data')
@@ -157,8 +157,8 @@ export default function TestDetail({ testId, onBack }: TestDetailProps) {
   }
 
   const nodeIdDisplay = (() => {
-    const match = testId?.match(/^node-(.+)-\d+$/)
-    return match ? match[1] : testId?.replace('node-', '')
+    const match = exportId?.match(/^node-(.+)-\d+$/)
+    return match ? match[1] : exportId?.replace('node-', '')
   })()
 
   return (
@@ -200,7 +200,7 @@ export default function TestDetail({ testId, onBack }: TestDetailProps) {
               <div className="hidden sm:flex items-center gap-2">
                 <Button variant="default" size="sm" asChild>
                   <a
-                    href={`/preview?test=${testId}&version=fixed`}
+                    href={`/preview?export=${exportId}&version=fixed`}
                     className="[&]:dark:text-white [&>svg]:dark:text-white"
                     style={{ color: 'white' }}
                   >
@@ -210,8 +210,8 @@ export default function TestDetail({ testId, onBack }: TestDetailProps) {
                 </Button>
                 <Button variant="outline" size="sm" asChild className="border-primary text-primary hover:bg-primary hover:text-primary-foreground">
                   <a
-                    href={`/api/download/${testId}`}
-                    download={`${testId}.zip`}
+                    href={`/api/download/${exportId}`}
+                    download={`${exportId}.zip`}
                   >
                     <Download className="mr-2 h-4 w-4" />
                     Download
@@ -240,7 +240,7 @@ export default function TestDetail({ testId, onBack }: TestDetailProps) {
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem asChild>
                       <a
-                        href={`/preview?test=${testId}&version=fixed`}
+                        href={`/preview?export=${exportId}&version=fixed`}
                         className="flex items-center"
                       >
                         <Eye className="mr-2 h-4 w-4" />
@@ -249,8 +249,8 @@ export default function TestDetail({ testId, onBack }: TestDetailProps) {
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <a
-                        href={`/api/download/${testId}`}
-                        download={`${testId}.zip`}
+                        href={`/api/download/${exportId}`}
+                        download={`${exportId}.zip`}
                         className="flex items-center"
                       >
                         <Download className="mr-2 h-4 w-4" />
@@ -407,15 +407,15 @@ export default function TestDetail({ testId, onBack }: TestDetailProps) {
         {/* Tab Content */}
         <main className={activeTab === 'preview' ? 'w-full max-w-full' : 'w-full max-w-full px-6 py-8'}>
           <TabsContent value="preview" className="mt-0 max-w-full">
-            <PreviewTab testId={testId} componentName={metadata?.componentName} dimensions={metadata?.dimensions} />
+            <PreviewTab exportId={exportId} componentName={metadata?.componentName} dimensions={metadata?.dimensions} />
           </TabsContent>
 
           <TabsContent value="code" className="mt-0 max-w-full">
-            <CodeTab testId={testId} />
+            <CodeTab exportId={exportId} />
           </TabsContent>
 
           <TabsContent value="report" className="mt-0 max-w-full">
-            <ReportViewer reportPath={`/src/generated/tests/${testId}/report.html`} />
+            <ReportViewer reportPath={`/src/generated/export_figma/${exportId}/report.html`} />
           </TabsContent>
 
           <TabsContent value="technical" className="mt-0 max-w-full">
@@ -431,7 +431,7 @@ export default function TestDetail({ testId, onBack }: TestDetailProps) {
  * TAB 1: Preview - Rendu React du composant généré avec ResizablePanel
  */
 interface PreviewTabProps {
-  testId: string
+  exportId: string
   componentName?: string
   dimensions?: {
     width: number
@@ -439,7 +439,7 @@ interface PreviewTabProps {
   }
 }
 
-function PreviewTab({ testId, dimensions }: PreviewTabProps) {
+function PreviewTab({ exportId, dimensions }: PreviewTabProps) {
   const { t } = useTranslation()
   const [Component, setComponent] = useState<ComponentType | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
@@ -450,22 +450,22 @@ function PreviewTab({ testId, dimensions }: PreviewTabProps) {
 
   useEffect(() => {
     loadComponent()
-  }, [testId])
+  }, [exportId])
 
   useEffect(() => {
     const link = document.createElement('link')
     link.rel = 'stylesheet'
-    link.href = `/src/generated/tests/${testId}/Component-clean.css`
-    link.id = `test-css-${testId}`
+    link.href = `/src/generated/export_figma/${exportId}/Component-clean.css`
+    link.id = `test-css-${exportId}`
     document.head.appendChild(link)
 
     return () => {
-      const existingLink = document.getElementById(`test-css-${testId}`)
+      const existingLink = document.getElementById(`test-css-${exportId}`)
       if (existingLink) {
         document.head.removeChild(existingLink)
       }
     }
-  }, [testId])
+  }, [exportId])
 
   const loadComponent = async () => {
     try {
@@ -473,15 +473,15 @@ function PreviewTab({ testId, dimensions }: PreviewTabProps) {
 
       let module: any
       try {
-        module = await import(`../../generated/tests/${testId}/Component-clean.tsx`)
+        module = await import(`../../generated/export_figma/${exportId}/Component-clean.tsx`)
       } catch (e) {
         try {
-          module = await import(`../../generated/tests/${testId}/Component-clean.jsx`)
+          module = await import(`../../generated/export_figma/${exportId}/Component-clean.jsx`)
         } catch (e2) {
           try {
-            module = await import(`../../generated/tests/${testId}/Component.tsx`)
+            module = await import(`../../generated/export_figma/${exportId}/Component.tsx`)
           } catch (e3) {
-            module = await import(`../../generated/tests/${testId}/Component.jsx`)
+            module = await import(`../../generated/export_figma/${exportId}/Component.jsx`)
           }
         }
       }
@@ -575,7 +575,7 @@ function PreviewTab({ testId, dimensions }: PreviewTabProps) {
  * TAB 2: Code - Navigation entre tous les fichiers
  */
 interface CodeTabProps {
-  testId: string
+  exportId: string
 }
 
 interface CodeFile {
@@ -593,7 +593,7 @@ type FileCache = {
   clean: CodeFile[]
 }
 
-function CodeTab({ testId }: CodeTabProps) {
+function CodeTab({ exportId }: CodeTabProps) {
   const { t } = useTranslation()
   const [version, setVersion] = useState<CodeVersion>('clean')
   const [fileCache, setFileCache] = useState<FileCache | null>(null)
@@ -602,7 +602,7 @@ function CodeTab({ testId }: CodeTabProps) {
 
   useEffect(() => {
     loadAllFiles()
-  }, [testId])
+  }, [exportId])
 
   useEffect(() => {
     setSelectedIndex(0)
@@ -619,21 +619,21 @@ function CodeTab({ testId }: CodeTabProps) {
 
       // Load Original files
       try {
-        const originalModule = await import(`../../generated/tests/${testId}/Component.tsx?raw`)
+        const originalModule = await import(`../../generated/export_figma/${exportId}/Component.tsx?raw`)
         cache.original.push({ name: 'Component.tsx', content: originalModule.default, type: 'tsx', icon: '📄' })
       } catch (e) {
         console.warn('No original Component.tsx')
       }
 
       try {
-        const metadataModule = await import(`../../generated/tests/${testId}/metadata.xml?raw`)
+        const metadataModule = await import(`../../generated/export_figma/${exportId}/metadata.xml?raw`)
         cache.original.push({ name: 'metadata.xml', content: metadataModule.default, type: 'tsx', icon: '📋' })
       } catch (e) {
         console.warn('No metadata.xml')
       }
 
       try {
-        const variablesModule = await import(`../../generated/tests/${testId}/variables.json?raw`)
+        const variablesModule = await import(`../../generated/export_figma/${exportId}/variables.json?raw`)
         cache.original.push({ name: 'variables.json', content: variablesModule.default, type: 'tsx', icon: '🎨' })
       } catch (e) {
         console.warn('No variables.json')
@@ -641,14 +641,14 @@ function CodeTab({ testId }: CodeTabProps) {
 
       // Load Fixed files
       try {
-        const fixedModule = await import(`../../generated/tests/${testId}/Component-fixed.tsx?raw`)
+        const fixedModule = await import(`../../generated/export_figma/${exportId}/Component-fixed.tsx?raw`)
         cache.fixed.push({ name: 'Component-fixed.tsx', content: fixedModule.default, type: 'tsx', icon: '⚛️' })
       } catch (e) {
         console.warn('No Component-fixed.tsx')
       }
 
       try {
-        const cssModule = await import(`../../generated/tests/${testId}/Component-fixed.css?raw`)
+        const cssModule = await import(`../../generated/export_figma/${exportId}/Component-fixed.css?raw`)
         cache.fixed.push({ name: 'Component-fixed.css', content: cssModule.default, type: 'css', icon: '🎨' })
       } catch (e) {
         console.warn('No Component-fixed.css')
@@ -668,14 +668,14 @@ function CodeTab({ testId }: CodeTabProps) {
       const chunkNames = ['ImageText', 'Header', 'Footer', 'Hero', 'Card', 'Button', 'Navigation', 'Sidebar']
       for (const chunkName of chunkNames) {
         try {
-          const tsxModule = await import(`../../generated/tests/${testId}/chunks-fixed/${chunkName}.tsx?raw`)
+          const tsxModule = await import(`../../generated/export_figma/${exportId}/chunks-fixed/${chunkName}.tsx?raw`)
           cache.fixed.push({ name: `chunks/${chunkName}.tsx`, content: tsxModule.default, type: 'tsx', icon: '🧩' })
         } catch (e) {
           // Chunk doesn't exist
         }
 
         try {
-          const cssModule = await import(`../../generated/tests/${testId}/chunks-fixed/${chunkName}.css?raw`)
+          const cssModule = await import(`../../generated/export_figma/${exportId}/chunks-fixed/${chunkName}.css?raw`)
           cache.fixed.push({ name: `chunks/${chunkName}.css`, content: cssModule.default, type: 'css', icon: '🎨' })
         } catch (e) {
           // CSS doesn't exist
@@ -684,14 +684,14 @@ function CodeTab({ testId }: CodeTabProps) {
 
       // Load Clean files
       try {
-        const cleanModule = await import(`../../generated/tests/${testId}/Component-clean.tsx?raw`)
+        const cleanModule = await import(`../../generated/export_figma/${exportId}/Component-clean.tsx?raw`)
         cache.clean.push({ name: 'Component-clean.tsx', content: cleanModule.default, type: 'tsx', icon: '✨' })
       } catch (e) {
         console.warn('No Component-clean.tsx')
       }
 
       try {
-        const cssModule = await import(`../../generated/tests/${testId}/Component-clean.css?raw`)
+        const cssModule = await import(`../../generated/export_figma/${exportId}/Component-clean.css?raw`)
         cache.clean.push({ name: 'Component-clean.css', content: cssModule.default, type: 'css', icon: '🎨' })
       } catch (e) {
         console.warn('No Component-clean.css')

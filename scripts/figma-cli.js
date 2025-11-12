@@ -774,8 +774,8 @@ class FigmaCLI {
       console.log(`\n${colors.dim}Pour validation Claude (optionnel):${colors.reset}`);
       console.log(`  ${colors.gray}./cli/figma-validate ${testId}${colors.reset}\n`);
 
-      // Output testId for server parsing (machine-readable format)
-      console.log(`TEST_ID: ${testId}`);
+      // Output exportId for server parsing (machine-readable format)
+      console.log(`EXPORT_ID: ${testId}`);
 
     } catch (error) {
       log.error(`ERREUR lors de la génération: ${error.message}`);

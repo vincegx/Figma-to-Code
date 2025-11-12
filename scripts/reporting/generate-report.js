@@ -15,7 +15,7 @@
  *
  * Example:
  *   node scripts/generate-report.js \
- *     src/generated/tests/test-123 \
+ *     src/generated/export_figma/test-123 \
  *     '{"classesOptimized":105,"gradientsFixed":3}'
  */
 

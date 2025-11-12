@@ -32,7 +32,7 @@ export function AnalysisDialog({ open, onOpenChange, onAnalysisComplete }: Analy
   const [urlError, setUrlError] = useState<string | null>(null)
   const [logs, setLogs] = useState<string[]>([])
   const [progress, setProgress] = useState(0)
-  const [testId, setTestId] = useState<string>('')
+  const [exportId, setTestId] = useState<string>('')
   const eventSourceRef = useRef<EventSource | null>(null)
 
   // Reset state when dialog closes
@@ -131,15 +131,15 @@ export function AnalysisDialog({ open, onOpenChange, onAnalysisComplete }: Analy
             eventSource.close()
             if (data.success) {
               // Extract test ID from server response
-              if (data.testId) {
-                setTestId(data.testId)
+              if (data.exportId) {
+                setTestId(data.exportId)
                 setProgress(100)
                 setState('success')
               } else {
                 // Fallback: try to extract from logs
-                const testIdFromLogs = logs.join('').match(/TEST_ID:\s*(.+)/)
-                if (testIdFromLogs) {
-                  setTestId(testIdFromLogs[1].trim())
+                const exportIdFromLogs = logs.join('').match(/EXPORT_ID:\s*(.+)/)
+                if (exportIdFromLogs) {
+                  setTestId(exportIdFromLogs[1].trim())
                   setProgress(100)
                   setState('success')
                 } else {
@@ -180,8 +180,8 @@ export function AnalysisDialog({ open, onOpenChange, onAnalysisComplete }: Analy
   }
 
   const handleViewTest = () => {
-    if (testId) {
-      navigate(`/tests/${testId}`)
+    if (exportId) {
+      navigate(`/export_figma/${exportId}`)
       onOpenChange(false)
       if (onAnalysisComplete) {
         onAnalysisComplete()
@@ -273,9 +273,9 @@ export function AnalysisDialog({ open, onOpenChange, onAnalysisComplete }: Analy
               <p className="text-sm text-muted-foreground">
                 Le composant est maintenant disponible dans vos tests
               </p>
-              {testId && (
+              {exportId && (
                 <p className="text-xs font-mono text-muted-foreground mt-2">
-                  {testId}
+                  {exportId}
                 </p>
               )}
             </div>
@@ -283,7 +283,7 @@ export function AnalysisDialog({ open, onOpenChange, onAnalysisComplete }: Analy
               <Button variant="outline" onClick={handleClose}>
                 Fermer
               </Button>
-              {testId && (
+              {exportId && (
                 <Button onClick={handleViewTest} className="gap-2">
                   Voir le test
                   <ExternalLink className="h-4 w-4" />

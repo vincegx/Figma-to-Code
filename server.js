@@ -59,7 +59,7 @@ app.post('/api/analyze', async (req, res) => {
     startTime: Date.now(),
     logs: [],
     clients: [],
-    testId: null // Will be extracted from logs
+    exportId: null // Will be extracted from logs
   }
 
   activeJobs.set(jobId, job)
@@ -82,11 +82,11 @@ app.post('/api/analyze', async (req, res) => {
     const cleanLog = stripAnsi(log)
     job.logs.push(cleanLog)
 
-    // Extract testId from logs (format: "TEST_ID: node-XXX-XXX")
-    const testIdMatch = cleanLog.match(/TEST_ID:\s*(node-[^\s\n]+)/)
-    if (testIdMatch) {
-      job.testId = testIdMatch[1].trim()
-      console.log('✓ Test ID extracted:', job.testId) // Debug log
+    // Extract exportId from logs (format: "EXPORT_ID: node-XXX-XXX")
+    const exportIdMatch = cleanLog.match(/EXPORT_ID:\s*(node-[^\s\n]+)/)
+    if (exportIdMatch) {
+      job.exportId = exportIdMatch[1].trim()
+      console.log('✓ Export ID extracted:', job.exportId) // Debug log
     }
 
     // Broadcast to all connected clients
@@ -121,7 +121,7 @@ app.post('/api/analyze', async (req, res) => {
 
     // Broadcast completion to all clients
     job.clients.forEach(client => {
-      client.write(`data: ${JSON.stringify({ type: 'done', message: finalMessage, success: code === 0, testId: job.testId })}\n\n`)
+      client.write(`data: ${JSON.stringify({ type: 'done', message: finalMessage, success: code === 0, exportId: job.exportId })}\n\n`)
     })
 
     // Don't close connections, let clients handle it
@@ -222,32 +222,32 @@ app.get('/api/analyze/status/:jobId', (req, res) => {
 })
 
 /**
- * DELETE /api/tests/:testId
- * Supprime un test et son dossier
+ * DELETE /api/export_figma/:exportId
+ * Supprime un export et son dossier
  */
-app.delete('/api/tests/:testId', async (req, res) => {
-  const { testId } = req.params
+app.delete('/api/export_figma/:exportId', async (req, res) => {
+  const { exportId } = req.params
 
-  if (!testId || !testId.startsWith('node-')) {
-    return res.status(400).json({ error: 'Test ID invalide' })
+  if (!exportId || !exportId.startsWith('node-')) {
+    return res.status(400).json({ error: 'Export ID invalide' })
   }
 
   try {
     const { rm } = await import('fs/promises')
-    const testPath = path.join(__dirname, 'src', 'generated', 'tests', testId)
+    const exportPath = path.join(__dirname, 'src', 'generated', 'export_figma', exportId)
 
     // Supprimer le dossier et tout son contenu
-    await rm(testPath, { recursive: true, force: true })
+    await rm(exportPath, { recursive: true, force: true })
 
     res.json({
       success: true,
-      message: 'Test supprimé avec succès',
-      testId
+      message: 'Export supprimé avec succès',
+      exportId
     })
   } catch (error) {
     console.error('Erreur lors de la suppression:', error)
     res.status(500).json({
-      error: 'Erreur lors de la suppression du test',
+      error: 'Erreur lors de la suppression de l\'export',
       message: error.message
     })
   }
@@ -425,34 +425,34 @@ app.get('/api/usage', (req, res) => {
 })
 
 /**
- * GET /api/tests/:testId/data
- * Récupère les données complètes d'un test (metadata.json, metadata.xml, analysis.md)
+ * GET /api/export_figma/:exportId/data
+ * Récupère les données complètes d'un export (metadata.json, metadata.xml, analysis.md)
  */
-app.get('/api/tests/:testId/data', async (req, res) => {
-  const { testId } = req.params
+app.get('/api/export_figma/:exportId/data', async (req, res) => {
+  const { exportId } = req.params
 
-  if (!testId || !testId.startsWith('node-')) {
-    return res.status(400).json({ error: 'Test ID invalide' })
+  if (!exportId || !exportId.startsWith('node-')) {
+    return res.status(400).json({ error: 'Export ID invalide' })
   }
 
   try {
-    const testPath = path.join(__dirname, 'src', 'generated', 'tests', testId)
+    const exportPath = path.join(__dirname, 'src', 'generated', 'export_figma', exportId)
 
     // Vérifier que le dossier existe
-    if (!fs.existsSync(testPath)) {
-      return res.status(404).json({ error: 'Test non trouvé' })
+    if (!fs.existsSync(exportPath)) {
+      return res.status(404).json({ error: 'Export non trouvé' })
     }
 
     const data = {}
 
     // Lire metadata.json
-    const metadataPath = path.join(testPath, 'metadata.json')
+    const metadataPath = path.join(exportPath, 'metadata.json')
     if (fs.existsSync(metadataPath)) {
       data.metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'))
     }
 
     // Lire metadata.xml
-    const xmlPath = path.join(testPath, 'metadata.xml')
+    const xmlPath = path.join(exportPath, 'metadata.xml')
     if (fs.existsSync(xmlPath)) {
       const xmlContent = fs.readFileSync(xmlPath, 'utf8')
       data.metadataXml = xmlContent
@@ -465,41 +465,41 @@ app.get('/api/tests/:testId/data', async (req, res) => {
     }
 
     // Lire analysis.md
-    const analysisPath = path.join(testPath, 'analysis.md')
+    const analysisPath = path.join(exportPath, 'analysis.md')
     if (fs.existsSync(analysisPath)) {
       data.analysis = fs.readFileSync(analysisPath, 'utf8')
     }
 
     res.json(data)
   } catch (error) {
-    console.error('Error loading test data:', error)
-    res.status(500).json({ error: 'Failed to load test data' })
+    console.error('Error loading export data:', error)
+    res.status(500).json({ error: 'Failed to load export data' })
   }
 })
 
 /**
- * GET /api/tests
- * Récupère la liste de tous les tests avec leurs métadonnées
+ * GET /api/export_figma
+ * Récupère la liste de tous les exports avec leurs métadonnées
  */
-app.get('/api/tests', async (req, res) => {
+app.get('/api/export_figma', async (req, res) => {
   try {
-    const testsDir = path.join(__dirname, 'src', 'generated', 'tests')
+    const exportsDir = path.join(__dirname, 'src', 'generated', 'export_figma')
 
     // Vérifier que le dossier existe
-    if (!fs.existsSync(testsDir)) {
+    if (!fs.existsSync(exportsDir)) {
       return res.json([])
     }
 
-    // Lire tous les dossiers de tests
-    const testFolders = fs.readdirSync(testsDir)
+    // Lire tous les dossiers d'exports
+    const exportFolders = fs.readdirSync(exportsDir)
       .filter(name => name.startsWith('node-'))
 
-    // Charger les métadonnées pour chaque test
-    const tests = testFolders.map(testId => {
+    // Charger les métadonnées pour chaque export
+    const exports = exportFolders.map(exportId => {
       try {
-        const testPath = path.join(testsDir, testId)
-        const metadataPath = path.join(testPath, 'metadata.json')
-        const xmlPath = path.join(testPath, 'metadata.xml')
+        const exportPath = path.join(exportsDir, exportId)
+        const metadataPath = path.join(exportPath, 'metadata.json')
+        const xmlPath = path.join(exportPath, 'metadata.xml')
 
         // Lire metadata.json
         let metadata = {}
@@ -517,19 +517,19 @@ app.get('/api/tests', async (req, res) => {
 
         return {
           ...metadata,
-          testId,
+          exportId,
           layerName
         }
       } catch (error) {
-        console.error(`Error loading test ${testId}:`, error)
+        console.error(`Error loading export ${exportId}:`, error)
         return null
       }
-    }).filter(test => test !== null)
+    }).filter(exportFigma => exportFigma !== null)
 
-    res.json(tests)
+    res.json(exports)
   } catch (error) {
-    console.error('Error reading tests:', error)
-    res.status(500).json({ error: 'Failed to read tests' })
+    console.error('Error reading exports:', error)
+    res.status(500).json({ error: 'Failed to read exports' })
   }
 })
 
@@ -592,17 +592,17 @@ app.post('/api/responsive-tests/merge', async (req, res) => {
   }
 
   if (!desktop.size || !desktop.testId || !tablet.size || !tablet.testId || !mobile.size || !mobile.testId) {
-    return res.status(400).json({ error: 'Chaque breakpoint doit avoir size et testId' })
+    return res.status(400).json({ error: 'Chaque breakpoint doit avoir size et exportId' })
   }
 
-  // Valider que les tests existent
-  const testsDir = path.join(__dirname, 'src', 'generated', 'tests')
-  const desktopPath = path.join(testsDir, desktop.testId)
-  const tabletPath = path.join(testsDir, tablet.testId)
-  const mobilePath = path.join(testsDir, mobile.testId)
+  // Valider que les exports existent
+  const exportsDir = path.join(__dirname, 'src', 'generated', 'export_figma')
+  const desktopPath = path.join(exportsDir, desktop.testId)
+  const tabletPath = path.join(exportsDir, tablet.testId)
+  const mobilePath = path.join(exportsDir, mobile.testId)
 
   if (!fs.existsSync(desktopPath) || !fs.existsSync(tabletPath) || !fs.existsSync(mobilePath)) {
-    return res.status(400).json({ error: 'Un ou plusieurs tests n\'existent pas' })
+    return res.status(400).json({ error: 'Un ou plusieurs exports n\'existent pas' })
   }
 
   // Generate unique job ID
@@ -1139,24 +1139,24 @@ app.get('/api/responsive-tests/:mergeId/download', async (req, res) => {
 })
 
 /**
- * GET /api/download/:testId
- * Télécharge un test complet en archive ZIP
+ * GET /api/download/:exportId
+ * Télécharge un export complet en archive ZIP
  */
-app.get('/api/download/:testId', async (req, res) => {
-  const { testId } = req.params
+app.get('/api/download/:exportId', async (req, res) => {
+  const { exportId } = req.params
 
-  if (!testId || !testId.startsWith('node-')) {
-    return res.status(400).json({ error: 'Test ID invalide' })
+  if (!exportId || !exportId.startsWith('node-')) {
+    return res.status(400).json({ error: 'Export ID invalide' })
   }
 
   try {
     const { default: archiver } = await import('archiver')
     const fs = await import('fs')
-    const testPath = path.join(__dirname, 'src', 'generated', 'tests', testId)
+    const exportPath = path.join(__dirname, 'src', 'generated', 'export_figma', exportId)
 
     // Vérifier que le dossier existe
-    if (!fs.existsSync(testPath)) {
-      return res.status(404).json({ error: 'Test non trouvé' })
+    if (!fs.existsSync(exportPath)) {
+      return res.status(404).json({ error: 'Export non trouvé' })
     }
 
     // Créer l'archive
@@ -1171,19 +1171,19 @@ app.get('/api/download/:testId', async (req, res) => {
     })
 
     // Configuration des headers pour le téléchargement
-    res.attachment(`${testId}.zip`)
+    res.attachment(`${exportId}.zip`)
     res.setHeader('Content-Type', 'application/zip')
 
     // Pipe l'archive vers la réponse
     archive.pipe(res)
 
     // Ajouter tout le contenu du dossier au ZIP
-    archive.directory(testPath, false)
+    archive.directory(exportPath, false)
 
     // Finaliser l'archive
     await archive.finalize()
 
-    console.log(`✓ Archive ${testId}.zip créée et envoyée`)
+    console.log(`✓ Archive ${exportId}.zip créée et envoyée`)
   } catch (error) {
     console.error('Erreur lors du téléchargement:', error)
     if (!res.headersSent) {

@@ -724,7 +724,7 @@ export const defaultConfig = {
 ./cli/figma-analyze "https://www.figma.com/design/FILE_ID?node-id=X-Y"
 
 # Check transform stats in analysis.md
-cat src/generated/tests/node-*/analysis.md
+cat src/generated/export_figma/node-*/analysis.md
 ```
 
 ---

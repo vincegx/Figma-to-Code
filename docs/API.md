@@ -183,7 +183,7 @@ event: log
 data: {"type":"log","message":"Processing chunk: Header"}
 
 event: complete
-data: {"type":"complete","result":{"nodeId":"9:2654","testDir":"src/generated/tests/node-9-2654-1735689600"}}
+data: {"type":"complete","result":{"nodeId":"9:2654","testDir":"src/generated/export_figma/node-9-2654-1735689600"}}
 ```
 
 **Event Types:**
@@ -244,7 +244,7 @@ GET /api/analyze/status/job-1735689600-abc123 HTTP/1.1
   "status": "completed",
   "result": {
     "nodeId": "9:2654",
-    "testDir": "src/generated/tests/node-9-2654-1735689600"
+    "testDir": "src/generated/export_figma/node-9-2654-1735689600"
   }
 }
 ```
@@ -267,14 +267,14 @@ GET /api/analyze/status/job-1735689600-abc123 HTTP/1.1
 
 ### Tests
 
-#### GET /api/tests
+#### GET /api/export_figma
 
 List all available tests.
 
 **Request:**
 
 ```http
-GET /api/tests HTTP/1.1
+GET /api/export_figma HTTP/1.1
 ```
 
 **Response (200 OK):**
@@ -321,26 +321,26 @@ GET /api/tests HTTP/1.1
 **Example (curl):**
 
 ```bash
-curl http://localhost:5173/api/tests
+curl http://localhost:5173/api/export_figma
 ```
 
 **Example (JavaScript):**
 
 ```javascript
-const tests = await fetch('/api/tests').then(r => r.json())
+const tests = await fetch('/api/export_figma').then(r => r.json())
 console.log(`Found ${tests.length} tests`)
 ```
 
 ---
 
-#### DELETE /api/tests/:testId
+#### DELETE /api/export_figma/:testId
 
 Delete a test and all its files.
 
 **Request:**
 
 ```http
-DELETE /api/tests/node-9-2654-1735689600 HTTP/1.1
+DELETE /api/export_figma/node-9-2654-1735689600 HTTP/1.1
 ```
 
 **Path Parameters:**
@@ -368,13 +368,13 @@ DELETE /api/tests/node-9-2654-1735689600 HTTP/1.1
 **Example (curl):**
 
 ```bash
-curl -X DELETE http://localhost:5173/api/tests/node-9-2654-1735689600
+curl -X DELETE http://localhost:5173/api/export_figma/node-9-2654-1735689600
 ```
 
 **Example (JavaScript):**
 
 ```javascript
-const response = await fetch(`/api/tests/${testId}`, {
+const response = await fetch(`/api/export_figma/${testId}`, {
   method: 'DELETE'
 })
 
@@ -768,9 +768,9 @@ app.use('/api/', limiter)
 | Endpoint | Rate Limit | Window |
 |----------|------------|--------|
 | POST /api/analyze | 10 requests | 15 min |
-| GET /api/tests | 100 requests | 15 min |
+| GET /api/export_figma | 100 requests | 15 min |
 | GET /api/usage | 100 requests | 15 min |
-| DELETE /api/tests/:id | 20 requests | 15 min |
+| DELETE /api/export_figma/:id | 20 requests | 15 min |
 
 ---
 

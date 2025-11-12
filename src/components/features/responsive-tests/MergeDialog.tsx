@@ -13,8 +13,8 @@ import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import { TestSelectWithPreview } from './TestSelectWithPreview'
 
-interface Test {
-  testId: string
+interface ExportFigma {
+  exportId: string
   layerName?: string
   fileName?: string
   timestamp?: string | number
@@ -29,28 +29,28 @@ interface MergeDialogProps {
 type DialogState = 'form' | 'progress' | 'success'
 
 interface FormData {
-  desktop: { size: string; testId: string }
-  tablet: { size: string; testId: string }
-  mobile: { size: string; testId: string }
+  desktop: { size: string; exportId: string }
+  tablet: { size: string; exportId: string }
+  mobile: { size: string; exportId: string }
 }
 
 export function MergeDialog({ open, onOpenChange, onMergeComplete }: MergeDialogProps) {
   const [state, setState] = useState<DialogState>('form')
-  const [availableTests, setAvailableTests] = useState<Test[]>([])
-  const [loadingTests, setLoadingTests] = useState(true)
+  const [availableExports, setAvailableExports] = useState<ExportFigma[]>([])
+  const [loadingExports, setLoadingExports] = useState(true)
   const [formData, setFormData] = useState<FormData>({
-    desktop: { size: '1440', testId: '' },
-    tablet: { size: '960', testId: '' },
-    mobile: { size: '420', testId: '' }
+    desktop: { size: '1440', exportId: '' },
+    tablet: { size: '960', exportId: '' },
+    mobile: { size: '420', exportId: '' }
   })
   const [logs, setLogs] = useState<string[]>([])
   const [progress, setProgress] = useState(0)
   const [mergeId, setMergeId] = useState<string>('')
 
-  // Load available tests when dialog opens
+  // Load available exports when dialog opens
   useEffect(() => {
     if (open && state === 'form') {
-      loadAvailableTests()
+      loadAvailableExports()
     }
   }, [open, state])
 
@@ -66,30 +66,30 @@ export function MergeDialog({ open, onOpenChange, onMergeComplete }: MergeDialog
     }
   }, [open])
 
-  const loadAvailableTests = async () => {
-    setLoadingTests(true)
+  const loadAvailableExports = async () => {
+    setLoadingExports(true)
     try {
-      const response = await fetch('/api/tests')
+      const response = await fetch('/api/export_figma')
       if (response.ok) {
-        const tests = await response.json()
+        const exports = await response.json()
         // Sort by timestamp descending (most recent first)
-        const sortedTests = tests.sort((a: Test, b: Test) => {
+        const sortedExports = exports.sort((a: ExportFigma, b: ExportFigma) => {
           const dateA = typeof a.timestamp === 'number' ? a.timestamp : new Date(a.timestamp || 0).getTime()
           const dateB = typeof b.timestamp === 'number' ? b.timestamp : new Date(b.timestamp || 0).getTime()
           return dateB - dateA
         })
-        setAvailableTests(sortedTests)
+        setAvailableExports(sortedExports)
       }
     } catch (error) {
-      console.error('Error loading tests:', error)
+      console.error('Error loading exports:', error)
     }
-    setLoadingTests(false)
+    setLoadingExports(false)
   }
 
   const handleSubmit = async () => {
     // Validation
-    if (!formData.desktop.testId || !formData.tablet.testId || !formData.mobile.testId) {
-      alert('Veuillez sélectionner les 3 tests')
+    if (!formData.desktop.exportId || !formData.tablet.exportId || !formData.mobile.exportId) {
+      alert('Veuillez sélectionner les 3 exports')
       return
     }
 
@@ -201,17 +201,17 @@ export function MergeDialog({ open, onOpenChange, onMergeComplete }: MergeDialog
                   />
                 </div>
                 <div className="flex-1">
-                  <Label htmlFor="desktop-test">Test</Label>
+                  <Label htmlFor="desktop-export">Export</Label>
                   <TestSelectWithPreview
-                    id="desktop-test"
-                    tests={availableTests}
-                    value={formData.desktop.testId}
+                    id="desktop-export"
+                    tests={availableExports}
+                    value={formData.desktop.exportId}
                     onValueChange={(value) => setFormData(prev => ({
                       ...prev,
-                      desktop: { ...prev.desktop, testId: value }
+                      desktop: { ...prev.desktop, exportId: value }
                     }))}
-                    placeholder={loadingTests ? "Chargement..." : "Sélectionnez un test"}
-                    disabled={loadingTests}
+                    placeholder={loadingExports ? "Chargement..." : "Sélectionnez un export"}
+                    disabled={loadingExports}
                   />
                 </div>
               </div>
@@ -238,17 +238,17 @@ export function MergeDialog({ open, onOpenChange, onMergeComplete }: MergeDialog
                   />
                 </div>
                 <div className="flex-1">
-                  <Label htmlFor="tablet-test">Test</Label>
+                  <Label htmlFor="tablet-export">Export</Label>
                   <TestSelectWithPreview
-                    id="tablet-test"
-                    tests={availableTests}
-                    value={formData.tablet.testId}
+                    id="tablet-export"
+                    tests={availableExports}
+                    value={formData.tablet.exportId}
                     onValueChange={(value) => setFormData(prev => ({
                       ...prev,
-                      tablet: { ...prev.tablet, testId: value }
+                      tablet: { ...prev.tablet, exportId: value }
                     }))}
-                    placeholder={loadingTests ? "Chargement..." : "Sélectionnez un test"}
-                    disabled={loadingTests}
+                    placeholder={loadingExports ? "Chargement..." : "Sélectionnez un export"}
+                    disabled={loadingExports}
                   />
                 </div>
               </div>
@@ -275,17 +275,17 @@ export function MergeDialog({ open, onOpenChange, onMergeComplete }: MergeDialog
                   />
                 </div>
                 <div className="flex-1">
-                  <Label htmlFor="mobile-test">Test</Label>
+                  <Label htmlFor="mobile-export">Export</Label>
                   <TestSelectWithPreview
-                    id="mobile-test"
-                    tests={availableTests}
-                    value={formData.mobile.testId}
+                    id="mobile-export"
+                    tests={availableExports}
+                    value={formData.mobile.exportId}
                     onValueChange={(value) => setFormData(prev => ({
                       ...prev,
-                      mobile: { ...prev.mobile, testId: value }
+                      mobile: { ...prev.mobile, exportId: value }
                     }))}
-                    placeholder={loadingTests ? "Chargement..." : "Sélectionnez un test"}
-                    disabled={loadingTests}
+                    placeholder={loadingExports ? "Chargement..." : "Sélectionnez un export"}
+                    disabled={loadingExports}
                   />
                 </div>
               </div>

@@ -33,21 +33,21 @@ export const SiteHeader = memo(function SiteHeader({ mcpConnected, mcpChecking }
     }
 
 
-    // Tests list
-    if (path === '/tests') {
+    // Export Figma list
+    if (path === '/export_figma') {
       return [
         { label: 'Dashboard', href: '/', isLast: false },
-        { label: 'Tests', href: '/tests', isLast: true }
+        { label: 'Export Figma', href: '/export_figma', isLast: true }
       ]
     }
 
-    // Test detail
-    if (path.startsWith('/tests/')) {
-      const testId = path.split('/')[2]
+    // Export Figma detail
+    if (path.startsWith('/export_figma/')) {
+      const exportId = path.split('/')[2]
       return [
         { label: 'Dashboard', href: '/', isLast: false },
-        { label: 'Tests', href: '/tests', isLast: false },
-        { label: testId.substring(0, 20) + '...', href: path, isLast: true }
+        { label: 'Export Figma', href: '/export_figma', isLast: false },
+        { label: exportId.substring(0, 20) + '...', href: path, isLast: true }
       ]
     }
 

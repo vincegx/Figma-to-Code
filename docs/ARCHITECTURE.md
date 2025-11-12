@@ -114,7 +114,7 @@ mcp-figma-to-code/
 │   │       └── fr.json
 │   ├── 📁 lib/                      # Utilities
 │   │   └── utils.ts                 # cn() helper, etc.
-│   ├── 📁 generated/tests/          # Output directory (git-ignored)
+│   ├── 📁 generated/export_figma/          # Output directory (git-ignored)
 │   │   └── node-{id}-{ts}/          # Each test folder
 │   ├── App.tsx                      # Root component
 │   └── main.tsx                     # Entry point
@@ -372,7 +372,7 @@ server.js
 │   ├── GET /api/analyze/logs/:jobId (SSE)
 │   ├── GET /api/mcp/health
 │   ├── GET /api/usage
-│   └── DELETE /api/tests/:testId
+│   └── DELETE /api/export_figma/:testId
 └── SPA fallback (index.html)
 ```
 
@@ -724,7 +724,7 @@ Generated HTML includes:
 
 ### HMR & File Watching Strategy
 
-**Challenge:** Vite's HMR system watches all files in `src/` by default. When Figma analyses complete, new files are created in `src/generated/tests/`, triggering full page reloads that lose analysis logs.
+**Challenge:** Vite's HMR system watches all files in `src/` by default. When Figma analyses complete, new files are created in `src/generated/export_figma/`, triggering full page reloads that lose analysis logs.
 
 **Solution:** Selective file watching that separates code transformation from data loading.
 
@@ -750,7 +750,7 @@ Generated HTML includes:
 │                                                             │
 │  ❌ Don't Use              ✅ Use Instead                   │
 │                                                             │
-│  import.meta.glob()        fetch('/api/tests')             │
+│  import.meta.glob()        fetch('/api/export_figma')             │
 │  - Creates file deps       - No file dependency            │
 │  - Triggers HMR            - Manual refresh control        │
 │                                                             │

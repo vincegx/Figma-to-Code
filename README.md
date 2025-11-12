@@ -91,8 +91,8 @@ Both versions generated automatically via CLI `--clean` flag or dashboard.
 **Pages:**
 - **Dashboard** - KPIs, charts, recent activity
 - **Analyze** - Launch new Figma analyses with real-time logs
-- **Tests** - Grid/List view with pagination, sorting, filtering
-- **Test Detail** - 4-tab interface (Preview, Code, Report, Technical)
+- **Export Figma** - Grid/List view with pagination, sorting, filtering
+- **Export Figma Detail** - 4-tab interface (Preview, Code, Report, Technical)
 
 **Features:**
 - Responsive preview with slider (320px → 1920px)
@@ -187,7 +187,7 @@ curl http://localhost:3845/mcp
    ```
 5. Click "Launch Export"
 6. Watch real-time logs in the modal
-7. View results in the **Tests** page
+7. View results in the **Export Figma** page
 
 ---
 
@@ -277,7 +277,7 @@ Puppeteer captures web render at exact Figma dimensions for pixel-perfect compar
 
 ## 📦 Output Structure
 
-Each analysis creates a folder in `src/generated/tests/`:
+Each analysis creates a folder in `src/generated/export_figma/`:
 
 ```
 node-{id}-{timestamp}/
@@ -353,7 +353,7 @@ docker exec mcp-figma-v1 curl http://host.docker.internal:3845/mcp
 ```bash
 # Re-organize images
 docker exec mcp-figma-v1 node scripts/post-processing/organize-images.js \
-  src/generated/tests/node-{id}
+  src/generated/export_figma/node-{id}
 ```
 
 **Component Won't Load?**

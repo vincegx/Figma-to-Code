@@ -80,15 +80,15 @@ export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRef
 
   // Thumbnails paths for 3 breakpoints
   const desktopThumbnail = useMemo(
-    () => `/src/generated/tests/${test.breakpoints.desktop.testId}/img/figma-screenshot.png`,
+    () => `/src/generated/export_figma/${test.breakpoints.desktop.testId}/img/figma-screenshot.png`,
     [test.breakpoints.desktop.testId]
   )
   const tabletThumbnail = useMemo(
-    () => `/src/generated/tests/${test.breakpoints.tablet.testId}/img/figma-screenshot.png`,
+    () => `/src/generated/export_figma/${test.breakpoints.tablet.testId}/img/figma-screenshot.png`,
     [test.breakpoints.tablet.testId]
   )
   const mobileThumbnail = useMemo(
-    () => `/src/generated/tests/${test.breakpoints.mobile.testId}/img/figma-screenshot.png`,
+    () => `/src/generated/export_figma/${test.breakpoints.mobile.testId}/img/figma-screenshot.png`,
     [test.breakpoints.mobile.testId]
   )
 

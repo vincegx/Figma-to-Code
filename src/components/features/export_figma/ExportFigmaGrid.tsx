@@ -1,13 +1,13 @@
 import { memo, useState } from 'react'
-import { TestCard } from './TestCard'
+import { ExportFigmaCard } from './ExportFigmaCard'
 import { SelectionBar } from '@/components/ui/SelectionBar'
 import { useSelection } from '../../../hooks/useSelection'
 import { useConfirm } from '../../../hooks/useConfirm'
 import { useAlert } from '../../../hooks/useAlert'
 import { useTranslation } from '../../../i18n/I18nContext'
 
-interface Test {
-  testId: string
+interface ExportFigma {
+  exportId: string
   fileName?: string
   layerName?: string
   timestamp: string | number
@@ -21,20 +21,20 @@ interface Test {
   }
 }
 
-interface TestsGridProps {
-  tests: Test[]
-  onSelectTest: (testId: string) => void
+interface ExportFigmaGridProps {
+  exports: ExportFigma[]
+  onSelectExport: (exportId: string) => void
   onRefresh?: () => void
 }
 
-const TestsGrid = memo(function TestsGrid({ tests, onSelectTest, onRefresh }: TestsGridProps) {
+const ExportFigmaGrid = memo(function ExportFigmaGrid({ exports, onSelectExport, onRefresh }: ExportFigmaGridProps) {
   const { t } = useTranslation()
   const { confirm, ConfirmDialog } = useConfirm()
   const { alert, AlertDialogComponent } = useAlert()
   const [isDeletingMultiple, setIsDeletingMultiple] = useState(false)
 
   // Use selection hook
-  const selection = useSelection(tests, (test) => test.testId)
+  const selection = useSelection(exports, (exportFigma) => exportFigma.exportId)
 
   const handleDeleteSelected = async () => {
     if (selection.selectedCount === 0) return
@@ -51,8 +51,8 @@ const TestsGrid = memo(function TestsGrid({ tests, onSelectTest, onRefresh }: Te
 
     setIsDeletingMultiple(true)
     try {
-      const deletePromises = Array.from(selection.selectedIds).map(testId =>
-        fetch(`/api/tests/${testId}`, { method: 'DELETE' })
+      const deletePromises = Array.from(selection.selectedIds).map(exportId =>
+        fetch(`/api/export_figma/${exportId}`, { method: 'DELETE' })
       )
       await Promise.all(deletePromises)
       selection.clearSelection()
@@ -87,14 +87,14 @@ const TestsGrid = memo(function TestsGrid({ tests, onSelectTest, onRefresh }: Te
 
         {/* Grid */}
         <div className="grid gap-4 sm:gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))' }}>
-          {tests.map((test) => (
-            <TestCard
-              key={test.testId}
-              test={test}
-              onSelect={() => onSelectTest(test.testId)}
+          {exports.map((exportFigma) => (
+            <ExportFigmaCard
+              key={exportFigma.exportId}
+              exportFigma={exportFigma}
+              onSelect={() => onSelectExport(exportFigma.exportId)}
               onRefresh={onRefresh}
-              isSelected={selection.isSelected(test.testId)}
-              onToggleSelection={() => selection.toggleSelection(test.testId)}
+              isSelected={selection.isSelected(exportFigma.exportId)}
+              onToggleSelection={() => selection.toggleSelection(exportFigma.exportId)}
             />
           ))}
         </div>
@@ -103,4 +103,4 @@ const TestsGrid = memo(function TestsGrid({ tests, onSelectTest, onRefresh }: Te
   )
 })
 
-export default TestsGrid
+export default ExportFigmaGrid

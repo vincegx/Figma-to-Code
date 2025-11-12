@@ -117,7 +117,7 @@ The system processes Figma designs through a 4-phase pipeline:
 
 **Phase 3: Validation (Visual)**
 - Launch Puppeteer with exact dimensions from metadata.xml
-- Navigate to preview URL (?preview=true&test={testId})
+- Navigate to preview URL (?export={exportId})
 - Wait for fonts and images to load
 - Capture web-render.png
 
@@ -163,14 +163,14 @@ src/
 │   ├── features/
 │   │   ├── analysis/         # AnalysisForm (trigger analyses via API)
 │   │   ├── stats/            # UsageBar (real-time API usage widget)
-│   │   └── tests/            # TestCard, TestsGrid, TestsTable, PaginationControls
+│   │   └── export_figma/     # ExportFigmaCard, ExportFigmaGrid, ExportFigmaTable, PaginationControls
 │   ├── pages/
 │   │   ├── DashboardPage.tsx # Main dashboard with MCP status
-│   │   ├── TestsPage.tsx     # Tests list (grid/list view, pagination, sorting)
-│   │   ├── TestDetailPage.tsx# 4-tab detail view (Preview, Code, Report, Technical)
+│   │   ├── ExportFigmaPage.tsx     # Export Figma list (grid/list view, pagination, sorting)
+│   │   ├── ExportFigmaDetailPage.tsx# 4-tab detail view (Preview, Code, Report, Technical)
 │   │   └── AnalyzePage.tsx   # Analysis form page
 │   └── ui/                   # shadcn/ui components (Button, Card, Tabs, etc.)
-├── generated/tests/          # Output directory (git-ignored)
+├── generated/export_figma/   # Output directory (git-ignored)
 │   └── node-{id}-{ts}/       # Each analysis creates a folder
 │       ├── Component.tsx              # Original assembled component
 │       ├── Component-fixed.tsx        # Post-processed (Tailwind version)
@@ -329,15 +329,15 @@ server: {
 
 **Why This Matters:**
 
-- **Problem:** When Figma analyses complete, new files are created in `src/generated/tests/`. Vite's HMR detects these and triggers a full page reload, losing all analysis logs on `/analyze` page.
+- **Problem:** When Figma analyses complete, new files are created in `src/generated/export_figma/`. Vite's HMR detects these and triggers a full page reload, losing all analysis logs on `/analyze` page.
 - **Solution:** Ignore non-code files (HTML, images, JSON, CSS) to prevent HMR triggers.
 - **Critical:** `.tsx` and `.jsx` files are NOT ignored - Vite must watch and transform them for dynamic imports to work.
 
 **Architecture:**
 
-- **Data Loading:** Components use `fetch('/api/tests')` instead of `import.meta.glob` to avoid file dependencies.
+- **Data Loading:** Components use `fetch('/api/export_figma')` instead of `import.meta.glob` to avoid file dependencies.
 - **Refresh Mechanism:** DELETE operations call `onRefresh()` callback instead of `window.location.reload()`.
-- **Component Chain:** TestsPage → TestsGrid/TestsTable → TestCard all pass `reload()` function via `onRefresh` prop.
+- **Component Chain:** ExportFigmaPage → ExportFigmaGrid/ExportFigmaTable → ExportFigmaCard all pass `reload()` function via `onRefresh` prop.
 
 **When modifying dashboard code:**
 - Never add `.tsx` or `.jsx` to `watch.ignored`
@@ -346,8 +346,8 @@ server: {
 
 **Key components:**
 - `AnalysisForm.tsx`: POST /api/analyze → jobId → SSE /api/analyze/logs/:jobId
-- `TestsPage.tsx`: Lists all tests with pagination/sorting
-- `TestDetailPage.tsx`: 4 tabs (Preview, Code, Report, Technical)
+- `ExportFigmaPage.tsx`: Lists all exports with pagination/sorting
+- `ExportFigmaDetailPage.tsx`: 4 tabs (Preview, Code, Report, Technical)
 - `UsageBar.tsx`: GET /api/usage every 30s
 
 **API endpoints:**
@@ -356,8 +356,8 @@ server: {
 - GET /api/analyze/status/:jobId → Job status
 - GET /api/usage → Usage statistics
 - GET /api/mcp/health → MCP server health check
-- DELETE /api/tests/:testId → Delete test
-- GET /api/download/:testId → Download test as ZIP
+- DELETE /api/export_figma/:exportId → Delete export
+- GET /api/download/:exportId → Download export as ZIP
 
 ### Docker Environment
 
@@ -388,10 +388,10 @@ server: {
 
 ### Common Patterns
 
-**Reading test metadata:**
+**Reading export metadata:**
 ```javascript
-const testDir = 'src/generated/tests/node-9-2654-1735689600'
-const metadata = JSON.parse(fs.readFileSync(`${testDir}/metadata.json`, 'utf8'))
+const exportDir = 'src/generated/export_figma/node-9-2654-1735689600'
+const metadata = JSON.parse(fs.readFileSync(`${exportDir}/metadata.json`, 'utf8'))
 // metadata: { nodeId, nodeName, timestamp, stats: { totalNodes, imagesCount, ... } }
 ```
 
@@ -449,7 +449,7 @@ const usage = tracker.getUsage() // { today: { ... }, historical: [...], status:
 - Usage tracking provides estimates based on actual token measurements
 
 ### File Paths
-- All test outputs go to `src/generated/tests/node-{id}-{timestamp}/`
+- All export outputs go to `src/generated/export_figma/node-{id}-{timestamp}/`
 - Images organized with Figma layer names (not hashes)
 - Chunk files use component names from metadata.xml
 - CSS files always use -fixed or -clean suffix to match component
@@ -457,7 +457,7 @@ const usage = tracker.getUsage() // { today: { ... }, historical: [...], status:
 ### Vite HMR Configuration
 - Vite is configured to ignore non-code files in `src/generated/` to prevent page reloads during analysis (see [vite.config.js:8-22](vite.config.js#L8-L22))
 - **Critical:** `.tsx` and `.jsx` files are NOT ignored - Vite must watch and transform them for dynamic imports
-- Components use `fetch('/api/tests')` instead of `import.meta.glob` to avoid file dependencies
+- Components use `fetch('/api/export_figma')` instead of `import.meta.glob` to avoid file dependencies
 - DELETE operations use `onRefresh()` callback instead of `window.location.reload()` for proper refresh
 - See "Working with the Dashboard" section for full architecture details
 

@@ -14,7 +14,7 @@ import { Settings, Palette, Save, RotateCcw, CheckCircle2, AlertCircle, Sparkles
 import { useTranslation } from '../../i18n/I18nContext'
 import { useConfirm } from '../../hooks/useConfirm'
 import AnalysisForm from '../features/analysis/AnalysisForm'
-import { useTests } from '../../hooks/useTests'
+import { useExports } from '../../hooks/useExports'
 
 type Settings = {
   mcp: {
