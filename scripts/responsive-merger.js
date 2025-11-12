@@ -703,7 +703,7 @@ function parseJSXElement(jsxElement) {
  * @param {string} tabletTSX - Tablet TSX content
  * @param {string} mobileTSX - Mobile TSX content
  * @param {object} breakpoints - { desktop, tablet, mobile } widths
- * @returns {Promise<string>} - Merged responsive TSX
+ * @returns {Promise<{code: string, stats: object}>} - Merged responsive TSX and transformation stats
  */
 async function mergeTSXStructure(desktopTSX, tabletTSX, mobileTSX, breakpoints) {
   try {
@@ -746,12 +746,19 @@ async function mergeTSXStructure(desktopTSX, tabletTSX, mobileTSX, breakpoints) 
     // Generate merged TSX code from modified Desktop AST
     const mergedCode = generateDefault(context.desktopAST).code;
 
-    return mergedCode;
+    // Return both code and stats for metadata
+    return {
+      code: mergedCode,
+      stats: context.stats || {}
+    };
 
   } catch (err) {
     log.warning(`Failed to merge TSX structures: ${err.message}`);
     log.info('Falling back to Desktop TSX only');
-    return desktopTSX;
+    return {
+      code: desktopTSX,
+      stats: { error: err.message }
+    };
   }
 }
 
@@ -1007,7 +1014,9 @@ async function mergeComponent(componentName, desktop, tablet, mobile, outputDir,
   );
 
   // 2. Merge TSX with responsive classNames (using pipeline)
-  let mergedTSX = await mergeTSXStructure(desktopTSX, tabletTSX, mobileTSX, breakpoints);
+  const mergeResult = await mergeTSXStructure(desktopTSX, tabletTSX, mobileTSX, breakpoints);
+  let mergedTSX = mergeResult.code;
+  const transformStats = mergeResult.stats;
 
   // 3. Detect and inject helper functions if needed
   if (helpersCache && helpersCache.size > 0) {
@@ -1038,6 +1047,9 @@ async function mergeComponent(componentName, desktop, tablet, mobile, outputDir,
   );
 
   log.success(`${componentName}.tsx + .css (responsive)`);
+
+  // Return transformation stats for metadata
+  return transformStats;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1076,7 +1088,9 @@ async function generatePage(components, desktop, tablet, mobile, outputDir, brea
 
   try {
     // Merge TSX structures with responsive classNames (using pipeline)
-    const mergedTSX = await mergeTSXStructure(desktopTSX, tabletTSX, mobileTSX, breakpoints);
+    const mergeResult = await mergeTSXStructure(desktopTSX, tabletTSX, mobileTSX, breakpoints);
+    const mergedTSX = mergeResult.code;
+    const pageStats = mergeResult.stats;
 
     // Parse the merged TSX file
     const ast = babelParse(mergedTSX, {
@@ -1176,10 +1190,14 @@ async function generatePage(components, desktop, tablet, mobile, outputDir, brea
     fs.writeFileSync(path.join(outputDir, 'Page.tsx'), finalCode);
     console.log('   ✅ Page.tsx generated with full structure');
 
+    // Return transformation stats for metadata
+    return pageStats;
+
   } catch (error) {
     console.error(`   ⚠️  Failed to parse Component-clean.tsx: ${error.message}`);
     console.log('   Falling back to simple structure');
     generateSimplePage(components, outputDir);
+    return { error: error.message };
   }
 }
 
@@ -1326,6 +1344,9 @@ function copyImages(desktop, mergedDir) {
 // ═══════════════════════════════════════════════════════════════
 
 function generateMetadata(mergedDir, components, desktop, tablet, mobile, stats) {
+  // Aggregate transformation statistics
+  const transformationSummary = aggregateTransformationStats(stats.componentStats, stats.pageStats);
+
   const metadata = {
     timestamp: new Date().toISOString(),
     mergeId: path.basename(mergedDir),
@@ -1356,7 +1377,16 @@ function generateMetadata(mergedDir, components, desktop, tablet, mobile, stats)
     },
     components: components,
     mainFile: 'Page.tsx',
-    mergeStats: stats
+    mergeStats: {
+      successCount: stats.successCount,
+      errorCount: stats.errorCount,
+      totalComponents: stats.totalComponents
+    },
+    transformations: transformationSummary,
+    detailedStats: {
+      components: stats.componentStats,
+      page: stats.pageStats
+    }
   };
 
   fs.writeFileSync(
@@ -1365,6 +1395,100 @@ function generateMetadata(mergedDir, components, desktop, tablet, mobile, stats)
   );
 
   log.success('responsive-metadata.json generated\n');
+}
+
+/**
+ * Aggregate transformation statistics from all components and page
+ * Returns summary suitable for dashboard display
+ */
+function aggregateTransformationStats(componentStats = {}, pageStats = {}) {
+  const summary = {
+    totalElementsProcessed: 0,
+    totalClassesMerged: 0,
+    matchingStrategy: {
+      byDataName: 0,
+      byPosition: 0
+    },
+    conflicts: {
+      elementsWithConflicts: 0,
+      totalConflicts: 0
+    },
+    elementsMerged: 0,
+    horizontalScrollAdded: 0,
+    resetsApplied: 0,
+    visibilityClassesInjected: 0,
+    missingElements: []
+  };
+
+  // Aggregate component stats
+  Object.values(componentStats).forEach(stats => {
+    if (stats.error) return; // Skip components with errors
+
+    // Detect-missing-elements
+    if (stats['detect-missing-elements']) {
+      summary.totalElementsProcessed += stats['detect-missing-elements'].elementsDetected || 0;
+      const elements = stats['detect-missing-elements'].elements;
+      if (elements) {
+        // Handle both string and array formats
+        if (typeof elements === 'string') {
+          summary.missingElements.push(...elements.split(',').map(e => e.trim()).filter(Boolean));
+        } else if (Array.isArray(elements)) {
+          summary.missingElements.push(...elements);
+        }
+      }
+    }
+
+    // Normalize-identical-classes
+    if (stats['normalize-identical-classes']) {
+      summary.totalElementsProcessed += stats['normalize-identical-classes'].elementsProcessed || 0;
+    }
+
+    // Detect-class-conflicts
+    if (stats['detect-class-conflicts']) {
+      summary.conflicts.elementsWithConflicts += stats['detect-class-conflicts'].elementsWithConflicts || 0;
+      summary.conflicts.totalConflicts += stats['detect-class-conflicts'].totalConflicts || 0;
+      summary.matchingStrategy.byDataName += stats['detect-class-conflicts'].matchedByDataName || 0;
+      summary.matchingStrategy.byPosition += stats['detect-class-conflicts'].matchedByPosition || 0;
+    }
+
+    // Merge-desktop-first
+    if (stats['merge-desktop-first']) {
+      summary.elementsMerged += stats['merge-desktop-first'].elementsMerged || 0;
+      summary.totalClassesMerged += stats['merge-desktop-first'].totalClassesMerged || 0;
+    }
+
+    // Add-horizontal-scroll
+    if (stats['add-horizontal-scroll']) {
+      summary.horizontalScrollAdded += stats['add-horizontal-scroll'].parentsUpdated || 0;
+    }
+
+    // Reset-dependent-properties
+    if (stats['reset-dependent-properties']) {
+      summary.resetsApplied += stats['reset-dependent-properties'].totalResetsAdded || 0;
+    }
+
+    // Inject-visibility-classes
+    if (stats['inject-visibility-classes']) {
+      summary.visibilityClassesInjected += stats['inject-visibility-classes'].visibilityClassesInjected || 0;
+    }
+  });
+
+  // Add page stats
+  if (pageStats && !pageStats.error) {
+    if (pageStats['detect-class-conflicts']) {
+      summary.matchingStrategy.byDataName += pageStats['detect-class-conflicts'].matchedByDataName || 0;
+      summary.matchingStrategy.byPosition += pageStats['detect-class-conflicts'].matchedByPosition || 0;
+    }
+    if (pageStats['merge-desktop-first']) {
+      summary.elementsMerged += pageStats['merge-desktop-first'].elementsMerged || 0;
+      summary.totalClassesMerged += pageStats['merge-desktop-first'].totalClassesMerged || 0;
+    }
+  }
+
+  // Deduplicate missing elements
+  summary.missingElements = [...new Set(summary.missingElements)];
+
+  return summary;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1420,6 +1544,7 @@ async function mergeResponsive() {
   log.phase('MERGING COMPONENTS');
   let successCount = 0;
   let errorCount = 0;
+  const componentStats = {}; // Collect stats for each component
 
   const breakpointWidths = {
     desktop: desktop.width,
@@ -1429,10 +1554,12 @@ async function mergeResponsive() {
 
   for (const componentName of orderedComponents) {
     try {
-      await mergeComponent(componentName, desktop, tablet, mobile, subcomponentsDir, breakpointWidths, helpersCache);
+      const stats = await mergeComponent(componentName, desktop, tablet, mobile, subcomponentsDir, breakpointWidths, helpersCache);
+      componentStats[componentName] = stats;
       successCount++;
     } catch (error) {
       log.error(`Error merging ${componentName}: ${error.message}`);
+      componentStats[componentName] = { error: error.message };
       errorCount++;
     }
   }
@@ -1441,17 +1568,19 @@ async function mergeResponsive() {
 
   // 9. Generate Page.tsx from Component-clean.tsx with responsive classNames
   log.phase('GENERATING PAGE FILES');
-  await generatePage(orderedComponents, desktop, tablet, mobile, mergedDir, breakpointWidths);
+  const pageStats = await generatePage(orderedComponents, desktop, tablet, mobile, mergedDir, breakpointWidths);
 
   // 10. Generate Page.css with imports + parent CSS
   generatePageCSS(orderedComponents, desktop, tablet, mobile, mergedDir, breakpointWidths);
 
-  // 11. Generate metadata
+  // 11. Generate metadata with transformation statistics
   log.task('📄', 'Generating metadata');
   generateMetadata(mergedDir, orderedComponents, desktop, tablet, mobile, {
     successCount,
     errorCount,
-    totalComponents: orderedComponents.length
+    totalComponents: orderedComponents.length,
+    componentStats,
+    pageStats
   });
 
   // 12. Generate Puck-ready components
