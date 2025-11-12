@@ -1616,7 +1616,29 @@ async function mergeResponsive() {
     console.error(error.stack);
   }
 
-  // 13. Summary
+  // 13. Generate Visual Report
+  log.phase('GENERATING VISUAL REPORT');
+  try {
+    const { execSync } = await import('child_process');
+    const reportScriptPath = path.join(__dirname, 'reporting', 'generate-responsive-report.js');
+    execSync(`node "${reportScriptPath}" "${mergedDir}"`, { stdio: 'inherit' });
+    log.success('Visual report generated successfully\n');
+  } catch (error) {
+    log.error(`Error generating visual report: ${error.message}`);
+  }
+
+  // 14. Generate Technical Analysis
+  log.phase('GENERATING TECHNICAL ANALYSIS');
+  try {
+    const { execSync } = await import('child_process');
+    const analysisScriptPath = path.join(__dirname, 'reporting', 'generate-responsive-analysis.js');
+    execSync(`node "${analysisScriptPath}" "${mergedDir}"`, { stdio: 'inherit' });
+    log.success('Technical analysis generated successfully\n');
+  } catch (error) {
+    log.error(`Error generating technical analysis: ${error.message}`);
+  }
+
+  // 15. Summary
   console.log(`\n${colors.bright}${colors.bgGreen} ${colors.reset}`);
   console.log(`${colors.bright}${colors.green}┌${'─'.repeat(60)}┐${colors.reset}`);
   console.log(`${colors.bright}${colors.green}│  ✅ RESPONSIVE MERGE COMPLETE${' '.repeat(28)}│${colors.reset}`);

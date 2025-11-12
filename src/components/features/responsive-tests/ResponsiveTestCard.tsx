@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, memo } from 'react'
-import { Trash2, ChevronRight, Loader2, Monitor, Tablet, Smartphone, Edit } from 'lucide-react'
+import { Trash2, ChevronRight, Loader2, Monitor, Tablet, Smartphone, Edit, ExternalLink } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -24,9 +24,13 @@ export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRef
   const navigate = useNavigate()
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const handleOpenPreview = useCallback((e: React.MouseEvent) => {
+  const handleCardClick = useCallback(() => {
+    navigate(`/responsive-tests/${test.mergeId}`)
+  }, [test.mergeId, navigate])
+
+  const handleDemoLive = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    window.location.href = `/preview?responsive=${test.mergeId}`
+    window.open(`/preview?responsive=${test.mergeId}`, '_blank')
   }, [test.mergeId])
 
   const handleOpenPuck = useCallback((e: React.MouseEvent) => {
@@ -110,7 +114,7 @@ export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRef
 
       <Card
         className="group cursor-pointer overflow-hidden transition-shadow duration-200 hover:shadow-lg"
-        onClick={handleOpenPreview}
+        onClick={handleCardClick}
         style={{ contain: 'layout style paint' }}
         data-state={isSelected ? "selected" : undefined}
       >
@@ -249,16 +253,26 @@ export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRef
               size="sm"
               className="gap-2"
               onClick={handleOpenPuck}
+              title="Edit in Puck"
             >
               <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={handleDemoLive}
+              title="Open Live Demo"
+            >
+              <ExternalLink className="h-4 w-4" />
             </Button>
             <Button
               variant="default"
               size="sm"
               className="flex-1 gap-2"
-              onClick={handleOpenPreview}
+              onClick={handleCardClick}
             >
-              <span>{t('responsive.card.view_preview')}</span>
+              <span>View Details</span>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

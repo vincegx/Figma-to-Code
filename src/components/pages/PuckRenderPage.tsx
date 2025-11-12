@@ -13,6 +13,9 @@ export default function PuckRenderPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Détecter si on est dans un iframe
+  const isInIframe = window.self !== window.top;
+
   useEffect(() => {
     if (!mergeId) {
       setError('Merge ID is required');
@@ -121,26 +124,28 @@ export default function PuckRenderPage() {
   // Puck Render
   return (
     <div className="min-h-screen bg-background">
-      {/* Header with back and edit buttons */}
-      <div className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="flex items-center justify-between px-4 py-3">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/responsive-tests">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Tests
-            </Link>
-          </Button>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground font-mono">{mergeId}</span>
-            <Button variant="default" size="sm" asChild>
-              <Link to={`/responsive-tests/${mergeId}/puck-editor`}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
+      {/* Header with back and edit buttons - masqué dans iframe */}
+      {!isInIframe && (
+        <div className="sticky top-0 z-50 bg-background border-b border-border">
+          <div className="flex items-center justify-between px-4 py-3">
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/responsive-tests">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Tests
               </Link>
             </Button>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground font-mono">{mergeId}</span>
+              <Button variant="default" size="sm" asChild>
+                <Link to={`/responsive-tests/${mergeId}/puck-editor`}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Render Puck content */}
       {config && data ? (

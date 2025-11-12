@@ -6,12 +6,14 @@ import DashboardPage from './components/pages/DashboardPage'
 import TestsPage from './components/pages/TestsPage'
 import TestDetailPage from './components/pages/TestDetailPage'
 import ResponsiveTestsPage from './components/pages/ResponsiveTestsPage'
+import ResponsiveTestDetailPage from './components/pages/ResponsiveTestDetailPage'
 import PuckEditorPage from './components/pages/PuckEditorPage'
 import PuckRenderPage from './components/pages/PuckRenderPage'
 import SettingsPage from './components/pages/SettingsPage'
 import { Switch } from './components/ui/switch'
 import { Label } from './components/ui/label'
 import { ToggleGroup, ToggleGroupItem } from './components/ui/toggle-group'
+import { ResponsiveViewportControls } from './components/common/ResponsiveViewportControls'
 
 function App() {
   return (
@@ -32,6 +34,7 @@ function App() {
           <Route path="/tests" element={<TestsPage />} />
           <Route path="/tests/:testId" element={<TestDetailWrapper />} />
           <Route path="/responsive-tests" element={<ResponsiveTestsPage />} />
+          <Route path="/responsive-tests/:mergeId" element={<ResponsiveTestDetailPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
 
@@ -280,7 +283,6 @@ function ResponsivePreviewMode({ mergeId }: { mergeId: string }) {
   const [viewportWidth, setViewportWidth] = useState(1440)
   const [mode, setMode] = useState<'responsive' | 'full'>('responsive')
   const [showNavbar, setShowNavbar] = useState(false)
-  const [activeBreakpoint, setActiveBreakpoint] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
 
   useEffect(() => {
     // Load metadata
@@ -314,19 +316,6 @@ function ResponsivePreviewMode({ mergeId }: { mergeId: string }) {
     }
   }, [mergeId])
 
-  // Update active breakpoint based on viewport width
-  useEffect(() => {
-    if (!metadata) return
-
-    const breakpoints = metadata.breakpoints
-    if (viewportWidth <= breakpoints.mobile.width) {
-      setActiveBreakpoint('mobile')
-    } else if (viewportWidth <= breakpoints.tablet.width) {
-      setActiveBreakpoint('tablet')
-    } else {
-      setActiveBreakpoint('desktop')
-    }
-  }, [viewportWidth, metadata])
 
   // Auto-hide navbar after 5 seconds when visible
   useEffect(() => {
@@ -339,8 +328,6 @@ function ResponsivePreviewMode({ mergeId }: { mergeId: string }) {
   if (!Component || !metadata) {
     return <div>Loading...</div>
   }
-
-  const { desktop, tablet, mobile } = metadata.breakpoints
 
   return (
     <div style={{
@@ -416,70 +403,13 @@ function ResponsivePreviewMode({ mergeId }: { mergeId: string }) {
                 </div>
               </div>
 
-              {/* Bottom row: Breakpoint controls */}
-              <div className="flex items-center justify-between">
-                {/* Preset breakpoint buttons */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground mr-2">Presets:</span>
-                  <button
-                    onClick={() => setViewportWidth(desktop.width)}
-                    className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                      activeBreakpoint === 'desktop'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-background hover:bg-accent border border-border'
-                    }`}
-                  >
-                    💻 Desktop ({desktop.width}px)
-                  </button>
-                  <button
-                    onClick={() => setViewportWidth(tablet.width)}
-                    className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                      activeBreakpoint === 'tablet'
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-background hover:bg-accent border border-border'
-                    }`}
-                  >
-                    📱 Tablet ({tablet.width}px)
-                  </button>
-                  <button
-                    onClick={() => setViewportWidth(mobile.width)}
-                    className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                      activeBreakpoint === 'mobile'
-                        ? 'bg-green-500 text-white'
-                        : 'bg-background hover:bg-accent border border-border'
-                    }`}
-                  >
-                    📱 Mobile ({mobile.width}px)
-                  </button>
-                </div>
-
-                {/* Viewport slider */}
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground">320px</span>
-                  <input
-                    type="range"
-                    min="320"
-                    max="1920"
-                    value={viewportWidth}
-                    onChange={(e) => setViewportWidth(parseInt(e.target.value))}
-                    className="w-48 h-2 bg-background rounded-lg appearance-none cursor-pointer slider"
-                    style={{
-                      background: `linear-gradient(to right,
-                        #10b981 0%,
-                        #10b981 ${((mobile.width - 320) / (1920 - 320)) * 100}%,
-                        #f97316 ${((mobile.width - 320) / (1920 - 320)) * 100}%,
-                        #f97316 ${((tablet.width - 320) / (1920 - 320)) * 100}%,
-                        #3b82f6 ${((tablet.width - 320) / (1920 - 320)) * 100}%,
-                        #3b82f6 100%
-                      )`
-                    }}
-                  />
-                  <span className="text-xs text-muted-foreground">1920px</span>
-                  <span className="text-xs font-mono font-bold min-w-[60px] text-right">
-                    {viewportWidth}px
-                  </span>
-                </div>
-              </div>
+              {/* Bottom row: Responsive Controls */}
+              <ResponsiveViewportControls
+                viewportWidth={viewportWidth}
+                onViewportChange={setViewportWidth}
+                title="Responsive Preview"
+                showColoredBreakpoints={true}
+              />
             </div>
           </div>
         </div>

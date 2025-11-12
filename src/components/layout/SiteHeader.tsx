@@ -51,6 +51,24 @@ export const SiteHeader = memo(function SiteHeader({ mcpConnected, mcpChecking }
       ]
     }
 
+    // Responsive tests list
+    if (path === '/responsive-tests') {
+      return [
+        { label: 'Dashboard', href: '/', isLast: false },
+        { label: 'Responsive Tests', href: '/responsive-tests', isLast: true }
+      ]
+    }
+
+    // Responsive test detail
+    if (path.startsWith('/responsive-tests/')) {
+      const mergeId = path.split('/')[2]
+      return [
+        { label: 'Dashboard', href: '/', isLast: false },
+        { label: 'Responsive Tests', href: '/responsive-tests', isLast: false },
+        { label: mergeId.substring(0, 20) + '...', href: path, isLast: true }
+      ]
+    }
+
     return [{ label: 'Dashboard', href: '/', isLast: true }]
   }
 

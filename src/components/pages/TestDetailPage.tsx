@@ -26,6 +26,9 @@ import { Separator } from '@/components/ui/separator'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { ReportViewer } from '../common/ReportViewer'
+import { TechnicalAnalysisViewer } from '../common/TechnicalAnalysisViewer'
+import { ResponsiveViewportControls, BreakpointPreset } from '../common/ResponsiveViewportControls'
 import {
   ExternalLink,
   Download,
@@ -415,11 +418,11 @@ export default function TestDetail({ testId, onBack }: TestDetailProps) {
           </TabsContent>
 
           <TabsContent value="report" className="mt-0 max-w-full">
-            <ReportTab testId={testId} />
+            <ReportViewer reportPath={`/src/generated/tests/${testId}/report.html`} />
           </TabsContent>
 
           <TabsContent value="technical" className="mt-0 max-w-full">
-            <TechnicalAnalysisTab analysis={analysis} />
+            <TechnicalAnalysisViewer analysis={analysis} />
           </TabsContent>
         </main>
       </Tabs>
@@ -495,12 +498,13 @@ function PreviewTab({ testId, dimensions }: PreviewTabProps) {
     }
   }
 
-  const presets = [
-    { name: 'Mobile', width: 375, icon: Smartphone },
-    { name: 'Tablet', width: 768, icon: Tablet },
-    ...(dimensions ? [{ name: 'Native', width: dimensions.width, icon: Maximize }] : []),
-    { name: 'Desktop', width: 1200, icon: Monitor },
-    { name: 'Large', width: 1920, icon: Maximize }
+  // Custom presets avec couleurs pour ResponsiveViewportControls
+  const customPresets: BreakpointPreset[] = [
+    { name: 'Mobile', width: 375, icon: Smartphone, color: '#10b981' }, // green-500
+    { name: 'Tablet', width: 768, icon: Tablet, color: '#f97316' },      // orange-500
+    ...(dimensions ? [{ name: 'Native', width: dimensions.width, icon: Maximize, color: '#8b5cf6' }] : []), // violet-500
+    { name: 'Desktop', width: 1200, icon: Monitor, color: '#3b82f6' },   // blue-500
+    { name: 'Large', width: 1920, icon: Maximize, color: '#6366f1' }     // indigo-500
   ].sort((a, b) => a.width - b.width)
 
   if (loading) {
@@ -528,63 +532,14 @@ function PreviewTab({ testId, dimensions }: PreviewTabProps) {
       {/* Responsive Controls - Sticky */}
       <div className="sticky top-0 z-10 bg-muted/50 py-4 backdrop-blur">
         <div className="w-full px-4 sm:px-6">
-          <Card className="p-3 sm:p-4">
-            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <h3 className="font-semibold text-sm sm:text-base">{t('detail.preview.responsive_test')}</h3>
-              <div className="flex items-center gap-2">
-                {dimensions && viewportWidth === dimensions.width && (
-                  <Badge variant="default" className="gap-1 text-xs">
-                    <Maximize className="h-3 w-3" />
-                    {t('detail.preview.native')}
-                  </Badge>
-                )}
-                <Badge variant="secondary" className="font-mono text-xs">
-                  {viewportWidth}px
-                </Badge>
-              </div>
-            </div>
-
-            {/* Presets */}
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              {presets.map((preset) => {
-                const Icon = preset.icon
-                const isActive = viewportWidth === preset.width
-                return (
-                  <button
-                    key={preset.name}
-                    onClick={() => setViewportWidth(preset.width)}
-                    className={`flex items-center gap-1.5 rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm transition-colors ${
-                      isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted hover:bg-muted/80'
-                    }`}
-                  >
-                    <Icon className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
-                    <span className="hidden sm:inline">{preset.name}</span>
-                    <span className={`text-xs ${isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                      {preset.width}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Slider */}
-            <div className="space-y-2">
-              <Slider
-                value={[viewportWidth]}
-                onValueChange={(value: number[]) => setViewportWidth(value[0])}
-                min={320}
-                max={1920}
-                step={1}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>320px</span>
-                <span>1920px</span>
-              </div>
-            </div>
-          </Card>
+          <ResponsiveViewportControls
+            viewportWidth={viewportWidth}
+            onViewportChange={setViewportWidth}
+            title={t('detail.preview.responsive_test')}
+            customPresets={customPresets}
+            showNativeBadge={dimensions !== undefined && viewportWidth === dimensions.width}
+            nativeLabel={t('detail.preview.native')}
+          />
         </div>
       </div>
 
@@ -849,82 +804,3 @@ function CodeTab({ testId }: CodeTabProps) {
   )
 }
 
-/**
- * TAB 3: Report - Rapport HTML interactif
- */
-interface ReportTabProps {
-  testId: string
-}
-
-function ReportTab({ testId }: ReportTabProps) {
-  return (
-    <Card className="overflow-hidden">
-      <iframe
-        src={`/src/generated/tests/${testId}/report.html`}
-        className="w-full border-0"
-        style={{ minHeight: 'calc(100vh - 300px)' }}
-        title="Test Analysis Report"
-      />
-    </Card>
-  )
-}
-
-/**
- * TAB 4: Technical Analysis - Rapport markdown technique
- */
-interface TechnicalAnalysisTabProps {
-  analysis: string
-}
-
-function TechnicalAnalysisTab({ analysis }: TechnicalAnalysisTabProps) {
-  const { t } = useTranslation()
-
-  if (!analysis) {
-    return (
-      <Card className="p-12 text-center">
-        <div className="mb-4 text-6xl">📄</div>
-        <h3 className="mb-2 text-xl font-semibold">{t('detail.technical.no_analysis_title')}</h3>
-        <p className="text-muted-foreground">{t('detail.technical.no_analysis_text')}</p>
-      </Card>
-    )
-  }
-
-  return (
-    <div className="space-y-4 max-w-full">
-      {/* Info banner */}
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertDescription>
-          <p className="mb-1 font-semibold">{t('detail.technical.banner_title')}</p>
-          <p className="text-sm">{t('detail.technical.banner_text')}</p>
-        </AlertDescription>
-      </Alert>
-
-      {/* Markdown code viewer */}
-      <Card className="overflow-hidden min-w-0">
-        <div className="flex items-center justify-between border-b bg-muted px-6 py-3">
-          <h3 className="font-semibold">analysis.md</h3>
-          <span className="text-xs text-muted-foreground">
-            {analysis.split('\n').length} lignes
-          </span>
-        </div>
-
-        <ScrollArea className="h-[600px]">
-          <SyntaxHighlighter
-            language="markdown"
-            style={vscDarkPlus}
-            customStyle={{
-              margin: 0,
-              borderRadius: 0,
-              fontSize: '13px',
-              lineHeight: '1.5'
-            }}
-            showLineNumbers
-          >
-            {analysis}
-          </SyntaxHighlighter>
-        </ScrollArea>
-      </Card>
-    </div>
-  )
-}

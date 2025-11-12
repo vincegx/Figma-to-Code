@@ -1,5 +1,5 @@
 import { memo, useState } from 'react'
-import { Eye, Trash2, Loader2, Edit } from 'lucide-react'
+import { Eye, Trash2, Loader2, Edit, ExternalLink } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -166,7 +166,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
               <TableRow
                 key={test.mergeId}
                 className="cursor-pointer relative overflow-visible"
-                onClick={() => window.location.href = `/preview?responsive=${test.mergeId}`}
+                onClick={() => navigate(`/responsive-tests/${test.mergeId}`)}
                 onMouseEnter={() => setHoveredRowId(test.mergeId)}
                 onMouseLeave={() => setHoveredRowId(null)}
                 data-state={isSelected ? "selected" : undefined}
@@ -340,10 +340,11 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation()
-                        window.location.href = `/preview?responsive=${test.mergeId}`
+                        window.open(`/preview?responsive=${test.mergeId}`, '_blank')
                       }}
+                      title="Open Live Demo"
                     >
-                      <Eye className="h-4 w-4" />
+                      <ExternalLink className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
@@ -352,6 +353,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                         e.stopPropagation()
                         navigate(`/responsive-tests/${test.mergeId}/puck-editor`)
                       }}
+                      title="Edit in Puck"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -360,6 +362,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                       size="sm"
                       onClick={(e) => handleDelete(test, e)}
                       disabled={deletingId === test.mergeId}
+                      title="Delete"
                     >
                       {deletingId === test.mergeId ? (
                         <Loader2 className="h-4 w-4 animate-spin" />

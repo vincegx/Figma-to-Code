@@ -937,6 +937,112 @@ app.get('/api/responsive-tests/:mergeId/images/:imageName', (req, res) => {
 })
 
 /**
+ * GET /api/responsive-tests/:mergeId/data
+ * Récupère les données d'un merge responsive (metadata + analysis)
+ */
+app.get('/api/responsive-tests/:mergeId/data', async (req, res) => {
+  const { mergeId } = req.params
+
+  if (!mergeId || !mergeId.startsWith('responsive-merger-')) {
+    return res.status(400).json({ error: 'Merge ID invalide' })
+  }
+
+  try {
+    const mergeDir = path.join(
+      __dirname,
+      'src/generated/responsive-screens',
+      mergeId
+    )
+
+    // Vérifier que le dossier existe
+    if (!fs.existsSync(mergeDir)) {
+      return res.status(404).json({ error: 'Merge non trouvé' })
+    }
+
+    // Load responsive-metadata.json
+    const metadataPath = path.join(mergeDir, 'responsive-metadata.json')
+    if (!fs.existsSync(metadataPath)) {
+      return res.status(404).json({ error: 'Métadonnées non trouvées' })
+    }
+    const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'))
+
+    // Load technical-analysis.md (optionnel)
+    let analysis = ''
+    const analysisPath = path.join(mergeDir, 'technical-analysis.md')
+    if (fs.existsSync(analysisPath)) {
+      analysis = fs.readFileSync(analysisPath, 'utf8')
+    }
+
+    res.json({ metadata, analysis })
+  } catch (error) {
+    console.error('Erreur lors du chargement des données:', error)
+    res.status(500).json({
+      error: 'Erreur lors du chargement des données',
+      message: error.message
+    })
+  }
+})
+
+/**
+ * GET /api/responsive-tests/:mergeId/download
+ * Télécharge un merge responsive complet en archive ZIP (sans fichiers puck)
+ */
+app.get('/api/responsive-tests/:mergeId/download', async (req, res) => {
+  const { mergeId } = req.params
+
+  if (!mergeId || !mergeId.startsWith('responsive-merger-')) {
+    return res.status(400).json({ error: 'Merge ID invalide' })
+  }
+
+  try {
+    const { default: archiver } = await import('archiver')
+    const mergePath = path.join(__dirname, 'src', 'generated', 'responsive-screens', mergeId)
+
+    // Vérifier que le dossier existe
+    if (!fs.existsSync(mergePath)) {
+      return res.status(404).json({ error: 'Merge non trouvé' })
+    }
+
+    // Créer l'archive
+    const archive = archiver('zip', {
+      zlib: { level: 9 } // Niveau de compression maximum
+    })
+
+    // Gérer les erreurs de l'archive
+    archive.on('error', (err) => {
+      console.error('Erreur lors de la création du ZIP:', err)
+      res.status(500).json({ error: 'Erreur lors de la création de l\'archive' })
+    })
+
+    // Configuration des headers pour le téléchargement
+    res.attachment(`${mergeId}.zip`)
+    res.setHeader('Content-Type', 'application/zip')
+
+    // Pipe l'archive vers la réponse
+    archive.pipe(res)
+
+    // Ajouter tout le contenu du dossier au ZIP, SAUF les fichiers puck
+    archive.glob('**/*', {
+      cwd: mergePath,
+      ignore: ['puck/**', 'puck.config.tsx', 'puck-data.json']
+    })
+
+    // Finaliser l'archive
+    await archive.finalize()
+
+    console.log(`✓ Archive ${mergeId}.zip créée et envoyée (sans fichiers puck)`)
+  } catch (error) {
+    console.error('Erreur lors du téléchargement:', error)
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'Erreur lors du téléchargement',
+        message: error.message
+      })
+    }
+  }
+})
+
+/**
  * GET /api/download/:testId
  * Télécharge un test complet en archive ZIP
  */
