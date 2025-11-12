@@ -31,12 +31,12 @@
     }
   },
   "home": {
-    "title": "Analyses Figma",
+    "title": "exports Figma",
     "description": "Convertissez vos designs Figma en composants React + Tailwind CSS pixel-perfect. Le système utilise un pipeline AST avec 11 transformations pour assurer la fidélité visuelle maximale.",
     "badge_react": "React 19",
     "badge_tailwind": "Tailwind CSS",
     "badge_ast": "AST Pipeline",
-    "new_analysis": "Nouvelle Analyse",
+    "new_analysis": "Nouvelle export",
     "loading_exports": "Chargement des exports...",
     "view": "Vue :",
     "sort_by": "Trier par :",
@@ -89,7 +89,7 @@
     "helper": "💡 Collez l'URL complète de votre design Figma avec le paramètre",
     "error_title": "URL invalide",
     "status": {
-      "launching": "🚀 Lancement de l'analyse...",
+      "launching": "🚀 Lancement de l'export...",
       "in_progress": "● En cours...",
       "success": "✓ Terminé avec succès",
       "failed": "✗ Échec",
@@ -118,7 +118,7 @@
       "preview": "🎨 Aperçu",
       "code": "💻 Code",
       "report": "📊 Rapport",
-      "technical": "🔧 Analyse Technique"
+      "technical": "🔧 export Technique"
     },
     "actions": {
       "preview": "Aperçu",
@@ -167,7 +167,7 @@
       "title": "Test Analysis Report"
     },
     "technical": {
-      "no_analysis_title": "Analyse technique non disponible",
+      "no_analysis_title": "export technique non disponible",
       "no_analysis_text": "Le fichier analysis.md n'a pas pu être chargé",
       "banner_title": "Rapport technique complet",
       "banner_text": "Documentation détaillée de toutes les transformations appliquées : AST processing, optimisations Tailwind, gestion des assets, etc."
@@ -175,7 +175,7 @@
   },
   "usage": {
     "title": "Utilisation API",
-    "analyses_today": "analyses aujourd'hui",
+    "exports_today": "Exports aujourd'hui",
     "credits": "crédits",
     "status": {
       "safe": "✓ Sûr",
@@ -195,7 +195,7 @@
       "calls": "appels",
       "no_calls": "Aucun appel API aujourd'hui",
       "last_days": "7 derniers jours",
-      "analyses": "analyses",
+      "exports": "exports",
       "rate_limit_info": "Limite Figma confirmée : 15 requêtes/minute (protection automatique)",
       "daily_limit_estimated": "Limite quotidienne estimée à ~4M tokens (texte + images inclus)"
     }
@@ -256,7 +256,7 @@
   "dashboard": {
     "intro": {
       "title": "Tableau de Bord",
-      "subtitle": "Vue d'ensemble de vos exports Figma et merges responsive. Suivez votre progression, analysez les transformations et surveillez l'utilisation de l'API."
+      "subtitle": "Vue d'ensemble de vos exports Figma et merges responsive. Suivez votre progression, exportez les transformations et surveillez l'utilisation de l'API."
     },
     "quick_actions": {
       "figma_export": {

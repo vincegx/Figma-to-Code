@@ -31,7 +31,7 @@
     }
   },
   "home": {
-    "title": "Figma Analyses",
+    "title": "Figma exports",
     "description": "Convert your Figma designs into pixel-perfect React + Tailwind CSS components. The system uses an AST pipeline with 11 transformations to ensure maximum visual fidelity.",
     "badge_react": "React 19",
     "badge_tailwind": "Tailwind CSS",
@@ -175,7 +175,7 @@
   },
   "usage": {
     "title": "API Usage",
-    "analyses_today": "analyses today",
+    "exports_today": "exports today",
     "credits": "credits",
     "status": {
       "safe": "✓ Safe",
@@ -195,7 +195,7 @@
       "calls": "calls",
       "no_calls": "No API calls today yet",
       "last_days": "Last 7 Days",
-      "analyses": "analyses",
+      "exports": "exports",
       "rate_limit_info": "Figma confirmed limit: 15 requests/minute (automatic protection)",
       "daily_limit_estimated": "Daily limit estimated at ~4M tokens (text + images included)"
     }
