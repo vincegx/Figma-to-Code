@@ -2,8 +2,6 @@
 
 Bienvenue dans la documentation complète de **MCP Figma to Code** - l'outil qui transforme vos designs Figma en composants React + Tailwind CSS pixel-perfect, prêts pour la production.
 
-![Banner](/docs/images/image01.png)
-
 ## Introduction
 
 **MCP Figma to Code** est un outil destiné aux développeurs React et Tailwind CSS qui souhaitent accélérer leur workflow de développement en convertissant automatiquement des designs Figma en code production-ready.
@@ -42,8 +40,6 @@ Avant de commencer, installez:
 - **Docker Compose** (version 2.0+)
 - **Figma Desktop** (app native, pas le navigateur)
 - Un compte **Figma Professional** (pour activer le MCP Server)
-
-![Installation](/docs/images/image02.png)
 
 ### Installation en 3 étapes
 
@@ -92,6 +88,8 @@ L'application démarre sur **http://localhost:5173**
 ## Interface Dashboard
 
 Le dashboard est organisé en 5 sections principales accessibles via la sidebar gauche.
+
+![Dashboard](/docs/images/image01.png)
 
 ### Navigation principale
 
@@ -144,6 +142,8 @@ Passez la souris dessus pour voir :
 
 La fonctionnalité principale : convertir un design Figma en composant React.
 
+![Liste des exports Figma](/docs/images/image02.png)
+
 ### Workflow complet
 
 #### 1. Obtenir l'URL Figma
@@ -159,7 +159,7 @@ https://www.figma.com/design/FILE_KEY?node-id=123-456
 
 Le paramètre `node-id` est **obligatoire**. Format accepté : `123-456` ou `123:456`
 
-![Usage](/docs/images/image04.png)
+![Formulaire d'export Figma](/docs/images/image03.png)
 
 #### 2. Lancer l'export
 
@@ -185,11 +185,15 @@ Le paramètre `node-id` est **obligatoire**. Format accepté : `123-456` ou `123
 
 Cliquez sur **View details** pour accéder à la page de détails avec 3 onglets :
 
+![Page de détails d'un export](/docs/images/image04.png)
+
 ##### Onglet Preview
 - **Aperçu visuel** : Le composant rendu dans un iframe
 - **Presets responsive** : Native, Mobile (375px), Tablet (768px), Desktop (1440px), Large (1920px)
 - **Slider personnalisé** : Testez n'importe quelle largeur
 - **DevTools** : Inspectez les classes Tailwind avec F12
+
+![Onglet Preview](/docs/images/image05.png)
 
 ##### Onglet Code
 - **Navigation fichiers** : Arborescence de tous les fichiers générés
@@ -198,10 +202,14 @@ Cliquez sur **View details** pour accéder à la page de détails avec 3 onglets
 - **Syntax highlighting** : Code coloré avec react-syntax-highlighter
 - **Copy button** : Copier le code en un clic
 
+![Onglet Code](/docs/images/image07.png)
+
 ##### Onglet Report
 - **Comparaison visuelle** : Figma screenshot vs Web render côte à côte
 - **Métriques de fidélité** : Analyse des différences visuelles
 - **Rapport technique** : Fichier analysis.md avec détails des transformations
+
+![Onglet Report](/docs/images/image06.png)
 
 ### Modes de processing
 
@@ -226,6 +234,8 @@ Pour les designs complexes (> 50 nodes ou code invalide) :
 ## Responsive Merge
 
 Créez un composant responsive en fusionnant 3 exports pour Desktop, Tablet et Mobile.
+
+![Liste des merges responsives](/docs/images/image08.png)
 
 ### Principe
 
@@ -257,6 +267,8 @@ Exportez chacun via la page **Export Figma** (voir section précédente).
 
 > **Astuce :** Nommez vos frames de manière cohérente (ex: "HomePage-Desktop", "HomePage-Tablet", "HomePage-Mobile")
 
+![Modes d'affichage grid/list](/docs/images/image09.png)
+
 #### 2. Lancer le merge
 
 1. Allez sur **Responsive Merges**
@@ -268,6 +280,8 @@ Exportez chacun via la page **Export Figma** (voir section précédente).
 4. Cliquez sur **Lancer le merge**
 5. Suivez la progression (logs temps réel)
 
+![Popup de création d'un merge responsive](/docs/images/image10.png)
+
 #### 3. Résultat
 
 Une fois le merge terminé, vous obtenez :
@@ -275,6 +289,8 @@ Une fois le merge terminé, vous obtenez :
 - **Breakpoints optimisés** : 1024px et 768px (configurables)
 - **CSS consolidé** : Dédupliqué et optimisé
 - **Rapport de merge** : Détails des différences détectées
+
+![Édition d'un merge responsive](/docs/images/image11.png)
 
 ### Utilisation du composant mergé
 
@@ -426,6 +442,12 @@ Rapport visuel comparant Figma vs Web :
 - Métriques de différence
 - Zones de divergence (si détectées)
 
+## Documentation
+
+Cette documentation est accessible directement dans le dashboard avec navigation sticky et support bilingue FR/EN.
+
+![Page de documentation](/docs/images/image12.png)
+
 ## Architecture
 
 Comprendre comment fonctionne le système sous le capot.
@@ -437,8 +459,6 @@ Le système repose sur une **pipeline en 4 phases** qui convertit un design Figm
 ```
 Phase 1: Extraction (MCP) → Phase 2: Processing (AST) → Phase 3: Validation → Phase 4: Reports
 ```
-
-![Configuration](/docs/images/image03.png)
 
 Chaque phase a un rôle précis et peut fonctionner de manière indépendante.
 

@@ -19,6 +19,7 @@ services:
       - ./src:/app/src
       - ./scripts:/app/scripts
       - ./cli:/app/cli
+      - ./docs:/app/docs
       - ./.claude:/app/.claude
       - ./server.js:/app/server.js
       - ./vite.config.js:/app/vite.config.js

@@ -2,8 +2,6 @@
 
 Welcome to the complete documentation for **MCP Figma to Code** - the tool that transforms your Figma designs into pixel-perfect, production-ready React + Tailwind CSS components.
 
-![Banner](/docs/images/image01.png)
-
 ## Introduction
 
 **MCP Figma to Code** is a tool designed for React and Tailwind CSS developers who want to accelerate their development workflow by automatically converting Figma designs into production-ready code.
@@ -93,6 +91,8 @@ The application starts at **http://localhost:5173**
 
 The dashboard is organized into 5 main sections accessible via the left sidebar.
 
+![Dashboard](/docs/images/image01.png)
+
 ### Main Navigation
 
 #### Dashboard (home page)
@@ -144,6 +144,8 @@ Hover over it to see:
 
 The main feature: convert a Figma design into a React component.
 
+![Figma exports list](/docs/images/image02.png)
+
 ### Complete Workflow
 
 #### 1. Get the Figma URL
@@ -159,7 +161,7 @@ https://www.figma.com/design/FILE_KEY?node-id=123-456
 
 The `node-id` parameter is **required**. Accepted format: `123-456` or `123:456`
 
-![Usage](/docs/images/image04.png)
+![Figma export form](/docs/images/image03.png)
 
 #### 2. Launch the export
 
@@ -185,11 +187,15 @@ The `node-id` parameter is **required**. Accepted format: `123-456` or `123:456`
 
 Click **View details** to access the detail page with 3 tabs:
 
+![Export detail page](/docs/images/image04.png)
+
 ##### Preview Tab
 - **Visual preview**: The component rendered in an iframe
 - **Responsive presets**: Native, Mobile (375px), Tablet (768px), Desktop (1440px), Large (1920px)
 - **Custom slider**: Test any width
 - **DevTools**: Inspect Tailwind classes with F12
+
+![Preview tab](/docs/images/image05.png)
 
 ##### Code Tab
 - **File navigation**: Tree of all generated files
@@ -198,10 +204,14 @@ Click **View details** to access the detail page with 3 tabs:
 - **Syntax highlighting**: Colored code with react-syntax-highlighter
 - **Copy button**: Copy code in one click
 
+![Code tab](/docs/images/image07.png)
+
 ##### Report Tab
 - **Visual comparison**: Figma screenshot vs Web render side-by-side
 - **Fidelity metrics**: Visual difference analysis
 - **Technical report**: analysis.md file with transformation details
+
+![Report tab](/docs/images/image06.png)
 
 ### Processing Modes
 
@@ -226,6 +236,8 @@ For complex designs (> 50 nodes or invalid code):
 ## Responsive Merge
 
 Create a responsive component by merging 3 exports for Desktop, Tablet, and Mobile.
+
+![Responsive merges list](/docs/images/image08.png)
 
 ### Principle
 
@@ -255,6 +267,8 @@ In Figma, create 3 separate frames for the same component:
 
 Export each via the **Export Figma** page (see previous section).
 
+![Grid/List view modes](/docs/images/image09.png)
+
 > **Tip:** Name your frames consistently (e.g., "HomePage-Desktop", "HomePage-Tablet", "HomePage-Mobile")
 
 #### 2. Launch the merge
@@ -268,6 +282,8 @@ Export each via the **Export Figma** page (see previous section).
 4. Click **Launch merge**
 5. Follow the progress (real-time logs)
 
+![Responsive merge popup](/docs/images/image10.png)
+
 #### 3. Result
 
 Once the merge is complete, you get:
@@ -275,6 +291,8 @@ Once the merge is complete, you get:
 - **Optimized breakpoints**: 1024px and 768px (configurable)
 - **Consolidated CSS**: Deduplicated and optimized
 - **Merge report**: Details of detected differences
+
+![Merge detail page](/docs/images/image11.png)
 
 ### Using the merged component
 
@@ -295,6 +313,22 @@ Click **Edit with Puck** to:
 - Adjust breakpoints
 - Modify CSS classes
 - Export the result
+
+## Documentation
+
+This documentation is accessible directly in the dashboard with sticky navigation and bilingual support (FR/EN).
+
+![Documentation page](/docs/images/image12.png)
+
+### Features
+
+- **Sticky Navigation**: Left sidebar with automatic scrolling to active section
+- **Bilingual Content**: Switch between French and English based on your preferences
+- **Code Examples**: Copy code snippets with one click
+- **Search**: Navigate quickly via left navigation
+- **Markdown Rendering**: Full GitHub Flavored Markdown support with syntax highlighting
+
+The documentation is generated from Markdown files and automatically synced with the application interface.
 
 ## Generated Files
 
