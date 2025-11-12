@@ -277,6 +277,48 @@ Phase 4: OUTPUT (Reports)
 └─ report.html (visual comparison)
 ```
 
+### Responsive Merge Pipeline
+
+**Multi-Screen Fusion** - Combines 3 Figma exports into one responsive component:
+
+```
+Phase 1: DETECTION & VALIDATION
+├─ Validate 3 exports have modular/ directory
+├─ Detect common components across breakpoints
+├─ Extract component order from Desktop metadata.xml
+└─ Extract helper functions from Desktop
+
+Phase 2: COMPONENT MERGING (Responsive AST)
+├─ Parse Desktop, Tablet, Mobile TSX → AST
+├─ Run 7 responsive transforms (priority 10-70):
+│  ├─ Detect missing elements
+│  ├─ Normalize className formatting
+│  ├─ Detect className conflicts
+│  ├─ Merge Desktop-first (base + overrides)
+│  ├─ Add horizontal scroll
+│  ├─ Reset conflicting properties
+│  └─ Inject visibility classes
+├─ Inject helper functions if needed
+└─ Fix image paths (./img/ → ../img/)
+
+Phase 3: CSS MERGING
+├─ Desktop styles (baseline, no media query)
+├─ Tablet overrides (@media max-width: 960px)
+├─ Mobile overrides (@media max-width: 420px)
+└─ Compile responsive classes to pure CSS
+
+Phase 4: PAGE GENERATION
+├─ Merge Page structure from 3 Component-clean.tsx
+├─ Replace <div data-name> with <ComponentName />
+├─ Generate Page.tsx + Page.css
+├─ Generate Puck components (visual editor)
+└─ Create visual report + technical analysis
+```
+
+**Output:** `responsive-merger-{timestamp}/` with `Page.tsx`, `Subcomponents/`, `puck/`, and reports.
+
+**For details:** See [Responsive Merge Guide](docs/RESPONSIVE_MERGE.md)
+
 ### Key Concepts
 
 **Adaptive Processing:**
@@ -299,6 +341,8 @@ Puppeteer captures web render at exact Figma dimensions for pixel-perfect compar
 
 ## 📦 Output Structure
 
+### Single-Screen Export
+
 Each analysis creates a folder in `src/generated/export_figma/`:
 
 ```
@@ -317,6 +361,42 @@ node-{id}-{timestamp}/
 ├── figma-render.png             # Reference screenshot
 └── web-render.png               # Validation screenshot
 ```
+
+### Responsive Merge (Multi-Screen)
+
+Each responsive merge creates a folder in `src/generated/responsive-screens/`:
+
+```
+responsive-merger-{timestamp}/
+├── Page.tsx                      # Main page component
+├── Page.css                      # Consolidated CSS with media queries
+├── Subcomponents/                # Modular responsive components
+│   ├── Header.tsx                # Desktop-first with responsive classes
+│   ├── Header.css                # Media queries: tablet/mobile
+│   ├── Hero.tsx
+│   ├── Hero.css
+│   ├── Footer.tsx
+│   └── Footer.css
+├── img/                          # Images (from Desktop export)
+│   ├── logo.png
+│   └── hero-bg.jpg
+├── puck/                         # Puck visual editor
+│   ├── components/               # Puck-wrapped components
+│   │   ├── Header.tsx
+│   │   ├── Hero.tsx
+│   │   └── Footer.tsx
+│   ├── config.tsx                # Puck configuration
+│   └── data.json                 # Initial Puck data
+├── responsive-metadata.json      # Merge stats + transformation details
+├── responsive-analysis.md        # Technical analysis report
+└── responsive-report.html        # Visual comparison (Desktop/Tablet/Mobile)
+```
+
+**Key files:**
+- `Page.tsx` - Main page importing all subcomponents
+- `Subcomponents/*.tsx` - Modular components with responsive classNames
+- `*.css` - Pure CSS with media queries (no Tailwind dependencies)
+- `puck/` - Visual editor for drag-and-drop customization
 
 ---
 
