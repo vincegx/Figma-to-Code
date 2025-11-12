@@ -65,6 +65,25 @@ const CSS_MAPPINGS = {
   'gap-0': 'gap: 0;',
   'p-0': 'padding: 0;',
   'm-0': 'margin: 0;',
+
+  // Justify & Align
+  'justify-center': 'justify-content: center;',
+  'justify-between': 'justify-content: space-between;',
+  'justify-start': 'justify-content: flex-start;',
+  'justify-end': 'justify-content: flex-end;',
+  'items-center': 'align-items: center;',
+  'items-start': 'align-items: flex-start;',
+  'items-end': 'align-items: flex-end;',
+
+  // Overflow
+  'overflow-x-auto': 'overflow-x: auto;',
+  'overflow-x-scroll': 'overflow-x: scroll;',
+  'overflow-x-hidden': 'overflow-x: hidden;',
+  'overflow-y-auto': 'overflow-y: auto;',
+  'overflow-y-scroll': 'overflow-y: scroll;',
+  'overflow-y-hidden': 'overflow-y: hidden;',
+  'overflow-auto': 'overflow: auto;',
+  'overflow-hidden': 'overflow: hidden;',
 };
 
 /**
@@ -143,17 +162,43 @@ function classToCSS(className) {
   }
 
   // Gérer les classes custom avec valeurs arbitraires
-  // Ex: max-md:w-custom-360, max-md:min-w-custom-181
-  const customMatch = baseClass.match(/^(min-w|max-w|w|min-h|max-h|h)-custom-(.+)$/);
+  // Ex: max-md:w-custom-360, max-md:min-w-custom-181, max-md:gap-custom-10
+  const customMatch = baseClass.match(/^(min-w|max-w|w|min-h|max-h|h|gap)-custom-(.+)$/);
   if (customMatch) {
     const [, property, value] = customMatch;
-    const cssProperty = property.replace(/-/g, '-'); // min-w → min-width
+
+    // Map shorthand to full CSS property name
+    const propertyMap = {
+      'min-w': 'min-width',
+      'max-w': 'max-width',
+      'w': 'width',
+      'min-h': 'min-height',
+      'max-h': 'max-height',
+      'h': 'height',
+      'gap': 'gap'
+    };
+
+    const cssProperty = propertyMap[property] || property;
     const cssValue = value.replace(/dot/g, '.'); // 360dot5 → 360.5
 
     return {
       breakpoint,
       selector: className,
       css: `${cssProperty}: ${cssValue}px;`
+    };
+  }
+
+  // Gérer les classes gap standard Tailwind (gap-0, gap-1, gap-6, etc.)
+  // Tailwind scale: 0.25rem per unit (gap-6 = 1.5rem = 24px)
+  const gapMatch = baseClass.match(/^gap-(\d+)$/);
+  if (gapMatch) {
+    const [, value] = gapMatch;
+    const pxValue = parseInt(value) * 4; // Tailwind: 1 unit = 4px (0.25rem)
+
+    return {
+      breakpoint,
+      selector: className,
+      css: `gap: ${pxValue}px;`
     };
   }
 

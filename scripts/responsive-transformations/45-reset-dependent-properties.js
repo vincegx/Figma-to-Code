@@ -204,6 +204,7 @@ function resetDimensionProperties(className) {
  *   Mobile: max-md:basis-0 max-md:grow (largeur flexible)
  *
  * Le w-custom-133 entre en conflit avec basis-0 grow
+ * Solution: w-auto permet à flexbox de contrôler la largeur
  */
 function resetWidthConflicts(className) {
   const classes = className.split(/\s+/);
@@ -219,8 +220,9 @@ function resetWidthConflicts(className) {
     );
 
     if (hasFixedWidth) {
-      // Reset la largeur fixe pour permettre flex
-      resets.push('max-md:w-full');
+      // w-auto permet à flex-basis et flex-grow de contrôler la largeur
+      // Permet plusieurs éléments par ligne avec flex-wrap
+      resets.push('max-md:w-auto');
     }
   }
 
@@ -370,6 +372,48 @@ function resetChildrenOfFlexColParents(className, parentHasFlexCol) {
 }
 
 /**
+ * RÈGLE 7: Reset Flexbox Properties for Fixed Width on Mobile
+ *
+ * Cas scroll horizontal (People liste):
+ *   Desktop: basis-0 grow w-full (layout flexible)
+ *   Mobile: w-custom-54dot286 (largeur fixe pour scroll horizontal)
+ *
+ * Problème: basis-0 + grow restent actifs et overrident la largeur fixe
+ *
+ * Solution: Quand mobile a max-md:w-custom-X, reset basis et grow
+ * IMPORTANT: Ne PAS modifier shrink - si desktop a shrink-0, mobile doit garder shrink-0
+ *            pour le scroll horizontal (items ne doivent pas rétrécir)
+ */
+function resetFlexboxForFixedWidth(className) {
+  const classes = className.split(/\s+/);
+  const resets = [];
+
+  // Détecter si mobile a une largeur fixe explicite
+  const hasMobileFixedWidth = classes.some(c => c.startsWith('max-md:w-custom-'));
+
+  if (hasMobileFixedWidth) {
+    // Si desktop a basis-*, reset sur mobile
+    if (classes.some(c => c.startsWith('basis-') && !c.startsWith('max-md:'))) {
+      if (!classes.includes('max-md:basis-auto')) {
+        resets.push('max-md:basis-auto');
+      }
+    }
+
+    // Si desktop a grow, reset sur mobile
+    if (classes.includes('grow')) {
+      if (!classes.includes('max-md:grow-0')) {
+        resets.push('max-md:grow-0');
+      }
+    }
+
+    // NE PAS modifier shrink - important pour horizontal scroll
+    // Si desktop a shrink-0 et mobile a largeur fixe, garder shrink-0 sur mobile
+  }
+
+  return resets;
+}
+
+/**
  * Main execution function - TWO PASS APPROACH
  *
  * PASSE 1: Collecter tous les parents avec max-md:flex-col
@@ -427,7 +471,8 @@ export function execute(context) {
         ...resetWidthConflicts(currentClassName),
         ...simplifyMobileConstraints(currentClassName),
         ...handleFlexWrapMobile(currentClassName),
-        ...resetChildrenOfFlexColParents(currentClassName, parentHasFlexCol)
+        ...resetChildrenOfFlexColParents(currentClassName, parentHasFlexCol),
+        ...resetFlexboxForFixedWidth(currentClassName)
       ];
 
       // Dédupliquer et filtrer les resets déjà présents

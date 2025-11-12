@@ -290,27 +290,59 @@ async function getComponentOrder(desktopDir, commonComponents) {
     return commonComponents.sort();
   }
 
+  // Normalize component name: "title section" → "Titlesection"
+  function normalizeComponentName(name) {
+    return name
+      .split(/[\s_-]+/)  // Split on spaces, underscores, hyphens
+      .map((word) => {
+        // Capitalize first letter of each word
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join('');
+  }
+
   try {
     const xmlContent = fs.readFileSync(metadataXmlPath, 'utf8');
     const parsed = await parseStringPromise(xmlContent);
 
     // Extract component names in order from XML
-    const nodes = parsed.root?.node || [];
+    // The root element is <frame>, so parsed.frame contains the root frame object
     const orderedNames = [];
 
-    function extractNames(nodeList) {
-      for (const node of nodeList) {
-        const name = node.$?.name;
-        if (name && commonComponents.includes(name)) {
-          orderedNames.push(name);
+    function extractNames(node) {
+      if (!node) return;
+
+      const rawName = node.$?.name;
+      if (rawName) {
+        // Normalize the name to match component file names
+        const normalized = normalizeComponentName(rawName);
+
+        // Check if this normalized name matches any component
+        if (commonComponents.includes(normalized) && !orderedNames.includes(normalized)) {
+          orderedNames.push(normalized);
         }
-        if (node.node) {
-          extractNames(node.node);
-        }
+      }
+
+      // Recursively process all child types as arrays
+      // Each child type (node, frame, instance, text) is an array
+      if (Array.isArray(node.instance)) {
+        node.instance.forEach(child => extractNames(child));
+      }
+      if (Array.isArray(node.frame)) {
+        node.frame.forEach(child => extractNames(child));
+      }
+      if (Array.isArray(node.node)) {
+        node.node.forEach(child => extractNames(child));
+      }
+      if (Array.isArray(node.text)) {
+        node.text.forEach(child => extractNames(child));
       }
     }
 
-    extractNames(nodes);
+    // Start extraction from the root <frame> element (single object, not array)
+    if (parsed.frame) {
+      extractNames(parsed.frame);
+    }
 
     // Add any missing components alphabetically at the end
     const missing = commonComponents.filter(c => !orderedNames.includes(c));
@@ -1425,12 +1457,29 @@ async function mergeResponsive() {
   // 12. Generate Puck-ready components
   log.phase('GENERATING PUCK COMPONENTS');
   try {
+    // Extract actual component order from generated Page.tsx
+    const pageTsxPath = path.join(mergedDir, 'Page.tsx');
+    const pageTsxContent = fs.readFileSync(pageTsxPath, 'utf8');
+
+    // Extract component usage order from JSX (e.g., <Titlesection />, <AccountOverview />)
+    const componentMatches = [...pageTsxContent.matchAll(/<(\w+)\s*(?:className|\/)/g)];
+    const actualOrder = componentMatches
+      .map(m => m[1])
+      .filter(name => orderedComponents.includes(name) && name !== 'div');
+
+    // Remove duplicates while preserving order
+    const uniqueActualOrder = [...new Set(actualOrder)];
+
+    console.log(`🎨 Generating Puck components in actual Page.tsx order:\n`);
+    uniqueActualOrder.forEach((name, idx) => console.log(`   ${idx + 1}. ${name}`));
+    console.log('');
+
     const { generatePuckComponents } = await import('./puck-generator.js');
     await generatePuckComponents({
       sourceDir: subcomponentsDir,
       outputDir: path.join(mergedDir, 'puck'),
       imagesDir: path.join(mergedDir, 'img'),
-      components: orderedComponents
+      components: uniqueActualOrder
     });
     log.success('Puck components generated successfully\n');
   } catch (error) {

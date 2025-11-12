@@ -55,20 +55,157 @@ function normalizeClassName(className) {
   return new Set(className.trim().split(/\s+/).filter(c => c.length > 0));
 }
 
-function findClassNameByDataName(ast, targetDataName) {
-  let found = null;
+function extractDataName(jsxElement) {
+  const dataNameAttr = jsxElement?.openingElement?.attributes.find(
+    attr => attr.type === 'JSXAttribute' && attr.name?.name === 'data-name'
+  );
+  return dataNameAttr?.value?.value || null;
+}
+
+function getElementType(jsxElement) {
+  return jsxElement?.openingElement?.name?.name || null;
+}
+
+function buildElementPath(path) {
+  // Find nearest parent with data-name
+  let currentPath = path.parentPath;
+  while (currentPath) {
+    if (currentPath.node.type === 'JSXElement') {
+      const parentDataName = extractDataName(currentPath.node);
+      if (parentDataName) {
+        // Get index among siblings
+        const siblings = currentPath.node.children.filter(c => c.type === 'JSXElement');
+        const siblingIndex = siblings.indexOf(path.node);
+        return `${parentDataName}>[${siblingIndex}]`;
+      }
+    }
+    currentPath = currentPath.parentPath;
+  }
+  return null;
+}
+
+function buildElementIndex(ast) {
+  const index = new Map();
+
   traverseDefault(ast, {
     JSXElement(path) {
-      if (found) return;
-      const dataNameAttr = path.node.openingElement.attributes.find(
-        attr => attr.type === 'JSXAttribute' && attr.name?.name === 'data-name'
-      );
-      if (dataNameAttr?.value?.value === targetDataName) {
-        found = extractClassName(path.node);
+      const elementPath = buildElementPath(path);
+      if (elementPath) {
+        index.set(elementPath, {
+          node: path.node,
+          className: extractClassName(path.node),
+          elementType: getElementType(path.node)
+        });
       }
     }
   });
-  return found;
+
+  return index;
+}
+
+/**
+ * Classes that represent dimensional/layout properties that often differ across breakpoints
+ * These are excluded from core similarity calculation
+ */
+const DIMENSIONAL_PATTERNS = [
+  /^w-/,           // width
+  /^min-w-/,       // min-width
+  /^max-w-/,       // max-width
+  /^h-/,           // height
+  /^min-h-/,       // min-height
+  /^max-h-/,       // max-height
+  /^basis-/,       // flex-basis
+  /^grow$/,        // flex-grow
+  /^grow-/,        // flex-grow-*
+  /^shrink$/,      // flex-shrink
+  /^shrink-/,      // flex-shrink-*
+  /^gap-/,         // gap
+  /^p-/,           // padding
+  /^px-/,          // padding-x
+  /^py-/,          // padding-y
+  /^m-/,           // margin
+  /^mx-/,          // margin-x
+  /^my-/           // margin-y
+];
+
+function isDimensionalClass(className) {
+  return DIMENSIONAL_PATTERNS.some(pattern => pattern.test(className));
+}
+
+function calculateSimilarity(className1, className2) {
+  const classes1 = normalizeClassName(className1);
+  const classes2 = normalizeClassName(className2);
+
+  if (classes1.size === 0 && classes2.size === 0) return 100;
+  if (classes1.size === 0 || classes2.size === 0) return 0;
+
+  // Calculate total similarity
+  const intersection = [...classes1].filter(c => classes2.has(c));
+  const union = new Set([...classes1, ...classes2]);
+  const totalSimilarity = (intersection.length / union.size) * 100;
+
+  // Calculate core similarity (excluding dimensional properties)
+  const coreClasses1 = [...classes1].filter(c => !isDimensionalClass(c));
+  const coreClasses2 = [...classes2].filter(c => !isDimensionalClass(c));
+
+  if (coreClasses1.length === 0 && coreClasses2.length === 0) {
+    // Both have only dimensional classes, use total similarity
+    return totalSimilarity;
+  }
+
+  const coreSet1 = new Set(coreClasses1);
+  const coreSet2 = new Set(coreClasses2);
+  const coreIntersection = coreClasses1.filter(c => coreSet2.has(c));
+  const coreUnion = new Set([...coreClasses1, ...coreClasses2]);
+
+  if (coreUnion.size === 0) {
+    return totalSimilarity;
+  }
+
+  const coreSimilarity = (coreIntersection.length / coreUnion.size) * 100;
+
+  // Use the higher of total or core similarity
+  // This allows matching elements with same structure but different dimensions
+  return Math.max(totalSimilarity, coreSimilarity);
+}
+
+function findMatchingElement(ast, dataName, elementPath, desktopClassName, elementType) {
+  // Level 1: Match by data-name (most reliable)
+  if (dataName) {
+    let found = null;
+    traverseDefault(ast, {
+      JSXElement(path) {
+        if (found) return;
+        const targetDataName = extractDataName(path.node);
+        if (targetDataName === dataName) {
+          found = extractClassName(path.node);
+        }
+      }
+    });
+    return found;
+  }
+
+  // Level 2: Match by position + similarity (for elements without data-name)
+  if (elementPath && desktopClassName && elementType) {
+    const index = buildElementIndex(ast);
+    const candidate = index.get(elementPath);
+
+    if (candidate) {
+      // Check element type matches
+      if (candidate.elementType === elementType) {
+        // Check class similarity
+        const similarity = calculateSimilarity(desktopClassName, candidate.className);
+
+        // Require 80% similarity to accept match
+        if (similarity >= 80) {
+          return candidate.className;
+        }
+      }
+    }
+  }
+
+  // Level 3: No match found
+  return null;
 }
 
 function detectConflictsForElement(mobileClasses, tabletClasses, desktopClasses) {
@@ -122,21 +259,44 @@ export function execute(context) {
 
   const classConflicts = new Map();
   let totalConflicts = 0;
+  let matchedByDataName = 0;
+  let matchedByPosition = 0;
 
   traverseDefault(desktopAST, {
     JSXElement(path) {
-      const dataNameAttr = path.node.openingElement.attributes.find(
-        attr => attr.type === 'JSXAttribute' && attr.name?.name === 'data-name'
+      // Extract element info from desktop
+      const dataName = extractDataName(path.node);
+      const desktopClassName = extractClassName(path.node);
+      const elementType = getElementType(path.node);
+      const elementPath = buildElementPath(path);
+
+      if (!desktopClassName) return;
+
+      // Try to find matching elements using hybrid strategy
+      const tabletClassName = findMatchingElement(
+        tabletAST,
+        dataName,
+        elementPath,
+        desktopClassName,
+        elementType
       );
 
-      const dataName = dataNameAttr?.value?.value;
-      if (!dataName) return;
+      const mobileClassName = findMatchingElement(
+        mobileAST,
+        dataName,
+        elementPath,
+        desktopClassName,
+        elementType
+      );
 
-      const desktopClassName = extractClassName(path.node);
-      const tabletClassName = findClassNameByDataName(tabletAST, dataName);
-      const mobileClassName = findClassNameByDataName(mobileAST, dataName);
+      if (!tabletClassName || !mobileClassName) return;
 
-      if (!desktopClassName || !tabletClassName || !mobileClassName) return;
+      // Track matching strategy
+      if (dataName) {
+        matchedByDataName++;
+      } else if (elementPath) {
+        matchedByPosition++;
+      }
 
       const desktopClasses = normalizeClassName(desktopClassName);
       const tabletClasses = normalizeClassName(tabletClassName);
@@ -145,7 +305,9 @@ export function execute(context) {
       const conflicts = detectConflictsForElement(mobileClasses, tabletClasses, desktopClasses);
 
       if (conflicts.length > 0) {
-        classConflicts.set(dataName, conflicts);
+        // Use data-name if available, otherwise use element path
+        const key = dataName || elementPath;
+        classConflicts.set(key, conflicts);
         totalConflicts += conflicts.length;
       }
     }
@@ -155,6 +317,8 @@ export function execute(context) {
 
   return {
     elementsWithConflicts: classConflicts.size,
-    totalConflicts
+    totalConflicts,
+    matchedByDataName,
+    matchedByPosition
   };
 }
