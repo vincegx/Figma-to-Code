@@ -175,18 +175,6 @@ export function ResponsiveViewportControls({
           <span>1920px</span>
         </div>
       </div>
-
-      {/* CSS pour rendre le track du slider transparent */}
-      <style>{`
-        .slider-transparent [data-orientation="horizontal"] {
-          background: transparent !important;
-        }
-        .slider-transparent [role="slider"] {
-          background: white;
-          border: 2px solid hsl(var(--primary));
-          z-index: 2;
-        }
-      `}</style>
     </Card>
   )
 }

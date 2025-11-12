@@ -1,5 +1,5 @@
 import { memo, useState } from 'react'
-import { Eye, Trash2, Loader2, Edit, ExternalLink } from 'lucide-react'
+import { Eye, Trash2, Loader2, Edit, MoreVertical } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -13,6 +13,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useConfirm } from '../../../hooks/useConfirm'
 import { useAlert } from '../../../hooks/useAlert'
 import { useSelection } from '../../../hooks/useSelection'
@@ -155,7 +162,7 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                 <TableHead>Stats</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>ID</TableHead>
-                <TableHead className="w-[120px]">Actions</TableHead>
+                <TableHead className="w-20"></TableHead>
               </TableRow>
             </TableHeader>
           <TableBody className="overflow-visible">
@@ -333,44 +340,40 @@ const ResponsiveTestsTable = memo(function ResponsiveTestsTable({ tests, onRefre
                 <TableCell className="font-mono text-xs text-muted-foreground">
                   {test.mergeId}
                 </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        window.open(`/preview?responsive=${test.mergeId}`, '_blank')
-                      }}
-                      title="Open Live Demo"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        navigate(`/responsive-tests/${test.mergeId}/puck-editor`)
-                      }}
-                      title="Edit in Puck"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => handleDelete(test, e)}
-                      disabled={deletingId === test.mergeId}
-                      title="Delete"
-                    >
-                      {deletingId === test.mergeId ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        {deletingId === test.mergeId ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <MoreVertical className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => navigate(`/responsive-tests/${test.mergeId}`)}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        {t('common.details')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => window.open(`/preview?responsive=${test.mergeId}`, '_blank')}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        Open Live Demo
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate(`/responsive-tests/${test.mergeId}/puck-editor`)}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit in Puck
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={(e) => handleDelete(test, e)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {t('home.card.delete')}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
               )

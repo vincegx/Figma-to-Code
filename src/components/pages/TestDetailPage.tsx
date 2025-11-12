@@ -17,15 +17,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Slider } from '@/components/ui/slider'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { cn } from '@/lib/utils'
 import { ReportViewer } from '../common/ReportViewer'
 import { TechnicalAnalysisViewer } from '../common/TechnicalAnalysisViewer'
 import { ResponsiveViewportControls, BreakpointPreset } from '../common/ResponsiveViewportControls'
@@ -545,19 +542,23 @@ function PreviewTab({ testId, dimensions }: PreviewTabProps) {
 
       {/* Component Render */}
       <div
-        className="flex min-h-[calc(100vh-300px)] justify-center overflow-auto py-8"
+        className="flex justify-center overflow-auto py-8"
         style={{
           backgroundColor: '#fafafa',
           backgroundImage: `
             linear-gradient(to right, rgb(209 213 219 / 0.5) 1px, transparent 1px),
             linear-gradient(to bottom, rgb(209 213 219 / 0.5) 1px, transparent 1px)
           `,
-          backgroundSize: '20px 20px'
+          backgroundSize: '20px 20px',
+          minHeight: dimensions?.height ? `${dimensions.height + 64}px` : 'calc(100vh-300px)'
         }}
       >
         <div
           className="bg-white shadow-lg"
-          style={{ width: `${viewportWidth}px` }}
+          style={{
+            width: `${viewportWidth}px`,
+            height: dimensions?.height ? `${dimensions.height}px` : 'auto'
+          }}
         >
           {Component && (
             <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading component...</div>}>

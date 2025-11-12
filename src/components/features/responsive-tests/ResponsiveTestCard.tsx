@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, memo } from 'react'
-import { Trash2, ChevronRight, Loader2, Monitor, Tablet, Smartphone, Edit, ExternalLink } from 'lucide-react'
+import { Trash2, ChevronRight, Loader2, Monitor, Tablet, Smartphone, Edit, Eye } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -215,12 +215,9 @@ export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRef
           {/* Stats Badges */}
           {test.mergeStats && (
             <div className="mb-3 flex flex-wrap gap-1.5">
-              <Badge variant="secondary" className="text-[10px]">
-                {test.components?.length || 0} {t('responsive.card.components')}
-              </Badge>
               {test.mergeStats.successCount > 0 && (
                 <Badge variant="default" className="text-[10px] bg-green-500">
-                  ✓ {test.mergeStats.successCount} {t('responsive.card.successful')}
+                  ✓ {test.mergeStats.successCount} composants
                 </Badge>
               )}
               {test.mergeStats.errorCount > 0 && (
@@ -252,19 +249,19 @@ export const ResponsiveTestCard = memo(function ResponsiveTestCard({ test, onRef
               variant="outline"
               size="sm"
               className="gap-2"
-              onClick={handleOpenPuck}
-              title="Edit in Puck"
+              onClick={handleDemoLive}
+              title="Open Live Demo"
             >
-              <Edit className="h-4 w-4" />
+              <Eye className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
               size="sm"
               className="gap-2"
-              onClick={handleDemoLive}
-              title="Open Live Demo"
+              onClick={handleOpenPuck}
+              title="Edit in Puck"
             >
-              <ExternalLink className="h-4 w-4" />
+              <Edit className="h-4 w-4" />
             </Button>
             <Button
               variant="default"
