@@ -420,6 +420,27 @@ class FigmaCLI {
   }
 
   /**
+   * Check if validation error is a fatal API error (rate limit, auth, etc.)
+   * Throws immediately to prevent wasting more API calls
+   * @param {object} validation - Result from isValidReactCode
+   * @param {string} code - The code that failed validation
+   */
+  checkForFatalAPIError(validation, code) {
+    if (!validation.valid && /rate limit|unauthorized|forbidden|api error/i.test(validation.reason)) {
+      log.error(`\n❌ ERREUR API MCP: ${validation.reason}`);
+
+      if (/rate limit/i.test(validation.reason)) {
+        log.error('⚠️  QUOTA API DÉPASSÉ');
+        log.info('   → Attendez la réinitialisation du quota (24h)');
+        log.info('   → Vérifiez votre usage: GET /api/usage');
+      }
+
+      log.info(`   Code reçu: ${code.substring(0, 150)}${code.length > 150 ? '...' : ''}\n`);
+      throw new Error(`MCP API Error: ${validation.reason}. Stopping to avoid wasting API calls.`);
+    }
+  }
+
+  /**
    * Extract child nodes from metadata XML (already saved)
    */
   extractChildNodes() {
@@ -463,6 +484,10 @@ class FigmaCLI {
       // Validate code (use flexible validation for chunks)
       const validation = this.isValidReactCode(code, true);
       if (!validation.valid) {
+        // Check for fatal API errors first (rate limit, auth, etc.) - stop immediately
+        this.checkForFatalAPIError(validation, code);
+
+        // Non-fatal validation errors (design issues, node not found, etc.)
         log.error(`Code invalide pour chunk "${node.name}": ${validation.reason}`);
         log.info(`Longueur du code: ${code.length} caractères`);
 
@@ -590,6 +615,9 @@ class FigmaCLI {
       log.success('Phase 1 terminée en MODE SIMPLE (4 appels)\n');
       return;
     }
+
+    // Check for fatal API errors before entering CHUNK MODE (avoid wasting 5+N more calls)
+    this.checkForFatalAPIError(validation, code);
 
     // CHUNK MODE (5+N calls)
     log.warning('⚠️  MODE CHUNKING: Code invalide ou trop volumineux');

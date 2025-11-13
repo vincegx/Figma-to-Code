@@ -28,11 +28,21 @@ export const meta = {
   priority: 85  // After production-cleaner (100), before final output
 }
 
+// JavaScript reserved keywords that cannot be used as identifiers
+const RESERVED_KEYWORDS = new Set([
+  'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default',
+  'delete', 'do', 'else', 'export', 'extends', 'finally', 'for', 'function',
+  'if', 'import', 'in', 'instanceof', 'let', 'new', 'return', 'super',
+  'switch', 'this', 'throw', 'try', 'typeof', 'var', 'void', 'while', 'with', 'yield',
+  'enum', 'await', 'implements', 'interface', 'package', 'private', 'protected', 'public', 'static'
+])
+
 /**
  * Convert text to camelCase prop name
  * "Welcome back," → "welcomeBack"
  * "Chandler Bing" → "chandlerBing"
  * "1" → "text1"
+ * "Continue" → "continueText" (reserved keyword)
  * "03 25481 9" → "text03254819"
  */
 function toCamelCase(text) {
@@ -48,6 +58,11 @@ function toCamelCase(text) {
   // Ensure prop name is not empty and doesn't start with a digit
   if (!propName || /^\d/.test(propName)) {
     propName = 'text' + propName
+  }
+
+  // Avoid JavaScript reserved keywords
+  if (RESERVED_KEYWORDS.has(propName)) {
+    propName = propName + 'Text'
   }
 
   return propName
@@ -414,6 +429,64 @@ function updateFunctionSignature(ast, componentName, allProps, hasClassName) {
 }
 
 /**
+ * Deduplicate prop names to avoid conflicts
+ * Strategy: If name collision detected:
+ * - Images get "Image" suffix (e.g., sidemenu → sidemenuImage)
+ * - Texts keep original name
+ * - If still conflicts, add numeric suffix
+ */
+function deduplicatePropNames(allProps) {
+  const propNameCount = new Map() // propName → count
+  const propNamesByType = new Map() // propName → [types]
+
+  // First pass: detect duplicates
+  for (const prop of allProps) {
+    const name = prop.propName
+    propNameCount.set(name, (propNameCount.get(name) || 0) + 1)
+    if (!propNamesByType.has(name)) {
+      propNamesByType.set(name, [])
+    }
+    propNamesByType.get(name).push(prop.type)
+  }
+
+  // Second pass: rename duplicates
+  const seenNames = new Set()
+  for (const prop of allProps) {
+    const originalName = prop.propName
+
+    // No conflict - keep original name
+    if (propNameCount.get(originalName) === 1) {
+      seenNames.add(originalName)
+      continue
+    }
+
+    // Conflict detected - apply strategy
+    let newName = originalName
+
+    // If this is an image and there's a text with same name, add "Image" suffix
+    if (prop.type === 'image' && propNamesByType.get(originalName).includes('text')) {
+      newName = originalName + 'Image'
+    }
+    // If this is a number and there's a text/image with same name, add "Value" suffix
+    else if (prop.type === 'number' && propNamesByType.get(originalName).some(t => t !== 'number')) {
+      newName = originalName + 'Value'
+    }
+
+    // If name still conflicts, add numeric suffix
+    let counter = 2
+    while (seenNames.has(newName)) {
+      newName = originalName + counter
+      counter++
+    }
+
+    seenNames.add(newName)
+    prop.propName = newName
+  }
+
+  return allProps
+}
+
+/**
  * Main execution function
  */
 export function execute(ast, context) {
@@ -429,7 +502,7 @@ export function execute(ast, context) {
   const texts = extractTexts(ast, componentName)
   const images = extractImages(ast, componentName)
   const numbers = extractNumbers(ast, componentName)
-  const allProps = [...texts, ...images, ...numbers]
+  let allProps = [...texts, ...images, ...numbers]
 
   if (allProps.length === 0 && !hasClassName) {
     return {
@@ -438,6 +511,9 @@ export function execute(ast, context) {
       executionTime: `${Date.now() - startTime}ms`
     }
   }
+
+  // Deduplicate prop names to avoid conflicts
+  allProps = deduplicatePropNames(allProps)
 
   // Replace hardcoded values with props
   replaceWithProps(allProps)

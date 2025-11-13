@@ -508,11 +508,9 @@ if (fs.existsSync(imgDir)) {
 // Prepare pipeline config
 let pipelineConfig = { ...defaultConfig }
 
-// Disable props extraction in clean mode (production version should have hardcoded values)
-if (cleanMode) {
-  pipelineConfig['extract-props'] = { enabled: false }
-  console.log('   ⚠️  Props extraction disabled for clean mode\n')
-}
+// NEVER extract props in source files (Component-fixed.tsx, Component-clean.tsx)
+// Props are ONLY extracted in dist/ via dist-generator.js
+pipelineConfig['extract-props'] = { enabled: false }
 
 let result
 try {

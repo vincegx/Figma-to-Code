@@ -2,7 +2,9 @@
 
 /**
  * Update Tailwind safelist with arbitrary color classes from generated test
- * Only modifies tailwind.config.js if new classes are detected
+ * Only modifies tailwind.safelist.json if new classes are detected
+ *
+ * Note: tailwind.safelist.json is git-ignored to avoid committing personal Figma exports
  */
 
 import fs from 'fs'
@@ -48,63 +50,28 @@ function extractArbitraryColorClasses(tsxContent) {
 }
 
 /**
- * Extract current safelist from tailwind.config.js
+ * Extract current safelist from tailwind.safelist.json
  */
-function getCurrentSafelist(configPath) {
-  if (!fs.existsSync(configPath)) {
+function getCurrentSafelist(safelistPath) {
+  if (!fs.existsSync(safelistPath)) {
     return []
   }
 
-  const configContent = fs.readFileSync(configPath, 'utf-8')
-
-  // Find safelist array - look for standalone safelist (not in theme)
-  // Pattern: safelist: [ ... ],
-  const safelistMatch = configContent.match(/\n\s*safelist:\s*\[([\s\S]*?)\],?\s*\n/m)
-  if (!safelistMatch) {
+  try {
+    const content = fs.readFileSync(safelistPath, 'utf-8')
+    const safelist = JSON.parse(content)
+    return Array.isArray(safelist) ? safelist : []
+  } catch (err) {
+    console.warn(`   ⚠️  Could not parse tailwind.safelist.json: ${err.message}`)
     return []
   }
-
-  const safelistContent = safelistMatch[1]
-
-  // Extract quoted strings
-  const items = []
-  const stringPattern = /['"]([^'"]+)['"]/g
-  let match
-
-  while ((match = stringPattern.exec(safelistContent)) !== null) {
-    items.push(match[1])
-  }
-
-  return items
 }
 
 /**
- * Update tailwind.config.js with new safelist classes
+ * Update tailwind.safelist.json with new safelist classes
  */
-function updateTailwindConfig(configPath, newClasses) {
-  let configContent = fs.readFileSync(configPath, 'utf-8')
-
-  // Check if safelist exists
-  if (!configContent.match(/\n\s*safelist:\s*\[/)) {
-    // Add safelist after theme section
-    const safelistSection = `  safelist: [\n    ${newClasses.map(c => `'${c}'`).join(',\n    ')}\n  ],\n`
-
-    // Insert after closing of theme object
-    configContent = configContent.replace(
-      /(theme:\s*{[\s\S]*?}\s*,?\s*\n\s*},)/m,
-      `$1\n${safelistSection}`
-    )
-  } else {
-    // Replace existing safelist completely
-    const safelistArray = `safelist: [\n    ${newClasses.map(c => `'${c}'`).join(',\n    ')}\n  ]`
-
-    configContent = configContent.replace(
-      /\n\s*safelist:\s*\[[\s\S]*?\],?\s*\n/m,
-      `\n  ${safelistArray},\n`
-    )
-  }
-
-  fs.writeFileSync(configPath, configContent, 'utf-8')
+function updateSafelist(safelistPath, newClasses) {
+  fs.writeFileSync(safelistPath, JSON.stringify(newClasses, null, 2), 'utf-8')
 }
 
 /**
@@ -131,7 +98,7 @@ function saveClassesToMetadata(testDir, classes) {
  */
 export function updateSafelistForTest(testDir) {
   const componentPath = path.join(testDir, 'Component-fixed.tsx')
-  const configPath = path.join(ROOT_DIR, 'tailwind.config.js')
+  const safelistPath = path.join(ROOT_DIR, 'tailwind.safelist.json')
 
   if (!fs.existsSync(componentPath)) {
     console.log(`   ⚠️  Component-fixed.tsx not found in ${testDir}`)
@@ -151,7 +118,7 @@ export function updateSafelistForTest(testDir) {
   saveClassesToMetadata(testDir, newClasses)
 
   // Get current safelist
-  const currentSafelist = getCurrentSafelist(configPath)
+  const currentSafelist = getCurrentSafelist(safelistPath)
 
   // Check if all new classes are already in safelist
   const missingClasses = newClasses.filter(c => !currentSafelist.includes(c))
@@ -164,8 +131,8 @@ export function updateSafelistForTest(testDir) {
   // Merge and sort
   const allClasses = [...new Set([...currentSafelist, ...newClasses])].sort()
 
-  // Update config
-  updateTailwindConfig(configPath, allClasses)
+  // Update tailwind.safelist.json
+  updateSafelist(safelistPath, allClasses)
 
   console.log(`   ✅ Tailwind safelist updated:`)
   console.log(`      - Previous: ${currentSafelist.length} classes`)
