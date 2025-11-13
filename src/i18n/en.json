@@ -36,7 +36,7 @@
     "badge_react": "React 19",
     "badge_tailwind": "Tailwind CSS",
     "badge_ast": "AST Pipeline",
-    "new_analysis": "New Analysis",
+    "new_analysis": "New export",
     "loading_exports": "Loading exports...",
     "view": "View:",
     "sort_by": "Sort by:",
@@ -89,7 +89,7 @@
     "helper": "💡 Paste the full URL of your Figma design with the",
     "error_title": "Invalid URL",
     "status": {
-      "launching": "🚀 Launching analysis...",
+      "launching": "🚀 Launching export...",
       "in_progress": "● In progress...",
       "success": "✓ Completed successfully",
       "failed": "✗ Failed",
@@ -164,7 +164,7 @@
       "no_files": "No files found"
     },
     "report": {
-      "title": "Test Analysis Report"
+      "title": "Test export Report"
     },
     "technical": {
       "no_analysis_title": "Technical analysis not available",
@@ -176,6 +176,7 @@
   "usage": {
     "title": "API Usage",
     "exports_today": "exports today",
+    "analyses_today": "analyses today",
     "credits": "credits",
     "status": {
       "safe": "✓ Safe",

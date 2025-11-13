@@ -176,6 +176,7 @@
   "usage": {
     "title": "Utilisation API",
     "exports_today": "Exports aujourd'hui",
+    "analyses_today": "analyses aujourd'hui",
     "credits": "crédits",
     "status": {
       "safe": "✓ Sûr",
