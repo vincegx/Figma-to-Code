@@ -442,18 +442,31 @@ function CodeTab({ mergeId, components }: CodeTabProps) {
       const sortedComponents = [...components].sort()
 
       for (const compName of sortedComponents) {
+        // Try new path (components/), fallback to old path (Subcomponents/) for backward compatibility
         try {
-          const tsxModule = await import(`../../generated/responsive-screens/${mergeId}/Subcomponents/${compName}.tsx?raw`)
+          let tsxModule
+          try {
+            tsxModule = await import(`../../generated/responsive-screens/${mergeId}/components/${compName}.tsx?raw`)
+          } catch {
+            // Fallback for old merges with Subcomponents/
+            tsxModule = await import(`../../generated/responsive-screens/${mergeId}/Subcomponents/${compName}.tsx?raw`)
+          }
           compFiles.push({ name: `${compName}.tsx`, content: tsxModule.default, type: 'tsx', icon: '🧩' })
         } catch (e) {
-          console.warn(`No Subcomponents/${compName}.tsx`)
+          console.warn(`No components/${compName}.tsx or Subcomponents/${compName}.tsx`)
         }
 
         try {
-          const cssModule = await import(`../../generated/responsive-screens/${mergeId}/Subcomponents/${compName}.css?raw`)
+          let cssModule
+          try {
+            cssModule = await import(`../../generated/responsive-screens/${mergeId}/components/${compName}.css?raw`)
+          } catch {
+            // Fallback for old merges with Subcomponents/
+            cssModule = await import(`../../generated/responsive-screens/${mergeId}/Subcomponents/${compName}.css?raw`)
+          }
           compFiles.push({ name: `${compName}.css`, content: cssModule.default, type: 'css', icon: '🎨' })
         } catch (e) {
-          console.warn(`No Subcomponents/${compName}.css`)
+          console.warn(`No components/${compName}.css or Subcomponents/${compName}.css`)
         }
       }
 

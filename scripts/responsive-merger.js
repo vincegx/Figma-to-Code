@@ -178,11 +178,11 @@ function validateBreakpoint(testId, breakpointName, explicitWidth) {
     process.exit(1);
   }
 
-  const modularDir = path.join(testDir, 'modular');
-  if (!fs.existsSync(modularDir)) {
-    log.error(`${breakpointName} missing modular/ directory`);
-    log.info('Run with --split-components first');
-    log.info(`Example: docker exec mcp-figma-v1 node scripts/post-processing/component-splitter.js ${testDir}`);
+  const componentsDir = path.join(testDir, 'components');
+  if (!fs.existsSync(componentsDir)) {
+    log.error(`${breakpointName} missing components/ directory`);
+    log.info('Components should be automatically generated during export');
+    log.info(`If missing, run: docker exec mcp-figma-v1 node scripts/post-processing/component-splitter.js ${testDir}`);
     process.exit(1);
   }
 
@@ -198,7 +198,7 @@ function validateBreakpoint(testId, breakpointName, explicitWidth) {
   return {
     testId,
     testDir,
-    modularDir,
+    componentsDir,
     metadata,
     width: explicitWidth, // Use explicit width from CLI args
     height: metadata.dimensions?.height || 0
@@ -223,10 +223,10 @@ function validateBreakpoints(breakpoints) {
 // COMPONENT DETECTION
 // ═══════════════════════════════════════════════════════════════
 
-function getModularComponents(modularDir) {
-  if (!fs.existsSync(modularDir)) return [];
+function getModularComponents(componentsDir) {
+  if (!fs.existsSync(componentsDir)) return [];
 
-  return fs.readdirSync(modularDir)
+  return fs.readdirSync(componentsDir)
     .filter(file => file.endsWith('.tsx'))
     .map(file => path.basename(file, '.tsx'))
     .sort();
@@ -235,9 +235,9 @@ function getModularComponents(modularDir) {
 function detectCommonComponents(desktop, tablet, mobile) {
   console.log('📊 Detecting common components...\n');
 
-  const desktopComps = getModularComponents(desktop.modularDir);
-  const tabletComps = getModularComponents(tablet.modularDir);
-  const mobileComps = getModularComponents(mobile.modularDir);
+  const desktopComps = getModularComponents(desktop.componentsDir);
+  const tabletComps = getModularComponents(tablet.componentsDir);
+  const mobileComps = getModularComponents(mobile.componentsDir);
 
   console.log(`   Desktop: ${desktopComps.length} components`);
   console.log(`   Tablet:  ${tabletComps.length} components`);
@@ -1001,15 +1001,15 @@ async function mergeComponent(componentName, desktop, tablet, mobile, outputDir,
 
   // 1. Read all 3 TSX files
   const desktopTSX = fs.readFileSync(
-    path.join(desktop.modularDir, `${componentName}.tsx`),
+    path.join(desktop.componentsDir, `${componentName}.tsx`),
     'utf8'
   );
   const tabletTSX = fs.readFileSync(
-    path.join(tablet.modularDir, `${componentName}.tsx`),
+    path.join(tablet.componentsDir, `${componentName}.tsx`),
     'utf8'
   );
   const mobileTSX = fs.readFileSync(
-    path.join(mobile.modularDir, `${componentName}.tsx`),
+    path.join(mobile.componentsDir, `${componentName}.tsx`),
     'utf8'
   );
 
@@ -1157,7 +1157,7 @@ async function generatePage(components, desktop, tablet, mobile, outputDir, brea
 
     // Add imports at the top (after React import)
     const imports = Array.from(componentsToImport)
-      .map(name => `import ${name} from './Subcomponents/${name}';`)
+      .map(name => `import ${name} from './components/${name}';`)
       .join('\n');
 
     let finalCode = output.code;
@@ -1206,7 +1206,7 @@ async function generatePage(components, desktop, tablet, mobile, outputDir, brea
  */
 function generateSimplePage(components, outputDir) {
   const imports = components
-    .map(name => `import ${name} from './Subcomponents/${name}';`)
+    .map(name => `import ${name} from './components/${name}';`)
     .join('\n');
 
   const jsxComponents = components
@@ -1239,7 +1239,7 @@ function generatePageCSS(components, desktop, tablet, mobile, outputDir, breakpo
 
   // 1. Import all subcomponent CSS files
   const cssImports = components
-    .map(name => `@import './Subcomponents/${name}.css';`)
+    .map(name => `@import './components/${name}.css';`)
     .join('\n');
 
   // 2. Read Component-clean.css from all 3 breakpoints
@@ -1519,9 +1519,9 @@ async function mergeResponsive() {
   const timestamp = Date.now();
   const responsiveScreensDir = path.join(PROJECT_ROOT, 'src/generated/responsive-screens');
   const mergedDir = path.join(responsiveScreensDir, `responsive-merger-${timestamp}`);
-  const subcomponentsDir = path.join(mergedDir, 'Subcomponents');
+  const componentsOutputDir = path.join(mergedDir, 'components');
 
-  fs.mkdirSync(subcomponentsDir, { recursive: true });
+  fs.mkdirSync(componentsOutputDir, { recursive: true });
   log.success(`Output directory: ${path.relative(PROJECT_ROOT, mergedDir)}\n`);
 
   // 6. Copy images from Desktop test
@@ -1554,7 +1554,7 @@ async function mergeResponsive() {
 
   for (const componentName of orderedComponents) {
     try {
-      const stats = await mergeComponent(componentName, desktop, tablet, mobile, subcomponentsDir, breakpointWidths, helpersCache);
+      const stats = await mergeComponent(componentName, desktop, tablet, mobile, componentsOutputDir, breakpointWidths, helpersCache);
       componentStats[componentName] = stats;
       successCount++;
     } catch (error) {
@@ -1605,7 +1605,7 @@ async function mergeResponsive() {
 
     const { generatePuckComponents } = await import('./puck-generator.js');
     await generatePuckComponents({
-      sourceDir: subcomponentsDir,
+      sourceDir: componentsOutputDir,
       outputDir: path.join(mergedDir, 'puck'),
       imagesDir: path.join(mergedDir, 'img'),
       components: uniqueActualOrder
@@ -1638,7 +1638,26 @@ async function mergeResponsive() {
     log.error(`Error generating technical analysis: ${error.message}`);
   }
 
-  // 15. Summary
+  // 15. Generate dist/ package
+  log.phase('GENERATING DEVELOPER-READY EXPORT');
+  try {
+    log.task('📦', 'Generating dist/ package');
+    const { generateDist } = await import('./post-processing/dist-generator.js');
+    await generateDist(mergedDir, {
+      type: 'responsive',
+      componentName: 'Page',
+      breakpoints: {
+        desktop: desktop.width,
+        tablet: tablet.width,
+        mobile: mobile.width
+      }
+    });
+    log.success('dist/ package ready\n');
+  } catch (error) {
+    log.error(`Error generating dist/ package: ${error.message}`);
+  }
+
+  // 16. Summary
   console.log(`\n${colors.bright}${colors.bgGreen} ${colors.reset}`);
   console.log(`${colors.bright}${colors.green}┌${'─'.repeat(60)}┐${colors.reset}`);
   console.log(`${colors.bright}${colors.green}│  ✅ RESPONSIVE MERGE COMPLETE${' '.repeat(28)}│${colors.reset}`);

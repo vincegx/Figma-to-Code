@@ -760,6 +760,21 @@ class FigmaCLI {
       await this.phase2_postProcessing();
       await this.phase3_captureWebRender();
 
+      // Always generate components/
+      log.task('🔪', 'Splitting components');
+      const { splitComponent } = await import('./post-processing/component-splitter.js');
+      await splitComponent(this.testDir);
+      log.success('components/ directory created\n');
+
+      // Generate dist/ package
+      log.task('📦', 'Generating developer-ready export');
+      const { generateDist } = await import('./post-processing/dist-generator.js');
+      await generateDist(this.testDir, {
+        type: 'single',
+        componentName: this.nodeName || 'Component'
+      });
+      log.success('dist/ package ready\n');
+
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
       console.log(`\n${colors.bright}${colors.bgGreen} ${colors.reset}`);

@@ -62,7 +62,7 @@ const EXCLUDE_PATTERNS = [
  * Main entry point
  */
 export async function splitComponent(testDir) {
-  console.log('🔪 Splitting Component-clean.tsx into modular chunks...\n');
+  console.log('🔪 Splitting Component-clean.tsx into components...\n');
 
   // 1. Read files
   const cleanPath = path.join(testDir, 'Component-clean.tsx');
@@ -87,10 +87,10 @@ export async function splitComponent(testDir) {
   console.log(`   Found ${sections.length} sections:\n`);
   sections.forEach(s => console.log(`     - ${s.name} (${s.type})`));
 
-  // 3. Create modular/ directory
-  const modularDir = path.join(testDir, 'modular');
-  if (!fs.existsSync(modularDir)) {
-    fs.mkdirSync(modularDir, { recursive: true });
+  // 3. Create components/ directory
+  const componentsDir = path.join(testDir, 'components');
+  if (!fs.existsSync(componentsDir)) {
+    fs.mkdirSync(componentsDir, { recursive: true });
   }
 
   // 4. Extract global imports
@@ -108,7 +108,7 @@ export async function splitComponent(testDir) {
     const chunkCode = generateChunkCode(chunkName, section.jsx, chunkImports);
 
     fs.writeFileSync(
-      path.join(modularDir, `${chunkName}.tsx`),
+      path.join(componentsDir, `${chunkName}.tsx`),
       chunkCode
     );
 
@@ -117,7 +117,7 @@ export async function splitComponent(testDir) {
     const cssSize = (scopedCSS.length / 1024).toFixed(1);
 
     fs.writeFileSync(
-      path.join(modularDir, `${chunkName}.css`),
+      path.join(componentsDir, `${chunkName}.css`),
       scopedCSS
     );
 
@@ -129,12 +129,20 @@ export async function splitComponent(testDir) {
 
   // 6. Write image manifest
   fs.writeFileSync(
-    path.join(modularDir, 'image-manifest.json'),
+    path.join(componentsDir, 'image-manifest.json'),
     JSON.stringify(imageManifest, null, 2)
   );
 
   console.log(`\n✅ Splitting complete: ${sections.length} chunks created`);
-  console.log(`📁 Output: ${modularDir}\n`);
+  console.log(`📁 Output: ${componentsDir}\n`);
+}
+
+/**
+ * Extract parent component name from Component-clean.tsx
+ */
+function getParentComponentName(tsxCode) {
+  const match = tsxCode.match(/export default function (\w+)\(\)/);
+  return match ? match[1] : null;
 }
 
 /**
@@ -149,14 +157,17 @@ function detectSections(tsxCode) {
   const sections = [];
   const functionNames = new Set();
 
+  // Get parent component name (to skip it)
+  const parentComponentName = getParentComponentName(tsxCode);
+
   // Rule 1: Detect React function components (except main component and utility components)
   traverse.default(ast, {
     FunctionDeclaration(path) {
       const functionName = path.node.id?.name;
       if (!functionName) return;
 
-      // Skip main component (contains "Px" in name like BgsHomepage1440Px)
-      if (functionName.includes('Px')) return;
+      // Skip parent component (detected from export default)
+      if (parentComponentName && functionName === parentComponentName) return;
 
       // Skip utility components (Icon*, etc.)
       if (functionName.match(/^Icon[A-Z]/)) return;
