@@ -23,7 +23,7 @@ interface AnalysisDialogProps {
   onAnalysisComplete?: () => void
 }
 
-type DialogState = 'form' | 'progress' | 'success'
+type DialogState = 'form' | 'progress' | 'success' | 'error'
 
 export function AnalysisDialog({ open, onOpenChange, onAnalysisComplete }: AnalysisDialogProps) {
   const navigate = useNavigate()
@@ -145,15 +145,18 @@ export function AnalysisDialog({ open, onOpenChange, onAnalysisComplete }: Analy
                 } else {
                   setLogs(prev => [...prev, '\n⚠️ Analyse terminée mais impossible de récupérer l\'ID du test'])
                   setProgress(100)
+                  setState('error')
                 }
               }
             } else {
               setLogs(prev => [...prev, '\n❌ L\'analyse a échoué'])
               setProgress(100)
+              setState('error')
             }
           } else if (data.type === 'error') {
             setLogs(prev => [...prev, data.message])
             setProgress(100)
+            setState('error')
           }
         } catch (error) {
           console.error('Error parsing SSE:', error)
@@ -164,11 +167,13 @@ export function AnalysisDialog({ open, onOpenChange, onAnalysisComplete }: Analy
         eventSource.close()
         setLogs(prev => [...prev, '\n❌ Connexion perdue'])
         setProgress(100)
+        setState('error')
       }
     } catch (error) {
       console.error('Error starting analysis:', error)
       setLogs([`❌ Erreur: ${error instanceof Error ? error.message : 'Erreur inconnue'}`])
       setProgress(100)
+      setState('error')
     }
   }
 
@@ -197,11 +202,13 @@ export function AnalysisDialog({ open, onOpenChange, onAnalysisComplete }: Analy
             {state === 'form' && 'Nouvelle Analyse Figma'}
             {state === 'progress' && 'Analyse en cours...'}
             {state === 'success' && 'Analyse terminée !'}
+            {state === 'error' && 'Erreur'}
           </DialogTitle>
           <DialogDescription>
             {state === 'form' && 'Collez l\'URL Figma avec le paramètre node-id pour commencer l\'analyse'}
             {state === 'progress' && 'L\'analyse est en cours, veuillez patienter'}
             {state === 'success' && 'Votre composant a été généré avec succès'}
+            {state === 'error' && 'Une erreur est survenue lors de l\'analyse'}
           </DialogDescription>
         </DialogHeader>
 
@@ -289,6 +296,29 @@ export function AnalysisDialog({ open, onOpenChange, onAnalysisComplete }: Analy
                   <ExternalLink className="h-4 w-4" />
                 </Button>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {state === 'error' && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              <span className="text-sm font-medium">L'analyse a échoué</span>
+            </div>
+
+            {/* Logs */}
+            <div className="rounded-md bg-black p-4 max-h-96 overflow-y-auto">
+              <pre className="text-xs font-mono whitespace-pre-wrap text-gray-300">
+                {logs.join('')}
+              </pre>
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <Button onClick={handleClose}>
+                Fermer
+              </Button>
             </div>
           </div>
         )}
