@@ -1,5 +1,5 @@
 import fs from 'fs'
-import path from 'path'
+import pathModule from 'path'
 import { toPascalCase } from '../utils/chunking.js'
 import { parse } from '@babel/parser'
 import traverse from '@babel/traverse'
@@ -12,7 +12,7 @@ import { runPipeline } from '../pipeline.js'
  * @returns {string} Parent component function name
  */
 function getParentComponentNameFromSource(exportDir) {
-  const cleanPath = path.join(exportDir, 'Component-clean.tsx')
+  const cleanPath = pathModule.join(exportDir, 'Component-clean.tsx')
 
   if (!fs.existsSync(cleanPath)) {
     throw new Error(`Component-clean.tsx not found in ${exportDir}`)
@@ -64,7 +64,7 @@ async function generateDockerConfig(distDir, config) {
   }
 
   fs.writeFileSync(
-    path.join(distDir, 'package.json'),
+    pathModule.join(distDir, 'package.json'),
     JSON.stringify(packageJson, null, 2)
   )
 
@@ -90,7 +90,7 @@ async function generateDockerConfig(distDir, config) {
     command: npm run dev
 `
 
-  fs.writeFileSync(path.join(distDir, 'docker-compose.yml'), dockerCompose)
+  fs.writeFileSync(pathModule.join(distDir, 'docker-compose.yml'), dockerCompose)
 
   // 3. Generate Dockerfile
   const dockerfile = `FROM node:20-alpine
@@ -113,7 +113,7 @@ EXPOSE 3000
 CMD ["npm", "run", "dev"]
 `
 
-  fs.writeFileSync(path.join(distDir, 'Dockerfile'), dockerfile)
+  fs.writeFileSync(pathModule.join(distDir, 'Dockerfile'), dockerfile)
 
   // 4. Generate vite.config.js
   const viteConfig = `import { defineConfig } from 'vite'
@@ -129,7 +129,7 @@ export default defineConfig({
 })
 `
 
-  fs.writeFileSync(path.join(distDir, 'vite.config.js'), viteConfig)
+  fs.writeFileSync(pathModule.join(distDir, 'vite.config.js'), viteConfig)
 
   // 5. Generate index.html
   const indexHtml = `<!doctype html>
@@ -146,7 +146,7 @@ export default defineConfig({
 </html>
 `
 
-  fs.writeFileSync(path.join(distDir, 'index.html'), indexHtml)
+  fs.writeFileSync(pathModule.join(distDir, 'index.html'), indexHtml)
 
   // 6. Generate src/main.tsx
   const mainTsx = `import React from 'react'
@@ -162,7 +162,7 @@ root.render(
 )
 `
 
-  fs.writeFileSync(path.join(distDir, 'src/main.tsx'), mainTsx)
+  fs.writeFileSync(pathModule.join(distDir, 'src/main.tsx'), mainTsx)
 
   // 7. Generate .gitignore
   const gitignore = `# Dependencies
@@ -188,7 +188,7 @@ Thumbs.db
 npm-debug.log*
 `
 
-  fs.writeFileSync(path.join(distDir, '.gitignore'), gitignore)
+  fs.writeFileSync(pathModule.join(distDir, '.gitignore'), gitignore)
 
   // 8. Generate tailwind.config.js
   const tailwindConfig = `/** @type {import('tailwindcss').Config} */
@@ -206,7 +206,7 @@ export default {
 }
 `
 
-  fs.writeFileSync(path.join(distDir, 'tailwind.config.js'), tailwindConfig)
+  fs.writeFileSync(pathModule.join(distDir, 'tailwind.config.js'), tailwindConfig)
 
   // 9. Generate postcss.config.js
   const postcssConfig = `export default {
@@ -217,7 +217,7 @@ export default {
 }
 `
 
-  fs.writeFileSync(path.join(distDir, 'postcss.config.js'), postcssConfig)
+  fs.writeFileSync(pathModule.join(distDir, 'postcss.config.js'), postcssConfig)
 
   console.log(`    ✓ Generated Docker configuration (9 files)`)
 }
@@ -231,7 +231,7 @@ export default {
  * @param {object} config.breakpoints - Responsive breakpoints (optional)
  */
 export async function generateDist(exportDir, config) {
-  const distDir = path.join(exportDir, 'dist')
+  const distDir = pathModule.join(exportDir, 'dist')
   const { type, componentName, breakpoints } = config
 
   console.log(`  Creating dist/ structure...`)
@@ -240,7 +240,7 @@ export async function generateDist(exportDir, config) {
   await createDistStructure(distDir)
 
   // 2. Copy components/ → dist/components/ (subcomponents only)
-  const sourceComponents = path.join(exportDir, 'components')
+  const sourceComponents = pathModule.join(exportDir, 'components')
   const extractedComponents = await copyComponents(sourceComponents, distDir, config)
 
   // 3. Generate or copy Page.tsx
@@ -276,7 +276,7 @@ function createDistStructure(distDir) {
   // Create fresh structure
   const dirs = ['components', 'assets/img', 'tokens', 'src']
   for (const dir of dirs) {
-    fs.mkdirSync(path.join(distDir, dir), { recursive: true })
+    fs.mkdirSync(pathModule.join(distDir, dir), { recursive: true })
   }
 }
 
@@ -313,26 +313,46 @@ async function copyComponents(sourceDir, distDir, config) {
       extractedComponents.push(file.replace('.tsx', ''))
     }
 
-    let content = fs.readFileSync(path.join(sourceDir, file), 'utf8')
+    let content = fs.readFileSync(pathModule.join(sourceDir, file), 'utf8')
 
-    // Extract props for .tsx files FIRST (Phase 2: Props Extraction)
-    // Apply to ALL types (single AND responsive) - props only in dist/, not in source components/
+    // Extract props for .tsx files (only if they don't already have props from Figma)
     if (file.endsWith('.tsx')) {
       const componentName = file.replace('.tsx', '')
-      const pipelineConfig = {
-        'extract-props': { enabled: true }
-      }
 
-      try {
-        const result = await runPipeline(content, { componentName }, pipelineConfig)
-        content = result.code
+      // Check if component already has props (from Figma variants)
+      const hasExistingProps = content.match(new RegExp(`}: ${componentName}Props\\)`))
 
-        const stats = result.context.stats['extract-props']
-        if (stats && stats.propsExtracted > 0) {
-          console.log(`    ✅ ${file} - ${stats.propsExtracted} props extracted`)
+      if (hasExistingProps) {
+        // Skip extract-props, just add missing interface from Component-clean.tsx
+        if (!content.includes(`interface ${componentName}Props`) && !content.includes(`type ${componentName}Props`)) {
+          const cleanTsxPath = pathModule.join(sourceDir.replace('/components', ''), 'Component-clean.tsx')
+          if (fs.existsSync(cleanTsxPath)) {
+            const cleanContent = fs.readFileSync(cleanTsxPath, 'utf8')
+            // Match full type/interface declaration including all props
+            const interfaceMatch = cleanContent.match(new RegExp(`(type ${componentName}Props\\s*=\\s*\\{[\\s\\S]*?\\};|interface ${componentName}Props\\s*\\{[\\s\\S]*?\\})`, 'm'))
+            if (interfaceMatch) {
+              // Add interface after imports
+              content = content.replace(
+                /(import .*\n)+/,
+                `$&\n${interfaceMatch[0]}\n`
+              )
+              console.log(`    ✅ ${file} - interface added from Figma`)
+            }
+          }
         }
-      } catch (error) {
-        console.log(`    ⚠️  ${file} - props extraction skipped: ${error.message}`)
+      } else {
+        // No existing props - run extract-props
+        const pipelineConfig = { 'extract-props': { enabled: true } }
+        try {
+          const result = await runPipeline(content, { componentName }, pipelineConfig)
+          content = result.code
+          const stats = result.context.stats['extract-props']
+          if (stats && stats.propsExtracted > 0) {
+            console.log(`    ✅ ${file} - ${stats.propsExtracted} props extracted`)
+          }
+        } catch (error) {
+          console.log(`    ⚠️  ${file} - props extraction skipped: ${error.message}`)
+        }
       }
     }
 
@@ -345,7 +365,7 @@ async function copyComponents(sourceDir, distDir, config) {
       return `from ${quote}../assets/img/${file}${quote}`
     })
 
-    fs.writeFileSync(path.join(distDir, 'components', file), content)
+    fs.writeFileSync(pathModule.join(distDir, 'components', file), content)
     copiedCount++
   }
 
@@ -360,8 +380,8 @@ function generatePageFile(exportDir, distDir, config, extractedComponents) {
   const parentComponentName = getParentComponentNameFromSource(exportDir)
 
   // ALWAYS use Component-clean.tsx as source (parent is never split into components/)
-  const parentTsxPath = path.join(exportDir, 'Component-clean.tsx')
-  const parentCssPath = path.join(exportDir, 'Component-clean.css')
+  const parentTsxPath = pathModule.join(exportDir, 'Component-clean.tsx')
+  const parentCssPath = pathModule.join(exportDir, 'Component-clean.css')
 
   if (!fs.existsSync(parentTsxPath)) {
     console.log(`    ⚠️  Component-clean.tsx not found`)
@@ -371,7 +391,7 @@ function generatePageFile(exportDir, distDir, config, extractedComponents) {
   const parentCode = fs.readFileSync(parentTsxPath, 'utf8')
 
   // Transform parent component → Page.tsx with imports
-  const pageCode = transformToPageComponent(parentCode, parentComponentName, extractedComponents)
+  const pageCode = transformToPageComponent(parentCode, parentComponentName, extractedComponents, exportDir)
 
   // Fix import paths: ./img/ → ./assets/img/
   // Use replacement function to preserve quote style
@@ -384,7 +404,7 @@ function generatePageFile(exportDir, distDir, config, extractedComponents) {
     })
 
   // Save to dist root (not dist/components/)
-  fs.writeFileSync(path.join(distDir, 'Page.tsx'), fixedPageCode)
+  fs.writeFileSync(pathModule.join(distDir, 'Page.tsx'), fixedPageCode)
 
   // Generate Page.css with component imports
   if (fs.existsSync(parentCssPath)) {
@@ -406,7 +426,7 @@ function generatePageFile(exportDir, distDir, config, extractedComponents) {
     // Combine Tailwind directives + component imports + parent CSS
     const finalCss = tailwindDirectives + componentImports + '\n\n' + cssContent
 
-    fs.writeFileSync(path.join(distDir, 'Page.css'), finalCss)
+    fs.writeFileSync(pathModule.join(distDir, 'Page.css'), finalCss)
   }
 
   console.log(`    ✓ Generated Page.tsx with ${extractedComponents.length} component imports`)
@@ -416,7 +436,7 @@ function generatePageFile(exportDir, distDir, config, extractedComponents) {
  * Transform parent component to Page component with imports
  * Replaces div[data-name] with component calls (reuses responsive-merger logic)
  */
-function transformToPageComponent(sourceCode, parentName, extractedComponents) {
+function transformToPageComponent(sourceCode, parentName, extractedComponents, exportDir) {
   // Parse source code into AST
   const ast = parse(sourceCode, {
     sourceType: 'module',
@@ -425,7 +445,18 @@ function transformToPageComponent(sourceCode, parentName, extractedComponents) {
 
   const componentsToImport = new Set()
 
-  // Build mapping: data-name (case-insensitive) → component name
+  // Load component-mapping.json (node-id → component name)
+  const mappingPath = pathModule.join(exportDir, 'components', 'component-mapping.json')
+  let componentMapping = {}
+
+  if (fs.existsSync(mappingPath)) {
+    componentMapping = JSON.parse(fs.readFileSync(mappingPath, 'utf8'))
+    console.log(`    ✓ Loaded component-mapping.json (${Object.keys(componentMapping).length} components)`)
+  } else {
+    console.log(`    ⚠️  component-mapping.json not found, using fallback data-name matching`)
+  }
+
+  // Build fallback mapping: data-name (case-insensitive) → component name
   const dataNameMap = new Map()
   for (const componentName of extractedComponents) {
     dataNameMap.set(componentName.toLowerCase(), componentName)
@@ -455,39 +486,60 @@ function transformToPageComponent(sourceCode, parentName, extractedComponents) {
         }
       }
 
-      // Check if it's a div with data-name attribute (replace with component)
+      // Check if it's a div with data-node-id attribute (replace with component)
       if (openingElement.name.type === 'JSXIdentifier' && openingElement.name.name === 'div') {
-        const dataNameAttr = openingElement.attributes.find(
+        const dataNodeIdAttr = openingElement.attributes.find(
           attr => attr.type === 'JSXAttribute' &&
-                  attr.name &&
-                  attr.name.name === 'data-name' &&
-                  attr.value &&
-                  attr.value.type === 'StringLiteral'
+                  attr.name?.name === 'data-node-id' &&
+                  attr.value?.type === 'StringLiteral'
         )
 
-        if (dataNameAttr) {
+        const dataNameAttr = openingElement.attributes.find(
+          attr => attr.type === 'JSXAttribute' &&
+                  attr.name?.name === 'data-name' &&
+                  attr.value?.type === 'StringLiteral'
+        )
+
+        let componentName = null
+        let matchMethod = null
+
+        // PRIORITY 1: Match by data-node-id via component-mapping.json
+        if (dataNodeIdAttr) {
+          const nodeId = dataNodeIdAttr.value.value
+          componentName = componentMapping[nodeId]
+          if (componentName) {
+            matchMethod = 'node-id'
+          }
+        }
+
+        // PRIORITY 2: Fallback to data-name matching
+        if (!componentName && dataNameAttr) {
           const dataName = dataNameAttr.value.value
           const pascalDataName = toPascalCase(dataName)
-          const componentName = dataNameMap.get(pascalDataName.toLowerCase())
-
+          componentName = dataNameMap.get(pascalDataName.toLowerCase())
           if (componentName) {
-            // Replace div with self-closing component tag
-            componentsToImport.add(componentName)
-
-            path.replaceWith({
-              type: 'JSXElement',
-              openingElement: {
-                type: 'JSXOpeningElement',
-                name: { type: 'JSXIdentifier', name: componentName },
-                attributes: [],
-                selfClosing: true
-              },
-              closingElement: null,
-              children: []
-            })
-
-            console.log(`    🔄 Replaced data-name="${dataName}" with <${componentName} />`)
+            matchMethod = 'data-name'
           }
+        }
+
+        // Replace div with component if match found
+        if (componentName && extractedComponents.includes(componentName)) {
+          componentsToImport.add(componentName)
+
+          path.replaceWith({
+            type: 'JSXElement',
+            openingElement: {
+              type: 'JSXOpeningElement',
+              name: { type: 'JSXIdentifier', name: componentName },
+              attributes: [],
+              selfClosing: true
+            },
+            closingElement: null,
+            children: []
+          })
+
+          const dataNameValue = dataNameAttr?.value?.value || 'unknown'
+          console.log(`    🔄 Replaced data-name="${dataNameValue}" with <${componentName} /> (matched by ${matchMethod})`)
         }
       }
     }
@@ -528,16 +580,59 @@ function transformToPageComponent(sourceCode, parentName, extractedComponents) {
     }
   })
 
-  // STEP 5: Remove ALL image imports (components handle their own images)
-  // Page.tsx only orchestrates components, images are in individual components
+  // STEP 4.5: Remove orphan TypeScript types (belong to extracted components)
+  traverse.default(ast, {
+    TSTypeAliasDeclaration(path) {
+      const typeName = path.node.id.name
+      // Remove types that match extracted component names (ComponentNameProps)
+      if (typeName.endsWith('Props')) {
+        const componentName = typeName.replace(/Props$/, '')
+        if (extractedComponents.includes(componentName)) {
+          path.remove()
+          console.log(`    🗑️  Removed orphan type: ${typeName} (belongs to ${componentName})`)
+        }
+      }
+    },
+    TSInterfaceDeclaration(path) {
+      const interfaceName = path.node.id.name
+      // Remove interfaces that match extracted component names (ComponentNameProps)
+      if (interfaceName.endsWith('Props')) {
+        const componentName = interfaceName.replace(/Props$/, '')
+        if (extractedComponents.includes(componentName)) {
+          path.remove()
+          console.log(`    🗑️  Removed orphan interface: ${interfaceName} (belongs to ${componentName})`)
+        }
+      }
+    }
+  })
+
+  // STEP 5: Find images still used in Page.tsx (after component extraction)
+  const usedImages = new Set()
+  traverse.default(ast, {
+    JSXAttribute(path) {
+      if (path.node.name?.name === 'src' &&
+          path.node.value?.type === 'JSXExpressionContainer' &&
+          path.node.value.expression?.type === 'Identifier') {
+        usedImages.add(path.node.value.expression.name)
+      }
+    }
+  })
+
+  // STEP 6: Remove only UNUSED image imports (images moved to extracted components)
+  // Keep images that are still used in Page.tsx JSX
   traverse.default(ast, {
     ImportDeclaration(path) {
       const source = path.node.source.value
-      // Remove image imports (belong to components now)
+      // Check if it's an image import
       if (source.match(/\.(png|jpg|jpeg|svg|gif|webp)$/i)) {
         const importName = path.node.specifiers[0]?.local?.name
-        path.remove()
-        console.log(`    🗑️  Removed image import: ${importName} (belongs to component)`)
+        // Only remove if NOT used in Page.tsx
+        if (!usedImages.has(importName)) {
+          path.remove()
+          console.log(`    🗑️  Removed image import: ${importName} (belongs to component)`)
+        } else {
+          console.log(`    ✅ Kept image import: ${importName} (used in Page.tsx)`)
+        }
       }
     }
   })
@@ -571,6 +666,9 @@ function transformToPageComponent(sourceCode, parentName, extractedComponents) {
   finalCode = finalCode.replace(`import './Component-clean.css';`, '')
   finalCode = finalCode.replace(`import "./Component-clean.css";`, '')
 
+  // Remove orphan "// Image imports" comments (when no images remain)
+  finalCode = finalCode.replace(/\/\/ Image imports\s*\n/g, '')
+
   // Rename main function to Page with comment
   finalCode = finalCode.replace(
     /export default function \w+\(\)/,
@@ -585,13 +683,13 @@ function transformToPageComponent(sourceCode, parentName, extractedComponents) {
 
 function copyPageFile(exportDir, distDir) {
   // Copy Page.tsx and Page.css for responsive merges
-  const pageTsx = path.join(exportDir, 'Page.tsx')
-  const pageCss = path.join(exportDir, 'Page.css')
+  const pageTsx = pathModule.join(exportDir, 'Page.tsx')
+  const pageCss = pathModule.join(exportDir, 'Page.css')
 
   if (fs.existsSync(pageTsx)) {
     let content = fs.readFileSync(pageTsx, 'utf8')
     // Save to dist root (not dist/components/)
-    fs.writeFileSync(path.join(distDir, 'Page.tsx'), content)
+    fs.writeFileSync(pathModule.join(distDir, 'Page.tsx'), content)
   }
 
   if (fs.existsSync(pageCss)) {
@@ -607,34 +705,34 @@ function copyPageFile(exportDir, distDir) {
     content = tailwindDirectives + content
 
     // Save to dist root (not dist/components/)
-    fs.writeFileSync(path.join(distDir, 'Page.css'), content)
+    fs.writeFileSync(pathModule.join(distDir, 'Page.css'), content)
   }
 
   console.log(`    ✓ Copied Page.tsx and Page.css`)
 }
 
 function copyAssets(exportDir, distDir) {
-  const imgSource = path.join(exportDir, 'img')
+  const imgSource = pathModule.join(exportDir, 'img')
   if (fs.existsSync(imgSource)) {
     // Recursive copy using cpSync (Node 16.7+)
-    fs.cpSync(imgSource, path.join(distDir, 'assets/img'), { recursive: true })
+    fs.cpSync(imgSource, pathModule.join(distDir, 'assets/img'), { recursive: true })
     const count = fs.readdirSync(imgSource).length
     console.log(`    ✓ Copied ${count} images`)
   }
 }
 
 async function generateDesignTokens(exportDir, distDir, config) {
-  let variablesPath = path.join(exportDir, 'variables.json')
+  let variablesPath = pathModule.join(exportDir, 'variables.json')
 
   // For responsive merges, get variables.json from Desktop export
   if (config.type === 'responsive') {
-    const metadataPath = path.join(exportDir, 'responsive-metadata.json')
+    const metadataPath = pathModule.join(exportDir, 'responsive-metadata.json')
     if (fs.existsSync(metadataPath)) {
       const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'))
       const desktopTestId = metadata.breakpoints?.desktop?.testId
 
       if (desktopTestId) {
-        const desktopVariablesPath = path.join(
+        const desktopVariablesPath = pathModule.join(
           exportDir,
           '..',
           '..',
@@ -656,13 +754,13 @@ async function generateDesignTokens(exportDir, distDir, config) {
   }
 
   const { generateTokens } = await import('./generate-design-tokens.js')
-  generateTokens(variablesPath, path.join(distDir, 'tokens'))
+  generateTokens(variablesPath, pathModule.join(distDir, 'tokens'))
   console.log(`    ✓ Generated design tokens (3 formats)`)
 }
 
 async function generateReadmeWrapper(exportDir, distDir, config) {
   const { generateReadme } = await import('../reporting/generate-readme.js')
-  const metadataPath = path.join(exportDir, 'metadata.json')
+  const metadataPath = pathModule.join(exportDir, 'metadata.json')
 
   let metadata = {}
   if (fs.existsSync(metadataPath)) {

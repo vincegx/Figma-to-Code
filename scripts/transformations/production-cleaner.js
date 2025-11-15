@@ -299,9 +299,9 @@ export function execute(ast, context) {
         if (!attr.name) return true
         const name = attr.name.name
         // Keep data-name if keepDataName flag is set (for responsive merging)
-        // Always remove data-node-id (internal Figma ID, not needed)
-        if (name === 'data-node-id') return false
+        // Keep data-node-id for precise component matching in dist-generator
         if (name === 'data-name') return keepDataName
+        if (name === 'data-node-id') return true
         return true
       })
       dataAttrsRemoved += initialLength - path.node.openingElement.attributes.length

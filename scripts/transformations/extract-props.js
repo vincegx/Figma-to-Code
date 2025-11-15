@@ -316,19 +316,36 @@ function extractNumbers(ast, componentName) {
 
 /**
  * Generate TypeScript interface for props
+ * Includes both existing props (from Figma variants) and extracted props (from hardcoded values)
  */
-function generateInterface(componentName, allProps, hasClassName) {
-  if (allProps.length === 0 && !hasClassName) return ''
+function generateInterface(componentName, extractedProps, existingProps) {
+  if (extractedProps.length === 0 && existingProps.length === 0) return ''
 
-  const propDefinitions = allProps.map(prop => {
+  const propDefinitions = []
+
+  // Add extracted props (from hardcoded values)
+  for (const prop of extractedProps) {
     let type = 'string'
     if (prop.type === 'number') type = 'number'
     if (prop.type === 'image') type = 'string'
-    return `  ${prop.propName}?: ${type};`
-  }).join('\n')
+    propDefinitions.push(`  ${prop.propName}?: ${type};`)
+  }
 
-  // Only add className if it was already in the component
-  const classNameProp = hasClassName ? '\n  className?: string;' : ''
+  // Add existing props (from Figma variants - preserve types)
+  for (const prop of existingProps) {
+    let type = 'string'
+
+    if (prop.type === 'boolean') {
+      type = 'boolean'
+    } else if (prop.type === 'number') {
+      type = 'number'
+    } else if (prop.type === 'union' && prop.literalTypes && prop.literalTypes.length > 0) {
+      // Union type: "A" | "B" | "C"
+      type = prop.literalTypes.map(v => `"${v}"`).join(' | ')
+    }
+
+    propDefinitions.push(`  ${prop.name}?: ${type};`)
+  }
 
   return `// ========================================
 // Component Props Interface
@@ -336,7 +353,7 @@ function generateInterface(componentName, allProps, hasClassName) {
 // ========================================
 
 interface ${componentName}Props {
-${propDefinitions}${classNameProp}
+${propDefinitions.join('\n')}
 }
 
 `
@@ -405,11 +422,30 @@ function getComponentName(ast) {
 }
 
 /**
- * Detect if component already had className prop before extraction
+ * Detect all existing props in component (preserve them during extraction)
+ * Returns: Array of { name, type, hasDefault, defaultValue, literalTypes }
  */
-function detectExistingClassName(ast, componentName) {
-  let hasClassName = false
+function detectExistingProps(ast, componentName) {
+  const existingProps = []
+  let existingPropsInterface = null
 
+  // Step 1: Find existing TypeScript interface (if any)
+  traverse.default(ast, {
+    TSInterfaceDeclaration(path) {
+      if (path.node.id.name === `${componentName}Props`) {
+        existingPropsInterface = path.node.body.body
+        path.stop()
+      }
+    },
+    TSTypeAliasDeclaration(path) {
+      if (path.node.id.name === `${componentName}Props`) {
+        existingPropsInterface = path.node.typeAnnotation
+        path.stop()
+      }
+    }
+  })
+
+  // Step 2: Detect props from function signature
   traverse.default(ast, {
     FunctionDeclaration(path) {
       if (path.node.id && path.node.id.name === componentName) {
@@ -417,13 +453,68 @@ function detectExistingClassName(ast, componentName) {
         if (path.node.params.length > 0) {
           const firstParam = path.node.params[0]
 
-          // Check destructured object pattern: function Component({ className })
+          // Check destructured object pattern: function Component({ prop1, prop2 = "default" })
           if (firstParam.type === 'ObjectPattern') {
-            hasClassName = firstParam.properties.some(prop => {
-              return prop.type === 'ObjectProperty' &&
-                     prop.key.type === 'Identifier' &&
-                     prop.key.name === 'className'
-            })
+            for (const prop of firstParam.properties) {
+              if (prop.type === 'ObjectProperty' && prop.key.type === 'Identifier') {
+                const propName = prop.key.name
+                let hasDefault = false
+                let defaultValue = null
+
+                // Check if prop has default value: { prop = "default" }
+                if (prop.value.type === 'AssignmentPattern') {
+                  hasDefault = true
+                  const right = prop.value.right
+
+                  // Extract default value
+                  if (right.type === 'StringLiteral') {
+                    defaultValue = right.value
+                  } else if (right.type === 'BooleanLiteral') {
+                    defaultValue = right.value
+                  } else if (right.type === 'NumericLiteral') {
+                    defaultValue = right.value
+                  } else if (right.type === 'Identifier') {
+                    defaultValue = right.name // For image imports
+                  }
+                }
+
+                // Try to get type info from interface
+                let tsType = 'string'
+                let literalTypes = null
+
+                if (existingPropsInterface) {
+                  for (const member of existingPropsInterface) {
+                    if (member.type === 'TSPropertySignature' &&
+                        member.key.type === 'Identifier' &&
+                        member.key.name === propName) {
+                      // Extract type annotation
+                      const typeAnnotation = member.typeAnnotation?.typeAnnotation
+
+                      if (typeAnnotation?.type === 'TSBooleanKeyword') {
+                        tsType = 'boolean'
+                      } else if (typeAnnotation?.type === 'TSNumberKeyword') {
+                        tsType = 'number'
+                      } else if (typeAnnotation?.type === 'TSUnionType') {
+                        // Union of literal types: "A" | "B" | "C"
+                        literalTypes = typeAnnotation.types
+                          .filter(t => t.type === 'TSLiteralType')
+                          .map(t => t.literal.value)
+                        tsType = 'union'
+                      }
+                      break
+                    }
+                  }
+                }
+
+                existingProps.push({
+                  name: propName,
+                  type: tsType,
+                  hasDefault,
+                  defaultValue,
+                  literalTypes
+                })
+              }
+            }
           }
         }
         path.stop()
@@ -431,52 +522,82 @@ function detectExistingClassName(ast, componentName) {
     }
   })
 
-  return hasClassName
+  return existingProps
 }
 
 /**
  * Update function signature to accept props with defaults
+ * Preserves existing props (from Figma variants) and adds extracted props
  */
-function updateFunctionSignature(ast, componentName, allProps, hasClassName) {
+function updateFunctionSignature(ast, componentName, extractedProps, existingProps) {
   traverse.default(ast, {
     FunctionDeclaration(path) {
       // Find the component function
       if (path.node.id && path.node.id.name === componentName) {
-        // Build destructured props parameter with defaults
-        const properties = allProps.map(prop => {
-          // Add default value
+        const properties = []
+
+        // Add extracted props (from hardcoded values)
+        for (const prop of extractedProps) {
           const defaultVal = prop.type === 'number'
             ? t.numericLiteral(prop.defaultValue)
             : prop.type === 'image'
             ? t.identifier(prop.originalValue)  // Keep image import reference
             : t.stringLiteral(prop.defaultValue)
 
-          // Create ObjectProperty with AssignmentPattern as value
-          // { propName = "default" }
-          return t.objectProperty(
-            t.identifier(prop.propName),
-            t.assignmentPattern(
-              t.identifier(prop.propName),
-              defaultVal
-            ),
-            false,  // computed
-            false   // shorthand must be false when using default values
-          )
-        })
-
-        // Only add className if it was already present
-        if (hasClassName) {
           properties.push(
             t.objectProperty(
-              t.identifier('className'),
-              t.identifier('className'),
-              false,
-              true  // shorthand
+              t.identifier(prop.propName),
+              t.assignmentPattern(
+                t.identifier(prop.propName),
+                defaultVal
+              ),
+              false,  // computed
+              false   // shorthand must be false when using default values
             )
           )
         }
 
-        // Create props parameter: { prop1 = "default", prop2 = 123, className? }
+        // Add existing props (from Figma variants - preserve defaults)
+        for (const prop of existingProps) {
+          if (prop.hasDefault && prop.defaultValue !== null) {
+            // Prop has default value
+            let defaultVal
+            if (prop.type === 'boolean') {
+              defaultVal = t.booleanLiteral(prop.defaultValue)
+            } else if (prop.type === 'number') {
+              defaultVal = t.numericLiteral(prop.defaultValue)
+            } else if (typeof prop.defaultValue === 'string') {
+              defaultVal = t.stringLiteral(prop.defaultValue)
+            } else {
+              // Image or other identifier
+              defaultVal = t.identifier(prop.defaultValue)
+            }
+
+            properties.push(
+              t.objectProperty(
+                t.identifier(prop.name),
+                t.assignmentPattern(
+                  t.identifier(prop.name),
+                  defaultVal
+                ),
+                false,
+                false
+              )
+            )
+          } else {
+            // Prop without default (shorthand syntax)
+            properties.push(
+              t.objectProperty(
+                t.identifier(prop.name),
+                t.identifier(prop.name),
+                false,
+                true  // shorthand
+              )
+            )
+          }
+        }
+
+        // Create props parameter
         const propsParam = t.objectPattern(properties)
 
         // Add TypeScript type annotation
@@ -560,16 +681,17 @@ export function execute(ast, context) {
   // Extract component name
   const componentName = getComponentName(ast)
 
-  // Detect if className was already present before extraction
-  const hasClassName = detectExistingClassName(ast, componentName)
+  // Detect existing props (from Figma variants - preserve them!)
+  const existingProps = detectExistingProps(ast, componentName)
 
-  // Extract all props (only from main component, not helpers)
+  // Extract props from hardcoded values (only from main component, not helpers)
   const texts = extractTexts(ast, componentName)
   const images = extractImages(ast, componentName, context)
   const numbers = extractNumbers(ast, componentName)
-  let allProps = [...texts, ...images, ...numbers]
+  let extractedProps = [...texts, ...images, ...numbers]
 
-  if (allProps.length === 0 && !hasClassName) {
+  // If no props to extract and no existing props, skip
+  if (extractedProps.length === 0 && existingProps.length === 0) {
     return {
       propsExtracted: 0,
       skipped: true,
@@ -577,25 +699,26 @@ export function execute(ast, context) {
     }
   }
 
-  // Deduplicate prop names to avoid conflicts
-  allProps = deduplicatePropNames(allProps)
+  // Deduplicate extracted prop names to avoid conflicts
+  extractedProps = deduplicatePropNames(extractedProps)
 
   // Replace hardcoded values with props
-  replaceWithProps(allProps)
+  replaceWithProps(extractedProps)
 
-  // Update function signature
-  updateFunctionSignature(ast, componentName, allProps, hasClassName)
+  // Update function signature (preserve existing props + add extracted props)
+  updateFunctionSignature(ast, componentName, extractedProps, existingProps)
 
-  // Generate TypeScript interface (will be prepended by caller)
-  const interfaceDef = generateInterface(componentName, allProps, hasClassName)
+  // Generate TypeScript interface (existing props + extracted props)
+  const interfaceDef = generateInterface(componentName, extractedProps, existingProps)
 
   // Store interface in context for later use
   if (!context.propsExtraction) context.propsExtraction = {}
   context.propsExtraction.interface = interfaceDef
-  context.propsExtraction.props = allProps
+  context.propsExtraction.props = [...extractedProps, ...existingProps]
 
   return {
-    propsExtracted: allProps.length,
+    propsExtracted: extractedProps.length,
+    existingPropsPreserved: existingProps.length,
     byType: {
       texts: texts.length,
       images: images.length,

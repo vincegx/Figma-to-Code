@@ -39,17 +39,6 @@ import generate from '@babel/generator';
 import { toPascalCase } from '../utils/chunking.js';
 
 /**
- * Semantic patterns for important sections (Rule 3)
- */
-const SEMANTIC_PATTERNS = [
-  /^header$/i,
-  /^footer$/i,
-  /section$/i,      // "Activity Section", "title section"
-  /overview$/i,     // "Account Overview"
-  /^quick actions$/i, // "Quick actions" (specific, not all "actions")
-];
-
-/**
  * Patterns to exclude (too granular or utility sections)
  */
 const EXCLUDE_PATTERNS = [
@@ -57,6 +46,33 @@ const EXCLUDE_PATTERNS = [
   /^copyright$/i,   // Copyright (part of Footer)
   /^socials$/i,     // Socials (part of Footer)
 ];
+
+/**
+ * Parse metadata.xml to get actual Figma components (name + node-id)
+ */
+function parseFigmaComponents(testDir) {
+  const metadataPath = path.join(testDir, 'metadata.xml');
+
+  if (!fs.existsSync(metadataPath)) {
+    return [];
+  }
+
+  const xml = fs.readFileSync(metadataPath, 'utf8');
+  const components = [];
+
+  // Extract <instance id="..." name="..." /> elements
+  const instanceRegex = /<instance[^>]*id="([^"]+)"[^>]*name="([^"]+)"[^>]*\/>/g;
+  let match;
+
+  while ((match = instanceRegex.exec(xml)) !== null) {
+    components.push({
+      nodeId: match[1],
+      name: match[2]
+    });
+  }
+
+  return components;
+}
 
 /**
  * Main entry point
@@ -81,8 +97,11 @@ export async function splitComponent(testDir) {
   const cleanCode = fs.readFileSync(cleanPath, 'utf8');
   const globalCSS = fs.readFileSync(cssPath, 'utf8');
 
-  // 2. Detect sections using generic rules
-  const sections = detectSections(cleanCode);
+  // 2. Parse Figma components from metadata.xml
+  const figmaComponents = parseFigmaComponents(testDir);
+
+  // 3. Detect sections using Figma data
+  const sections = detectSections(cleanCode, figmaComponents);
 
   console.log(`   Found ${sections.length} sections:\n`);
   sections.forEach(s => console.log(`     - ${s.name} (${s.type})`));
@@ -100,7 +119,7 @@ export async function splitComponent(testDir) {
   const imageManifest = {};
 
   for (const section of sections) {
-    const chunkName = toPascalCase(section.name);
+    const chunkName = section.name;  // Already in PascalCase
 
     // Generate TSX
     const usedImages = extractUsedImages(section.jsx);
@@ -142,6 +161,19 @@ export async function splitComponent(testDir) {
     JSON.stringify(imageManifest, null, 2)
   );
 
+  // 7. Write component mapping (node-id → component name) for dist-generator
+  const componentMapping = {};
+  for (const section of sections) {
+    if (section.nodeId) {
+      componentMapping[section.nodeId] = section.name;
+    }
+  }
+
+  fs.writeFileSync(
+    path.join(componentsDir, 'component-mapping.json'),
+    JSON.stringify(componentMapping, null, 2)
+  );
+
   console.log(`\n✅ Splitting complete: ${sections.length} chunks created`);
   console.log(`📁 Output: ${componentsDir}\n`);
 }
@@ -155,9 +187,9 @@ function getParentComponentName(tsxCode) {
 }
 
 /**
- * Detect sections using generic rules
+ * Detect sections using Figma data
  */
-function detectSections(tsxCode) {
+function detectSections(tsxCode, figmaComponents) {
   const ast = parse(tsxCode, {
     sourceType: 'module',
     plugins: ['jsx', 'typescript']
@@ -213,19 +245,36 @@ function detectSections(tsxCode) {
           ? dataNameAttr.value.value
           : null;
 
-        // Check extraction rules
-        if (dataName && shouldExtract(dataName, parentName, functionNames, extractedSections)) {
-          // Avoid duplicates
-          if (!sections.find(s => s.name === dataName)) {
-            sections.push({
-              name: dataName,
-              type: 'inline',
-              jsx: generate.default(jsxNode).code
-            });
+        // Get data-node-id attribute
+        const nodeIdAttr = jsxNode.openingElement?.attributes?.find(
+          attr => attr.type === 'JSXAttribute' && attr.name?.name === 'data-node-id'
+        );
 
-            // Track that this section is extracted (to skip its children)
-            extractedSections.add(dataName);
+        const nodeId = nodeIdAttr?.value?.type === 'StringLiteral'
+          ? nodeIdAttr.value.value
+          : null;
+
+        // Check extraction rules
+        if (dataName && nodeId && shouldExtract(dataName, nodeId, parentName, functionNames, extractedSections, figmaComponents)) {
+          // Convert to PascalCase (same as file name)
+          let pascalName = toPascalCase(dataName);
+
+          // Handle duplicates by adding suffix
+          let counter = 2;
+          while (sections.find(s => s.name === pascalName)) {
+            pascalName = `${toPascalCase(dataName)}${counter}`;
+            counter++;
           }
+
+          sections.push({
+            name: pascalName,  // Store PascalCase name (matches file name)
+            type: 'inline',
+            jsx: generate.default(jsxNode).code,
+            nodeId: nodeId  // Store nodeId for mapping
+          });
+
+          // Track that this section is extracted (to skip its children)
+          extractedSections.add(dataName);
         }
 
         // Recurse through children
@@ -244,7 +293,7 @@ function detectSections(tsxCode) {
 /**
  * Determine if a section should be extracted
  */
-function shouldExtract(dataName, parentName, functionNames, extractedSections) {
+function shouldExtract(dataName, nodeId, parentName, functionNames, extractedSections, figmaComponents) {
   // Skip if explicitly excluded
   if (EXCLUDE_PATTERNS.some(pattern => pattern.test(dataName))) {
     return false;
@@ -267,8 +316,8 @@ function shouldExtract(dataName, parentName, functionNames, extractedSections) {
     return true;
   }
 
-  // Rule 3: Semantic sections (header, footer, etc.)
-  return SEMANTIC_PATTERNS.some(pattern => pattern.test(dataName));
+  // Rule 3: Match exact Figma component by node-id
+  return figmaComponents.some(comp => comp.nodeId === nodeId && comp.name === dataName);
 }
 
 /**
