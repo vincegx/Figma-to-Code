@@ -74,6 +74,140 @@ function sanitizeVariableName(varName) {
   return sanitized
 }
 
+/**
+ * Parse metadata.xml to extract nodeId → layerName mapping for image nodes
+ * @param {string} metadataPath - Path to metadata.xml
+ * @returns {Map<string, string>} Map of nodeId to layerName
+ */
+function parseMetadataForImageNodes(metadataPath) {
+  if (!fs.existsSync(metadataPath)) {
+    console.warn('   ⚠️  metadata.xml not found, skipping semantic naming')
+    return new Map()
+  }
+
+  const xmlContent = fs.readFileSync(metadataPath, 'utf8')
+  const nodeToLayer = new Map()
+
+  // Match all XML tags that could contain images:
+  // <image id="X" name="..." />
+  // <rectangle id="Y" name="..." /> (can have image fills)
+  // <vector id="Z" name="..." />
+  // <rounded-rectangle id="W" name="..." />
+  const tagPattern = /<(image|rectangle|vector|rounded-rectangle|ellipse|frame|instance)\s+id="([^"]+)"\s+name="([^"]+)"/g
+
+  let match
+  while ((match = tagPattern.exec(xmlContent)) !== null) {
+    const nodeId = match[2]
+    const layerName = match[3]
+    nodeToLayer.set(nodeId, layerName)
+  }
+
+  return nodeToLayer
+}
+
+/**
+ * Parse TSX code to extract varName → layerName mapping via data-name attributes
+ * Since <img> tags don't have data-node-id, we look for parent <div> with data-name
+ * @param {string} tsxCode - TSX source code
+ * @returns {Map<string, string>} Map of varName to layerName (directly from data-name)
+ */
+function extractImageVarToNodeMapping(tsxCode) {
+  const varToName = new Map()
+
+  // Pattern: Find <div data-name="..." ...> ... <img src={varName} /> ... </div>
+  // We'll match the div and extract both data-name and the img varName
+  // Simpler pattern: <div[^>]*data-name="([^"]+)"[^>]*>.*?<img[^>]*src=\{(\w+)\}
+  const divImgPattern = /<div[^>]*data-name="([^"]+)"[^>]*>.*?<img[^>]*src=\{(\w+)\}[^>]*>/gs
+
+  let match
+  while ((match = divImgPattern.exec(tsxCode)) !== null) {
+    const layerName = match[1]
+    const varName = match[2]
+
+    // Only map if we don't already have this varName (first occurrence wins)
+    if (!varToName.has(varName)) {
+      varToName.set(varName, layerName)
+    }
+  }
+
+  // Also try reverse pattern: <img> before data-name in same context
+  // Reset regex index
+  tsxCode.matchAll(/<img[^>]*src=\{(\w+)\}[^>]*>.*?<div[^>]*data-name="([^"]+)"/gs)
+
+  return varToName
+}
+
+/**
+ * Convert Figma layer name to valid JavaScript variable name (camelCase)
+ * @param {string} layerName - Figma layer name (e.g., "Google Logo", "image 8", "MASK SCREEN (2556 X 1179)")
+ * @returns {string} camelCase variable name (e.g., "googleLogo", "image8", "maskScreen")
+ */
+function layerNameToVarName(layerName) {
+  return layerName
+    .replace(/\([^)]+\)/g, '')        // Remove parentheses: "(2556 X 1179)" → ""
+    .replace(/[^a-zA-Z0-9]/g, ' ')    // Replace special chars with space
+    .trim()
+    .split(/\s+/)
+    .filter(word => word.length > 0)
+    .map((word, i) => {
+      // First word: lowercase, rest: capitalize
+      if (i === 0) {
+        return word.toLowerCase()
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    })
+    .join('')
+}
+
+/**
+ * Create complete semantic image mapping: varName → { layerName, semanticName }
+ * Extracts layer names directly from data-name attributes in TSX code
+ * Ensures semantic names are unique by appending numbers if needed
+ * @param {string} metadataPath - Path to metadata.xml (unused, kept for compatibility)
+ * @param {string[]} tsxFiles - Array of TSX file paths to process
+ * @returns {Map<string, object>} Semantic mapping
+ */
+function createSemanticImageMapping(metadataPath, tsxFiles) {
+  const mapping = new Map()
+  const usedNames = new Set()  // Track used semantic names to ensure uniqueness
+
+  for (const file of tsxFiles) {
+    const code = fs.readFileSync(file, 'utf8')
+    const varToName = extractImageVarToNodeMapping(code)
+
+    for (const [varName, layerName] of varToName) {
+      // Skip generic/non-descriptive names
+      if (!layerName || layerName.trim() === '') {
+        continue
+      }
+
+      let semanticName = layerNameToVarName(layerName)
+
+      // Ensure uniqueness: if name already used, append number
+      if (usedNames.has(semanticName)) {
+        let counter = 2
+        let uniqueName = `${semanticName}${counter}`
+        while (usedNames.has(uniqueName)) {
+          counter++
+          uniqueName = `${semanticName}${counter}`
+        }
+        semanticName = uniqueName
+      }
+
+      // Only add if semantic name is different and meaningful
+      if (semanticName && semanticName !== varName) {
+        mapping.set(varName, {
+          layerName,
+          semanticName
+        })
+        usedNames.add(semanticName)
+      }
+    }
+  }
+
+  return mapping
+}
+
 // ═══════════════════════════════════════════════════════════════
 // CLI ARGUMENTS
 // ═══════════════════════════════════════════════════════════════
@@ -250,6 +384,21 @@ console.log(`✅ Total: ${totalPathsUpdated} image path references updated`)
 
 console.log('\n🏷️  Renaming images with Figma layer names...')
 
+// Create semantic mapping from metadata.xml
+const metadataPath = path.join(testDir, 'metadata.xml')
+const semanticMapping = createSemanticImageMapping(metadataPath, filesToProcess)
+
+if (semanticMapping.size > 0) {
+  console.log(`   ✅ Created semantic mapping for ${semanticMapping.size} images from metadata.xml`)
+  // Log some examples
+  const examples = Array.from(semanticMapping.entries()).slice(0, 3)
+  for (const [varName, info] of examples) {
+    console.log(`      ${varName} → ${info.semanticName} (from "${info.layerName}")`)
+  }
+} else {
+  console.log(`   ⚠️  No semantic mappings created (will use generic names)`)
+}
+
 // Collect all image declarations from all files
 const allImageDeclarations = []
 
@@ -319,20 +468,31 @@ if (uniqueDeclarations.size > 0) {
       continue
     }
 
-    // Convert Figma variable name to kebab-case filename
-    // imgFrame1008 → frame-1008
-    // imgImage → image
-    // imgVector → vector
-    // img1 → img-1
-    let newBasename = decl.varName
-      .replace(/^img/, '') // Remove 'img' prefix
-      .replace(/([a-z])([A-Z])/g, '$1-$2') // camelCase → kebab-case
-      .replace(/([a-zA-Z])(\d)/g, '$1-$2') // letter+number → letter-number
-      .toLowerCase()
+    // Check if we have a semantic mapping for this variable
+    const semantic = semanticMapping.get(decl.varName)
 
-    // Handle edge case: if result is empty (varName was just 'img'), use 'img'
-    if (!newBasename) {
-      newBasename = 'img'
+    let newBasename
+    if (semantic && semantic.semanticName) {
+      // Use semantic name from Figma layer
+      // "Google Logo" → googleLogo
+      // "image 8" → image8
+      newBasename = semantic.semanticName
+    } else {
+      // Fallback: Convert generic variable name to kebab-case filename
+      // imgFrame1008 → frame-1008
+      // imgImage → image
+      // imgVector → vector
+      // img1 → img-1
+      newBasename = decl.varName
+        .replace(/^img/, '') // Remove 'img' prefix
+        .replace(/([a-z])([A-Z])/g, '$1-$2') // camelCase → kebab-case
+        .replace(/([a-zA-Z])(\d)/g, '$1-$2') // letter+number → letter-number
+        .toLowerCase()
+
+      // Handle edge case: if result is empty (varName was just 'img'), use 'img'
+      if (!newBasename) {
+        newBasename = 'img'
+      }
     }
 
     const newFilename = newBasename + ext
@@ -400,15 +560,44 @@ if (allImageDeclarations.length > 0) {
     // Clean up empty lines
     componentCode = componentCode.replace(/\n{3,}/g, '\n\n')
 
-    // Generate import statements with updated paths
+    // Build variable rename map: oldVarName → newVarName
+    const varRenameMap = new Map()
+    for (const decl of decls) {
+      const semantic = semanticMapping.get(decl.varName)
+      if (semantic && semantic.semanticName) {
+        varRenameMap.set(decl.varName, semantic.semanticName)
+      }
+    }
+
+    // Replace variable usages in JSX (src={oldName} → src={newName})
+    if (varRenameMap.size > 0) {
+      for (const [oldName, newName] of varRenameMap) {
+        // Pattern: src={oldName} → src={newName}
+        const srcPattern = new RegExp(`\\bsrc=\\{${oldName}\\}`, 'g')
+        componentCode = componentCode.replace(srcPattern, `src={${newName}}`)
+      }
+    }
+
+    // Generate import statements with updated paths and semantic names
     const imgRelativePath = isChunkingMode ? '../img/' : './img/'
     const importStatements = decls.map(decl => {
       const oldFilename = path.basename(decl.imagePath)
       const newFilename = renameMap.get(oldFilename) || oldFilename
       const newPath = `${imgRelativePath}${newFilename}`
-      // Sanitize variable name to ensure it's a valid JavaScript identifier
-      const sanitizedVarName = sanitizeVariableName(decl.varName)
-      return `import ${sanitizedVarName} from "${newPath}";`
+
+      // Use semantic name if available, otherwise sanitize original varName
+      const semantic = semanticMapping.get(decl.varName)
+      let finalVarName
+
+      if (semantic && semantic.semanticName) {
+        // Use semantic name from Figma layer
+        finalVarName = semantic.semanticName
+      } else {
+        // Fallback to sanitized original name
+        finalVarName = sanitizeVariableName(decl.varName)
+      }
+
+      return `import ${finalVarName} from "${newPath}";`
     }).join('\n')
 
     // Find insertion position (after existing imports, or at the top)

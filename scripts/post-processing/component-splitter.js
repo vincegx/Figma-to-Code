@@ -545,8 +545,13 @@ function parseCssSections(css) {
 
     // Detect custom classes section (starts with /* ===== 3. or higher)
     if (line.match(/\/\* ===== [3-9]\./)) {
-      currentSection = 'customClasses';
-      buffer = [line];
+      // If already in customClasses section, just add the line (don't reinitialize)
+      if (currentSection === 'customClasses') {
+        buffer.push(line);
+      } else {
+        currentSection = 'customClasses';
+        buffer = [line];
+      }
       braceDepth = (line.match(/\{/g) || []).length - (line.match(/\}/g) || []).length;
       continue;
     }
@@ -589,7 +594,8 @@ function filterCSSClasses(cssContent, usedClasses) {
 
   for (const line of lines) {
     // Detect class definition: .className {
-    const classMatch = line.match(/^\.([a-z0-9_-]+)\s*\{/);
+    // Updated regex to capture all class names (including "dot", "rgba", etc.)
+    const classMatch = line.match(/^\.([a-zA-Z0-9_-]+)\s*\{/);
 
     if (classMatch) {
       // Save previous rule if needed

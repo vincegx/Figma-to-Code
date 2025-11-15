@@ -69,10 +69,12 @@ function toCamelCase(text) {
 }
 
 /**
- * Clean image import name
- * imgGroup1000001422 → group1000001422
- * img → image
- * img1 → image1
+ * Clean image import name and add 'Image' suffix to avoid prop/import collisions
+ * imgGroup1000001422 → group1000001422Image
+ * img → imageImage
+ * img1 → image1Image
+ * content3 → content3Image
+ * navbar → navbarImage
  */
 function cleanImageName(importName) {
   let cleaned = importName
@@ -83,6 +85,10 @@ function cleanImageName(importName) {
   if (!cleaned || /^\d/.test(cleaned)) {
     cleaned = 'image' + cleaned
   }
+
+  // Add 'Image' suffix to avoid collision with import name
+  // Example: import content3 from "..." → prop: content3Image
+  cleaned = cleaned + 'Image'
 
   return cleaned
 }

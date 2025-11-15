@@ -246,7 +246,7 @@ export async function generateDist(exportDir, config) {
   // 3. Generate or copy Page.tsx
   if (type === 'single') {
     // Generate Page.tsx from parent component with imports
-    generatePageFile(exportDir, distDir, config, extractedComponents)
+    await generatePageFile(exportDir, distDir, config, extractedComponents)
   } else {
     // Copy existing Page.tsx for responsive merges
     copyPageFile(exportDir, distDir)
@@ -354,19 +354,38 @@ async function copyComponents(sourceDir, distDir, config) {
           console.log(`    ⚠️  ${file} - props extraction skipped: ${error.message}`)
         }
       }
+
+      // THEN fix import paths: ./img/ → ../assets/img/
+      // Use replacement function to preserve quote style
+      content = content.replace(/from (["'])(\.\/img\/)([^"']+)\1/g, (match, quote, path, file) => {
+        return `from ${quote}../assets/img/${file}${quote}`
+      })
+      content = content.replace(/from (["'])(\.\.\/img\/)([^"']+)\1/g, (match, quote, path, file) => {
+        return `from ${quote}../assets/img/${file}${quote}`
+      })
+
+      fs.writeFileSync(pathModule.join(distDir, 'components', file), content)
+      copiedCount++
     }
 
-    // THEN fix import paths: ./img/ → ../assets/img/
-    // Use replacement function to preserve quote style
-    content = content.replace(/from (["'])(\.\/img\/)([^"']+)\1/g, (match, quote, path, file) => {
-      return `from ${quote}../assets/img/${file}${quote}`
-    })
-    content = content.replace(/from (["'])(\.\.\/img\/)([^"']+)\1/g, (match, quote, path, file) => {
-      return `from ${quote}../assets/img/${file}${quote}`
-    })
+    // Optimize CSS files
+    if (file.endsWith('.css')) {
+      let cssContent = fs.readFileSync(pathModule.join(sourceDir, file), 'utf8')
 
-    fs.writeFileSync(pathModule.join(distDir, 'components', file), content)
-    copiedCount++
+      // Import the optimizer module
+      const { optimizeCSS } = await import('./css-optimizer.js')
+
+      // Optimize the CSS
+      const optimizedCSS = optimizeCSS(cssContent, {
+        roundDecimals: true,
+        mapVariables: true,
+        convertTailwind: true
+      })
+
+      fs.writeFileSync(pathModule.join(distDir, 'components', file), optimizedCSS)
+      copiedCount++
+      console.log(`    ✅ ${file} - optimized`)
+    }
   }
 
   console.log(`    ✓ Copied ${copiedCount} reusable component files`)
@@ -376,7 +395,7 @@ async function copyComponents(sourceDir, distDir, config) {
 /**
  * Generate Page.tsx for single exports (transform parent component)
  */
-function generatePageFile(exportDir, distDir, config, extractedComponents) {
+async function generatePageFile(exportDir, distDir, config, extractedComponents) {
   const parentComponentName = getParentComponentNameFromSource(exportDir)
 
   // ALWAYS use Component-clean.tsx as source (parent is never split into components/)
@@ -406,16 +425,33 @@ function generatePageFile(exportDir, distDir, config, extractedComponents) {
   // Save to dist root (not dist/components/)
   fs.writeFileSync(pathModule.join(distDir, 'Page.tsx'), fixedPageCode)
 
-  // Generate Page.css with component imports
+  // Generate Page.css scopé + optimized
   if (fs.existsSync(parentCssPath)) {
-    const cssContent = fs.readFileSync(parentCssPath, 'utf8')
+    const fullCSS = fs.readFileSync(parentCssPath, 'utf8')
+    const pageCode = fs.readFileSync(pathModule.join(distDir, 'Page.tsx'), 'utf8')
 
-    // Generate @import statements for extracted components
+    // Import optimizer functions
+    const { extractUsedClasses, filterCSSByClasses, optimizeCSS } = await import('./css-optimizer.js')
+
+    // 1. Extract classes used in Page.tsx
+    const usedClasses = extractUsedClasses(pageCode)
+
+    // 2. Filter Component-clean.css to only keep used classes
+    let scopedCSS = filterCSSByClasses(fullCSS, usedClasses)
+
+    // 3. Optimize the scoped CSS
+    scopedCSS = optimizeCSS(scopedCSS, {
+      roundDecimals: true,
+      mapVariables: true,
+      convertTailwind: true
+    })
+
+    // 4. Generate @import statements for extracted components
     const componentImports = extractedComponents
       .map(name => `@import './components/${name}.css';`)
       .join('\n')
 
-    // Prepend Tailwind directives for Docker builds
+    // 5. Prepend Tailwind directives for Docker builds
     const tailwindDirectives = `/* Tailwind CSS directives */
 @tailwind base;
 @tailwind components;
@@ -423,10 +459,12 @@ function generatePageFile(exportDir, distDir, config, extractedComponents) {
 
 `
 
-    // Combine Tailwind directives + component imports + parent CSS
-    const finalCss = tailwindDirectives + componentImports + '\n\n' + cssContent
+    // 6. Combine: Tailwind + imports + scoped optimized CSS
+    const finalCSS = tailwindDirectives + componentImports + '\n\n' + scopedCSS
 
-    fs.writeFileSync(pathModule.join(distDir, 'Page.css'), finalCss)
+    fs.writeFileSync(pathModule.join(distDir, 'Page.css'), finalCSS)
+
+    console.log(`    ✓ Page.css - scoped and optimized (${usedClasses.size} classes)`)
   }
 
   console.log(`    ✓ Generated Page.tsx with ${extractedComponents.length} component imports`)
