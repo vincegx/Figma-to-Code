@@ -542,7 +542,12 @@ async function copyComponents(sourceDir, distDir, config) {
         }
       } else {
         // No existing props - run extract-props
-        const pipelineConfig = { 'extract-props': { enabled: true } }
+        // Disable transforms that are not needed during dist generation
+        const pipelineConfig = {
+          'extract-props': { enabled: true },
+          'add-missing-data-names': { enabled: false },
+          'svg-consolidation': { enabled: false }
+        }
         try {
           const result = await runPipeline(content, { componentName }, pipelineConfig)
           content = result.code
