@@ -7,6 +7,206 @@ import generate from '@babel/generator'
 import { runPipeline } from '../pipeline.js'
 
 /**
+ * Remove empty CSS section comments
+ * Cleans up section headers that have no content after filtering
+ * @param {string} css - CSS content
+ * @returns {string} CSS with empty sections removed
+ */
+function removeEmptyCSSectionComments(css) {
+  const lines = css.split('\n')
+  const result = []
+  let i = 0
+
+  while (i < lines.length) {
+    const line = lines[i]
+
+    // Check if this is a section comment (/* ===== N. ... ===== */)
+    if (line.match(/\/\* ===== \d+\./)) {
+      // Look ahead to see if there's any content before next section or EOF
+      let hasContent = false
+      let j = i + 1
+
+      while (j < lines.length) {
+        const nextLine = lines[j]
+
+        // If we hit another section comment or end of file, stop
+        if (nextLine.match(/\/\* ===== \d+\./)) {
+          break
+        }
+
+        // If we find non-empty, non-comment content, section has content
+        if (nextLine.trim() && !nextLine.match(/^\/\*/)) {
+          hasContent = true
+          break
+        }
+
+        j++
+      }
+
+      // Only keep section comment if it has content
+      if (hasContent) {
+        result.push(line)
+      }
+      // else: skip this section comment (it's empty)
+    } else {
+      result.push(line)
+    }
+
+    i++
+  }
+
+  // Clean up excessive blank lines (more than 2 consecutive)
+  return result.join('\n').replace(/\n{3,}/g, '\n\n')
+}
+
+/**
+ * Reorganize component CSS by preserving existing sections
+ * Generic approach: detects sections by comments, reorganizes in logical order
+ * @param {string} css - CSS content
+ * @param {string} componentName - Component name for header comment
+ * @returns {string} Reorganized CSS
+ */
+function reorganizeComponentCSS(css, componentName) {
+  const lines = css.split('\n')
+
+  // Sections to extract
+  const sections = {
+    header: `/* Auto-generated scoped CSS for ${componentName} */\n`,
+    imports: [],
+    root: [],
+    utilities: [],
+    fonts: [],
+    colors: [],
+    dimensions: [],
+    spacing: [],
+    typography: [],
+    layout: [],
+    other: []  // Catch-all for unmapped sections
+  }
+
+  let currentSectionName = null
+  let currentSectionBuffer = []
+  let inRoot = false
+
+  // Section mapping: comment text → section name
+  const sectionMap = {
+    'Figma-specific utility': 'utilities',
+    'utility': 'utilities',
+    'Utilities': 'utilities',
+    'Font': 'fonts',
+    'Fonts': 'fonts',
+    'Color': 'colors',
+    'Colors': 'colors',
+    'Dimension': 'dimensions',
+    'Dimensions': 'dimensions',
+    'Spacing': 'spacing',
+    'Typography': 'typography',
+    'Layout': 'layout',
+    'Other Custom': 'layout',  // Section 7 maps to Layout
+    'Figma Variable': 'layout'  // Section 8 maps to Layout
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+
+    // Detect @import
+    if (line.startsWith('@import')) {
+      sections.imports.push(line)
+      continue
+    }
+
+    // Detect :root
+    if (line.startsWith(':root')) {
+      inRoot = true
+      sections.root.push(line)
+      continue
+    }
+
+    // Inside :root
+    if (inRoot) {
+      sections.root.push(line)
+      if (line.includes('}') && !line.includes('{')) {
+        inRoot = false
+      }
+      continue
+    }
+
+    // Skip old header comments
+    if (line.match(/^\/\* Auto-generated scoped CSS/)) {
+      continue
+    }
+
+    // Detect section comment
+    const sectionMatch = line.match(/^\/\* (.*?) \*\//)
+    if (sectionMatch) {
+      const commentText = sectionMatch[1]
+
+      // Save previous section buffer
+      if (currentSectionName && currentSectionBuffer.length > 0) {
+        sections[currentSectionName].push(...currentSectionBuffer)
+        currentSectionBuffer = []
+      }
+
+      // Map comment to section
+      let mappedSection = null
+      for (const [key, value] of Object.entries(sectionMap)) {
+        if (commentText.includes(key)) {
+          mappedSection = value
+          break
+        }
+      }
+
+      currentSectionName = mappedSection || 'other'
+      continue
+    }
+
+    // Add line to current section buffer
+    if (currentSectionName) {
+      currentSectionBuffer.push(line)
+    }
+  }
+
+  // Save final buffer
+  if (currentSectionName && currentSectionBuffer.length > 0) {
+    sections[currentSectionName].push(...currentSectionBuffer)
+  }
+
+  // Build final CSS in logical order
+  let result = [sections.header]
+
+  if (sections.imports.length > 0) {
+    result.push(...sections.imports, '')
+  }
+
+  if (sections.root.length > 0) {
+    result.push(...sections.root, '')
+  }
+
+  // Define output order with section headers
+  const outputSections = [
+    { name: 'utilities', header: '/* Utilities */' },
+    { name: 'fonts', header: '/* Fonts */' },
+    { name: 'colors', header: '/* Colors */' },
+    { name: 'dimensions', header: '/* Dimensions */' },
+    { name: 'spacing', header: '/* Spacing */' },
+    { name: 'typography', header: '/* Typography */' },
+    { name: 'layout', header: '/* Layout */' },
+    { name: 'other', header: '/* Other */' }
+  ]
+
+  for (const { name, header } of outputSections) {
+    if (sections[name].length > 0) {
+      result.push(header)
+      result.push(...sections[name])
+      result.push('')  // Add spacing after each section
+    }
+  }
+
+  // Clean up excessive blank lines
+  return result.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n'
+}
+
+/**
  * Extract parent component name from Component-clean.tsx
  * @param {string} exportDir - Export directory path
  * @returns {string} Parent component function name
@@ -368,23 +568,16 @@ async function copyComponents(sourceDir, distDir, config) {
       copiedCount++
     }
 
-    // Optimize CSS files
+    // Copy CSS files (already optimized by sync-optimizer) and reorganize
     if (file.endsWith('.css')) {
       let cssContent = fs.readFileSync(pathModule.join(sourceDir, file), 'utf8')
+      const componentName = file.replace('.css', '')
 
-      // Import the optimizer module
-      const { optimizeCSS } = await import('./css-optimizer.js')
+      // Reorganize CSS by category
+      cssContent = reorganizeComponentCSS(cssContent, componentName)
 
-      // Optimize the CSS
-      const optimizedCSS = optimizeCSS(cssContent, {
-        roundDecimals: true,
-        mapVariables: true,
-        convertTailwind: true
-      })
-
-      fs.writeFileSync(pathModule.join(distDir, 'components', file), optimizedCSS)
+      fs.writeFileSync(pathModule.join(distDir, 'components', file), cssContent)
       copiedCount++
-      console.log(`    ✅ ${file} - optimized`)
     }
   }
 
@@ -460,7 +653,10 @@ async function generatePageFile(exportDir, distDir, config, extractedComponents)
 `
 
     // 6. Combine: Tailwind + imports + scoped optimized CSS
-    const finalCSS = tailwindDirectives + componentImports + '\n\n' + scopedCSS
+    let finalCSS = tailwindDirectives + componentImports + '\n\n' + scopedCSS
+
+    // 7. Clean up empty section comments
+    finalCSS = removeEmptyCSSectionComments(finalCSS)
 
     fs.writeFileSync(pathModule.join(distDir, 'Page.css'), finalCSS)
 

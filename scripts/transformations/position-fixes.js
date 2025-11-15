@@ -294,13 +294,24 @@ function fixCommonPatterns(path, stats) {
   }
 
   // Pattern 1: absolute inset-0 → remove absolute, keep inset-0 for grid/flex children
-  // Skip overlays (aria-hidden or pointer-events-none)
+  // Skip overlays (aria-hidden or pointer-events-none on element or parent)
   if (className.includes('absolute') && className.includes('inset-0')) {
     const isOverlay = className.includes('pointer-events-none') ||
                       attributes.some(attr => attr.name?.name === 'aria-hidden')
 
-    if (!isOverlay) {
-      const parent = path.parent
+    // Also check if parent has aria-hidden or pointer-events-none (overlay container)
+    const parent = path.parent
+    let parentIsOverlay = false
+    if (parent && t.isJSXElement(parent)) {
+      const parentAttributes = parent.openingElement.attributes
+      const parentClassAttr = parentAttributes.find(attr => attr.name && attr.name.name === 'className')
+
+      parentIsOverlay = parentAttributes.some(attr => attr.name?.name === 'aria-hidden') ||
+                        (parentClassAttr && t.isStringLiteral(parentClassAttr.value) &&
+                         parentClassAttr.value.value.includes('pointer-events-none'))
+    }
+
+    if (!isOverlay && !parentIsOverlay) {
       if (parent && t.isJSXElement(parent)) {
         const parentClassAttr = parent.openingElement.attributes.find(
           attr => attr.name && attr.name.name === 'className'

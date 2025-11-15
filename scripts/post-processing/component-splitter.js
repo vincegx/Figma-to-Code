@@ -78,23 +78,23 @@ function parseFigmaComponents(testDir) {
  * Main entry point
  */
 export async function splitComponent(testDir) {
-  console.log('🔪 Splitting Component-clean.tsx into components...\n');
+  console.log('🔪 Splitting Component-optimized.tsx into components...\n');
 
-  // 1. Read files
-  const cleanPath = path.join(testDir, 'Component-clean.tsx');
-  const cssPath = path.join(testDir, 'Component-clean.css');
+  // 1. Read files (use optimized version - already synchronized)
+  const optimizedPath = path.join(testDir, 'Component-optimized.tsx');
+  const cssPath = path.join(testDir, 'Component-optimized.css');
 
-  if (!fs.existsSync(cleanPath)) {
-    console.error(`❌ Error: Component-clean.tsx not found in ${testDir}`);
+  if (!fs.existsSync(optimizedPath)) {
+    console.error(`❌ Error: Component-optimized.tsx not found in ${testDir}`);
     return;
   }
 
   if (!fs.existsSync(cssPath)) {
-    console.error(`❌ Error: Component-clean.css not found in ${testDir}`);
+    console.error(`❌ Error: Component-optimized.css not found in ${testDir}`);
     return;
   }
 
-  const cleanCode = fs.readFileSync(cleanPath, 'utf8');
+  const cleanCode = fs.readFileSync(optimizedPath, 'utf8');
   const globalCSS = fs.readFileSync(cssPath, 'utf8');
 
   // 2. Parse Figma components from metadata.xml
@@ -623,6 +623,11 @@ function filterCSSClasses(cssContent, usedClasses) {
         filteredLines.push(line);
       }
     }
+  }
+
+  // Save any remaining buffer (last rule in file)
+  if (keepCurrentRule && currentRule.length > 0) {
+    filteredLines.push(...currentRule);
   }
 
   return filteredLines.join('\n');

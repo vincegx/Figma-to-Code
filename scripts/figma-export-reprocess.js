@@ -150,6 +150,11 @@ class ExportReprocessor {
       log.success('Component-clean.tsx + Component-clean.css générés\n');
     }
 
+    // 2.5. Synchronize CSS + TSX (new phase)
+    log.task('🔄', 'Synchronisation CSS + TSX optimisations');
+    execSync(`node ${path.join(__dirname, 'post-processing/sync-optimizer.js')} ${this.testDir}`);
+    log.success('Component-optimized.tsx + Component-optimized.css synchronisés\n');
+
     // 3. Fix SVG vars
     const imgDir = path.join(this.testDir, 'img');
     if (fs.existsSync(imgDir)) {

@@ -35,7 +35,7 @@ export function roundDecimalValues(css) {
  * @param {string} css - CSS content
  * @returns {object} Map of hex colors (uppercase) to variable names
  */
-function extractVariableMap(css) {
+export function extractVariableMap(css) {
   const variableMap = {}
   const rootMatch = css.match(/:root\s*\{([^}]+)\}/s)
 
