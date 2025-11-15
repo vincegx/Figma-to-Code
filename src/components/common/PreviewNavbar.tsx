@@ -2,12 +2,14 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { ResponsiveViewportControls } from './ResponsiveViewportControls'
 
+type Version = 'clean' | 'fixed' | 'optimized'
+
 interface PreviewNavbarProps {
   id: string
   mode: 'responsive' | 'full'
   onModeChange: (mode: 'responsive' | 'full') => void
-  version?: 'clean' | 'fixed'
-  onVersionChange?: (version: 'clean' | 'fixed') => void
+  version?: Version
+  onVersionChange?: (version: Version) => void
   detailUrl?: string
   showNavbar: boolean
   onShowNavbar: (show: boolean) => void
@@ -89,20 +91,45 @@ export function PreviewNavbar({
 
               {/* Right: Controls */}
               <div className="flex items-center gap-4">
-                {/* Version Switch (only for normal tests) */}
+                {/* Version Button Group (only for normal tests) */}
                 {version && onVersionChange && (
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="version-switch" className="text-xs text-muted-foreground cursor-pointer">
-                      {version === 'clean' ? 'Clean' : 'Fixed'}
-                    </Label>
-                    <Switch
-                      id="version-switch"
-                      checked={version === 'fixed'}
-                      onCheckedChange={(checked: boolean) => {
-                        const newVersion = checked ? 'fixed' : 'clean'
-                        onVersionChange(newVersion)
-                      }}
-                    />
+                    <Label className="text-xs text-muted-foreground mr-1">Version:</Label>
+                    <div className="inline-flex rounded-md shadow-sm" role="group">
+                      <button
+                        type="button"
+                        onClick={() => onVersionChange('fixed')}
+                        className={`px-3 py-1.5 text-xs font-medium border rounded-l-md transition-colors ${
+                          version === 'fixed'
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                        }`}
+                      >
+                        Fixed
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onVersionChange('clean')}
+                        className={`px-3 py-1.5 text-xs font-medium border-t border-b transition-colors ${
+                          version === 'clean'
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                        }`}
+                      >
+                        Clean
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onVersionChange('optimized')}
+                        className={`px-3 py-1.5 text-xs font-medium border rounded-r-md transition-colors ${
+                          version === 'optimized'
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                        }`}
+                      >
+                        Optimized
+                      </button>
+                    </div>
                   </div>
                 )}
 

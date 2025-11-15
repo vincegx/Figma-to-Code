@@ -590,12 +590,13 @@ interface CodeFile {
   icon: string
 }
 
-type CodeVersion = 'original' | 'fixed' | 'clean'
+type CodeVersion = 'original' | 'fixed' | 'clean' | 'optimized'
 
 type FileCache = {
   original: CodeFile[]
   fixed: CodeFile[]
   clean: CodeFile[]
+  optimized: CodeFile[]
 }
 
 function CodeTab({ exportId }: CodeTabProps) {
@@ -619,7 +620,8 @@ function CodeTab({ exportId }: CodeTabProps) {
       const cache: FileCache = {
         original: [],
         fixed: [],
-        clean: []
+        clean: [],
+        optimized: []
       }
 
       // Load Original files
@@ -702,6 +704,21 @@ function CodeTab({ exportId }: CodeTabProps) {
         console.warn('No Component-clean.css')
       }
 
+      // Load Optimized files
+      try {
+        const optimizedModule = await import(`../../generated/export_figma/${exportId}/Component-optimized.tsx?raw`)
+        cache.optimized.push({ name: 'Component-optimized.tsx', content: optimizedModule.default, type: 'tsx', icon: '⚡' })
+      } catch (e) {
+        console.warn('No Component-optimized.tsx')
+      }
+
+      try {
+        const cssModule = await import(`../../generated/export_figma/${exportId}/Component-optimized.css?raw`)
+        cache.optimized.push({ name: 'Component-optimized.css', content: cssModule.default, type: 'css', icon: '🎨' })
+      } catch (e) {
+        console.warn('No Component-optimized.css')
+      }
+
       setFileCache(cache)
       setLoading(false)
     } catch (err) {
@@ -743,6 +760,10 @@ function CodeTab({ exportId }: CodeTabProps) {
                 <TabsTrigger value="clean" className="gap-1.5">
                   <span>✨</span>
                   <span className="hidden sm:inline">Clean</span>
+                </TabsTrigger>
+                <TabsTrigger value="optimized" className="gap-1.5">
+                  <span>⚡</span>
+                  <span className="hidden sm:inline">Optimized</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>

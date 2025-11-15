@@ -8,7 +8,8 @@ import { useParams, useSearchParams } from 'react-router-dom'
 export default function ExportFigmaPreviewPage() {
   const { exportId } = useParams<{ exportId: string }>()
   const [searchParams] = useSearchParams()
-  const version = searchParams.get('version') === 'fixed' ? 'fixed' : 'clean'
+  const versionParam = searchParams.get('version')
+  const version = versionParam === 'fixed' ? 'fixed' : versionParam === 'optimized' ? 'optimized' : 'clean'
 
   const [Component, setComponent] = useState<React.ComponentType | null>(null)
   const [loading, setLoading] = useState(true)

@@ -143,7 +143,7 @@ function extractImageVarToNodeMapping(tsxCode) {
  * @returns {string} camelCase variable name (e.g., "googleLogo", "image8", "maskScreen")
  */
 function layerNameToVarName(layerName) {
-  return layerName
+  let varName = layerName
     .replace(/\([^)]+\)/g, '')        // Remove parentheses: "(2556 X 1179)" → ""
     .replace(/[^a-zA-Z0-9]/g, ' ')    // Replace special chars with space
     .trim()
@@ -157,6 +157,13 @@ function layerNameToVarName(layerName) {
       return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
     })
     .join('')
+
+  // Ensure starts with letter, not digit (e.g., "09iphone" → "img09iphone")
+  if (varName && /^\d/.test(varName)) {
+    varName = 'img' + varName
+  }
+
+  return varName
 }
 
 /**

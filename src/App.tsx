@@ -91,9 +91,10 @@ function PreviewMode({ exportId }: { exportId: string }) {
   const [mode, setMode] = useState<'responsive' | 'full'>('responsive')
   const [showNavbar, setShowNavbar] = useState(false)
 
-  // Get version from URL params (clean or fixed)
+  // Get version from URL params (clean, fixed, or optimized)
   const params = new URLSearchParams(window.location.search)
-  const version = params.get('version') === 'fixed' ? 'fixed' : 'clean'
+  const versionParam = params.get('version')
+  const version = versionParam === 'fixed' ? 'fixed' : versionParam === 'optimized' ? 'optimized' : 'clean'
 
   useEffect(() => {
     // Load metadata to get default dimensions
@@ -139,10 +140,12 @@ function PreviewMode({ exportId }: { exportId: string }) {
     }
   }, [showNavbar])
 
-  const handleVersionChange = (newVersion: 'clean' | 'fixed') => {
+  const handleVersionChange = (newVersion: 'clean' | 'fixed' | 'optimized') => {
     const url = new URL(window.location.href)
     if (newVersion === 'fixed') {
       url.searchParams.set('version', 'fixed')
+    } else if (newVersion === 'optimized') {
+      url.searchParams.set('version', 'optimized')
     } else {
       url.searchParams.delete('version')
     }

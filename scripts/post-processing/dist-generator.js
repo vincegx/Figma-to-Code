@@ -843,11 +843,29 @@ function transformToPageComponent(sourceCode, parentName, extractedComponents, e
   // STEP 5: Find images still used in Page.tsx (after component extraction)
   const usedImages = new Set()
   traverse.default(ast, {
+    // Detect images in JSX src attributes
     JSXAttribute(path) {
       if (path.node.name?.name === 'src' &&
           path.node.value?.type === 'JSXExpressionContainer' &&
           path.node.value.expression?.type === 'Identifier') {
         usedImages.add(path.node.value.expression.name)
+      }
+    },
+    // Detect images referenced anywhere in code (maskImage, backgroundImage, etc.)
+    Identifier(path) {
+      const name = path.node.name
+      // Check if this identifier could be an image variable (skip if it's a declaration)
+      if (name &&
+          (name.startsWith('img') ||
+           name.includes('Image') ||
+           name.includes('image') ||
+           name.toLowerCase().includes('icon') ||
+           name.toLowerCase().includes('logo') ||
+           name.toLowerCase().includes('picture')) &&
+          !path.isImportDefaultSpecifier() &&
+          !path.isImportSpecifier() &&
+          path.scope.hasBinding(name)) {
+        usedImages.add(name)
       }
     }
   })
