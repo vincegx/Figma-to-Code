@@ -9,7 +9,7 @@ export default function ExportFigmaPreviewPage() {
   const { exportId } = useParams<{ exportId: string }>()
   const [searchParams] = useSearchParams()
   const versionParam = searchParams.get('version')
-  const version = versionParam === 'fixed' ? 'fixed' : versionParam === 'optimized' ? 'optimized' : 'clean'
+  const version = versionParam === 'fixed' ? 'fixed' : versionParam === 'optimized' ? 'optimized' : versionParam === 'dist' ? 'dist' : 'clean'
 
   const [Component, setComponent] = useState<React.ComponentType | null>(null)
   const [loading, setLoading] = useState(true)
@@ -49,16 +49,30 @@ export default function ExportFigmaPreviewPage() {
         console.warn('Failed to load metadata.xml:', e)
       }
 
-      // Load CSS
-      const link = document.createElement('link')
-      link.rel = 'stylesheet'
-      link.href = `/src/generated/export_figma/${exportId}/Component-${version}.css`
-      link.id = `export-css-${exportId}`
-      document.head.appendChild(link)
+      // Load CSS and component based on version
+      if (version === 'dist') {
+        // Load dist/Page.css and dist/Page.tsx
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = `/src/generated/export_figma/${exportId}/dist/Page.css`
+        link.id = `export-css-${exportId}`
+        document.head.appendChild(link)
 
-      // Dynamically import the generated component
-      const module = await import(`../../generated/export_figma/${exportId}/Component-${version}.tsx`)
-      setComponent(() => module.default)
+        // Dynamically import the dist Page component
+        const module = await import(`../../generated/export_figma/${exportId}/dist/Page.tsx`)
+        setComponent(() => module.default)
+      } else {
+        // Load Component-{version}.css and Component-{version}.tsx
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = `/src/generated/export_figma/${exportId}/Component-${version}.css`
+        link.id = `export-css-${exportId}`
+        document.head.appendChild(link)
+
+        // Dynamically import the generated component
+        const module = await import(`../../generated/export_figma/${exportId}/Component-${version}.tsx`)
+        setComponent(() => module.default)
+      }
       setLoading(false)
 
       // Cleanup function

@@ -2,7 +2,7 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { ResponsiveViewportControls } from './ResponsiveViewportControls'
 
-type Version = 'clean' | 'fixed' | 'optimized'
+type Version = 'clean' | 'fixed' | 'optimized' | 'dist'
 
 interface PreviewNavbarProps {
   id: string
@@ -16,6 +16,7 @@ interface PreviewNavbarProps {
   viewportWidth?: number
   onViewportChange?: (width: number) => void
   showColoredBreakpoints?: boolean
+  isResponsiveMerge?: boolean
 }
 
 export function PreviewNavbar({
@@ -29,7 +30,8 @@ export function PreviewNavbar({
   onShowNavbar,
   viewportWidth,
   onViewportChange,
-  showColoredBreakpoints = false
+  showColoredBreakpoints = false,
+  isResponsiveMerge = false
 }: PreviewNavbarProps) {
   return (
     <div
@@ -91,44 +93,86 @@ export function PreviewNavbar({
 
               {/* Right: Controls */}
               <div className="flex items-center gap-4">
-                {/* Version Button Group (only for normal tests) */}
+                {/* Version Button Group */}
                 {version && onVersionChange && (
                   <div className="flex items-center gap-2">
                     <Label className="text-xs text-muted-foreground mr-1">Version:</Label>
                     <div className="inline-flex rounded-md shadow-sm" role="group">
-                      <button
-                        type="button"
-                        onClick={() => onVersionChange('fixed')}
-                        className={`px-3 py-1.5 text-xs font-medium border rounded-l-md transition-colors ${
-                          version === 'fixed'
-                            ? 'bg-primary text-primary-foreground border-primary'
-                            : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
-                        }`}
-                      >
-                        Fixed
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onVersionChange('clean')}
-                        className={`px-3 py-1.5 text-xs font-medium border-t border-b transition-colors ${
-                          version === 'clean'
-                            ? 'bg-primary text-primary-foreground border-primary'
-                            : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
-                        }`}
-                      >
-                        Clean
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onVersionChange('optimized')}
-                        className={`px-3 py-1.5 text-xs font-medium border rounded-r-md transition-colors ${
-                          version === 'optimized'
-                            ? 'bg-primary text-primary-foreground border-primary'
-                            : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
-                        }`}
-                      >
-                        Optimized
-                      </button>
+                      {isResponsiveMerge ? (
+                        // Responsive merge: only Optimized and Export
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => onVersionChange('optimized')}
+                            className={`px-3 py-1.5 text-xs font-medium border rounded-l-md transition-colors ${
+                              version === 'optimized'
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                            }`}
+                          >
+                            Optimized
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onVersionChange('dist')}
+                            className={`px-3 py-1.5 text-xs font-medium border rounded-r-md transition-colors ${
+                              version === 'dist'
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                            }`}
+                          >
+                            Export
+                          </button>
+                        </>
+                      ) : (
+                        // Normal export: Fixed, Clean, Optimized, Export
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => onVersionChange('fixed')}
+                            className={`px-3 py-1.5 text-xs font-medium border rounded-l-md transition-colors ${
+                              version === 'fixed'
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                            }`}
+                          >
+                            Fixed
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onVersionChange('clean')}
+                            className={`px-3 py-1.5 text-xs font-medium border-t border-b transition-colors ${
+                              version === 'clean'
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                            }`}
+                          >
+                            Clean
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onVersionChange('optimized')}
+                            className={`px-3 py-1.5 text-xs font-medium border transition-colors ${
+                              version === 'optimized'
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                            }`}
+                          >
+                            Optimized
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onVersionChange('dist')}
+                            className={`px-3 py-1.5 text-xs font-medium border rounded-r-md transition-colors ${
+                              version === 'dist'
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                            }`}
+                          >
+                            Export
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}

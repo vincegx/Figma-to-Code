@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 
 /**
  * ResponsivePreviewPage - Renders only the generated responsive Page component without layout
@@ -7,6 +7,9 @@ import { useParams } from 'react-router-dom'
  */
 export default function ResponsivePreviewPage() {
   const { mergeId } = useParams<{ mergeId: string }>()
+  const [searchParams] = useSearchParams()
+  const versionParam = searchParams.get('version')
+  const version = versionParam === 'dist' ? 'dist' : 'optimized'
 
   const [Component, setComponent] = useState<React.ComponentType | null>(null)
   const [loading, setLoading] = useState(true)
@@ -20,23 +23,37 @@ export default function ResponsivePreviewPage() {
     }
 
     loadComponent()
-  }, [mergeId])
+  }, [mergeId, version])
 
   async function loadComponent() {
     try {
       setLoading(true)
       setError(null)
 
-      // Load CSS
-      const link = document.createElement('link')
-      link.rel = 'stylesheet'
-      link.href = `/src/generated/responsive-screens/${mergeId}/Page.css`
-      link.id = `responsive-css-${mergeId}`
-      document.head.appendChild(link)
+      // Load CSS and component based on version
+      if (version === 'dist') {
+        // Load dist/Page.css and dist/Page.tsx
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = `/src/generated/responsive-screens/${mergeId}/dist/Page.css`
+        link.id = `responsive-css-${mergeId}`
+        document.head.appendChild(link)
 
-      // Dynamically import the generated Page component
-      const module = await import(`../../generated/responsive-screens/${mergeId}/Page.tsx`)
-      setComponent(() => module.default)
+        // Dynamically import the dist Page component
+        const module = await import(`../../generated/responsive-screens/${mergeId}/dist/Page.tsx`)
+        setComponent(() => module.default)
+      } else {
+        // Load Page.css and Page.tsx (optimized version)
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = `/src/generated/responsive-screens/${mergeId}/Page.css`
+        link.id = `responsive-css-${mergeId}`
+        document.head.appendChild(link)
+
+        // Dynamically import the generated Page component
+        const module = await import(`../../generated/responsive-screens/${mergeId}/Page.tsx`)
+        setComponent(() => module.default)
+      }
       setLoading(false)
 
       // Cleanup function

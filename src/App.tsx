@@ -91,10 +91,10 @@ function PreviewMode({ exportId }: { exportId: string }) {
   const [mode, setMode] = useState<'responsive' | 'full'>('responsive')
   const [showNavbar, setShowNavbar] = useState(false)
 
-  // Get version from URL params (clean, fixed, or optimized)
+  // Get version from URL params (clean, fixed, optimized, or dist)
   const params = new URLSearchParams(window.location.search)
   const versionParam = params.get('version')
-  const version = versionParam === 'fixed' ? 'fixed' : versionParam === 'optimized' ? 'optimized' : 'clean'
+  const version = versionParam === 'fixed' ? 'fixed' : versionParam === 'optimized' ? 'optimized' : versionParam === 'dist' ? 'dist' : 'clean'
 
   useEffect(() => {
     // Load metadata to get default dimensions
@@ -140,12 +140,14 @@ function PreviewMode({ exportId }: { exportId: string }) {
     }
   }, [showNavbar])
 
-  const handleVersionChange = (newVersion: 'clean' | 'fixed' | 'optimized') => {
+  const handleVersionChange = (newVersion: 'clean' | 'fixed' | 'optimized' | 'dist') => {
     const url = new URL(window.location.href)
     if (newVersion === 'fixed') {
       url.searchParams.set('version', 'fixed')
     } else if (newVersion === 'optimized') {
       url.searchParams.set('version', 'optimized')
+    } else if (newVersion === 'dist') {
+      url.searchParams.set('version', 'dist')
     } else {
       url.searchParams.delete('version')
     }
@@ -213,6 +215,11 @@ function ResponsivePreviewMode({ mergeId }: { mergeId: string }) {
   const [mode, setMode] = useState<'responsive' | 'full'>('responsive')
   const [showNavbar, setShowNavbar] = useState(false)
 
+  // Get version from URL params (optimized or dist)
+  const params = new URLSearchParams(window.location.search)
+  const versionParam = params.get('version')
+  const version = versionParam === 'dist' ? 'dist' : 'optimized'
+
   useEffect(() => {
     // Load metadata to get default viewport width
     fetch(`/src/generated/responsive-screens/${mergeId}/responsive-metadata.json`)
@@ -246,6 +253,17 @@ function ResponsivePreviewMode({ mergeId }: { mergeId: string }) {
     }
   }, [showNavbar])
 
+  const handleVersionChange = (newVersion: 'clean' | 'fixed' | 'optimized' | 'dist') => {
+    const url = new URL(window.location.href)
+    if (newVersion === 'dist') {
+      url.searchParams.set('version', 'dist')
+    } else if (newVersion === 'optimized') {
+      url.searchParams.delete('version') // optimized is the default
+    }
+    // Ignore 'clean' and 'fixed' for responsive merges
+    window.location.href = url.toString()
+  }
+
   if (!metadata) {
     return <div>Loading...</div>
   }
@@ -270,12 +288,15 @@ function ResponsivePreviewMode({ mergeId }: { mergeId: string }) {
         id={mergeId}
         mode={mode}
         onModeChange={setMode}
+        version={version}
+        onVersionChange={handleVersionChange}
         detailUrl={`/responsive-merges/${mergeId}`}
         showNavbar={showNavbar}
         onShowNavbar={setShowNavbar}
         viewportWidth={viewportWidth}
         onViewportChange={setViewportWidth}
         showColoredBreakpoints={true}
+        isResponsiveMerge={true}
       />
 
       <div
@@ -287,7 +308,7 @@ function ResponsivePreviewMode({ mergeId }: { mergeId: string }) {
         }}
       >
         <iframe
-          src={`/responsive-merges/${mergeId}/preview`}
+          src={`/responsive-merges/${mergeId}/preview?version=${version}`}
           className="w-full border-0"
           style={{ height: `${iframeHeight}px` }}
           title="Responsive Preview"
