@@ -166,6 +166,8 @@ function isInstanceScreenshot(importPath, importName, context = {}) {
 function extractTexts(ast, componentName) {
   const texts = []
   const textMap = new Map() // originalText → propName
+  const usedNames = new Set() // Track all used prop names
+  let genericCounter = 1 // Counter for generic names (text1, text2, etc.)
 
   traverse.default(ast, {
     FunctionDeclaration(path) {
@@ -175,7 +177,22 @@ function extractTexts(ast, componentName) {
           JSXText(innerPath) {
             const text = innerPath.node.value.trim()
             if (shouldExtract(text) && !textMap.has(text)) {
-              const propName = toCamelCase(text)
+              let propName = toCamelCase(text)
+
+              // If text is too long (propName > 50 chars), use generic name
+              if (propName.length > 50) {
+                // Determine type based on length
+                const isLongParagraph = text.length > 200
+                const baseName = isLongParagraph ? 'paragraph' : 'text'
+
+                // Generate unique generic name
+                do {
+                  propName = baseName + genericCounter
+                  genericCounter++
+                } while (usedNames.has(propName))
+              }
+
+              usedNames.add(propName)
               textMap.set(text, propName)
               texts.push({
                 type: 'text',
@@ -194,7 +211,20 @@ function extractTexts(ast, componentName) {
               if (['alt', 'title', 'placeholder', 'aria-label'].includes(attrName)) {
                 const text = innerPath.node.value.value
                 if (shouldExtract(text) && !textMap.has(text)) {
-                  const propName = toCamelCase(text)
+                  let propName = toCamelCase(text)
+
+                  // If text is too long (propName > 50 chars), use generic name
+                  if (propName.length > 50) {
+                    const isLongParagraph = text.length > 200
+                    const baseName = isLongParagraph ? 'paragraph' : 'text'
+
+                    do {
+                      propName = baseName + genericCounter
+                      genericCounter++
+                    } while (usedNames.has(propName))
+                  }
+
+                  usedNames.add(propName)
                   textMap.set(text, propName)
                   texts.push({
                     type: 'text',
