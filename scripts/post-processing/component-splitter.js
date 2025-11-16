@@ -246,8 +246,9 @@ export async function splitComponent(testDir) {
       chunkCode
     );
 
-    // Generate scoped CSS
-    const scopedCSS = generateScopedCSS(section.jsx, globalCSS);
+    // Generate scoped CSS (include helper functions to extract all used classes)
+    const fullJSX = section.jsx + '\n' + helperFunctions;
+    const scopedCSS = generateScopedCSS(fullJSX, globalCSS);
     const cssSize = (scopedCSS.length / 1024).toFixed(1);
 
     fs.writeFileSync(
@@ -401,7 +402,7 @@ function shouldExtract(dataName, nodeId, functionNames, figmaComponents, extract
   const node = figmaComponents.hierarchy.get(nodeId);
   if (!node) return false;
 
-  const { level, totalChildren, parent, type } = node;
+  const { level, frameChildren, parent, type } = node;
 
   // ========================================
   // R1: Instances top-level (L1-L2 only)
@@ -428,9 +429,9 @@ function shouldExtract(dataName, nodeId, functionNames, figmaComponents, extract
   // R4: Level 1 (top-level frames)
   // ========================================
   if (level === 1 && type === 'frame') {
-    // Wrapper detection: 2+ children (frames + instances) → descend
-    if (totalChildren >= 2) return false;
-    // Semantic component: < 2 children → extract
+    // Wrapper detection: 2+ frame children → descend to L2
+    if (frameChildren >= 2) return false;
+    // Semantic component: < 2 frame children → extract
     return true;
   }
 
@@ -439,8 +440,8 @@ function shouldExtract(dataName, nodeId, functionNames, figmaComponents, extract
   // ========================================
   if (level === 2 && type === 'frame') {
     const parentNode = figmaComponents.hierarchy.get(parent);
-    // If parent L1 is wrapper (totalChildren >= 2) → extract this L2
-    if (parentNode && parentNode.level === 1 && parentNode.totalChildren >= 2) {
+    // If parent L1 is wrapper (frameChildren >= 2) → extract this L2
+    if (parentNode && parentNode.level === 1 && parentNode.frameChildren >= 2) {
       return true;
     }
     return false;

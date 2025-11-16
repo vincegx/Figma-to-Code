@@ -17,7 +17,6 @@ export default defineConfig({
         '**/src/generated/**/*.json',
         '**/src/generated/**/*.xml',
         '**/src/generated/**/*.md',
-        '**/src/generated/**/*.css',
       ]
     }
   },

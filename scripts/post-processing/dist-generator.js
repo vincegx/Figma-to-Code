@@ -207,23 +207,31 @@ function reorganizeComponentCSS(css, componentName) {
 }
 
 /**
- * Extract parent component name from Component-clean.tsx
+ * Extract parent component name from Component-optimized.tsx (or fallback to Component-clean.tsx)
  * @param {string} exportDir - Export directory path
  * @returns {string} Parent component function name
  */
 function getParentComponentNameFromSource(exportDir) {
+  // Priority 1: Component-optimized.tsx (benefits from sync-optimizer transformations)
+  const optimizedPath = pathModule.join(exportDir, 'Component-optimized.tsx')
+  // Priority 2: Component-clean.tsx (fallback)
   const cleanPath = pathModule.join(exportDir, 'Component-clean.tsx')
 
-  if (!fs.existsSync(cleanPath)) {
-    throw new Error(`Component-clean.tsx not found in ${exportDir}`)
+  let sourcePath
+  if (fs.existsSync(optimizedPath)) {
+    sourcePath = optimizedPath
+  } else if (fs.existsSync(cleanPath)) {
+    sourcePath = cleanPath
+  } else {
+    throw new Error(`Component-optimized.tsx or Component-clean.tsx not found in ${exportDir}`)
   }
 
-  const content = fs.readFileSync(cleanPath, 'utf8')
+  const content = fs.readFileSync(sourcePath, 'utf8')
   // Updated regex to support function signatures with props after Phase 2
   const match = content.match(/export default function (\w+)\(/)
 
   if (!match) {
-    throw new Error('Could not extract component name from Component-clean.tsx')
+    throw new Error(`Could not extract component name from ${pathModule.basename(sourcePath)}`)
   }
 
   return match[1]  // Returns actual function name (e.g., "Widget01Mobile")
@@ -524,11 +532,16 @@ async function copyComponents(sourceDir, distDir, config) {
       const hasExistingProps = content.match(new RegExp(`}: ${componentName}Props\\)`))
 
       if (hasExistingProps) {
-        // Skip extract-props, just add missing interface from Component-clean.tsx
+        // Skip extract-props, just add missing interface from parent component (optimized or clean)
         if (!content.includes(`interface ${componentName}Props`) && !content.includes(`type ${componentName}Props`)) {
-          const cleanTsxPath = pathModule.join(sourceDir.replace('/components', ''), 'Component-clean.tsx')
-          if (fs.existsSync(cleanTsxPath)) {
-            const cleanContent = fs.readFileSync(cleanTsxPath, 'utf8')
+          const parentDir = sourceDir.replace('/components', '')
+          const optimizedTsxPath = pathModule.join(parentDir, 'Component-optimized.tsx')
+          const cleanTsxPath = pathModule.join(parentDir, 'Component-clean.tsx')
+
+          const parentTsxPath = fs.existsSync(optimizedTsxPath) ? optimizedTsxPath : cleanTsxPath
+
+          if (fs.existsSync(parentTsxPath)) {
+            const cleanContent = fs.readFileSync(parentTsxPath, 'utf8')
             // Match full type/interface declaration including all props
             const interfaceMatch = cleanContent.match(new RegExp(`(type ${componentName}Props\\s*=\\s*\\{[\\s\\S]*?\\};|interface ${componentName}Props\\s*\\{[\\s\\S]*?\\})`, 'm'))
             if (interfaceMatch) {
@@ -597,12 +610,22 @@ async function copyComponents(sourceDir, distDir, config) {
 async function generatePageFile(exportDir, distDir, config, extractedComponents) {
   const parentComponentName = getParentComponentNameFromSource(exportDir)
 
-  // ALWAYS use Component-clean.tsx as source (parent is never split into components/)
-  const parentTsxPath = pathModule.join(exportDir, 'Component-clean.tsx')
-  const parentCssPath = pathModule.join(exportDir, 'Component-clean.css')
+  // Priority 1: Component-optimized.tsx (benefits from sync-optimizer transformations)
+  // Priority 2: Component-clean.tsx (fallback)
+  const optimizedTsxPath = pathModule.join(exportDir, 'Component-optimized.tsx')
+  const optimizedCssPath = pathModule.join(exportDir, 'Component-optimized.css')
+  const cleanTsxPath = pathModule.join(exportDir, 'Component-clean.tsx')
+  const cleanCssPath = pathModule.join(exportDir, 'Component-clean.css')
 
-  if (!fs.existsSync(parentTsxPath)) {
-    console.log(`    ⚠️  Component-clean.tsx not found`)
+  let parentTsxPath, parentCssPath
+  if (fs.existsSync(optimizedTsxPath)) {
+    parentTsxPath = optimizedTsxPath
+    parentCssPath = optimizedCssPath
+  } else if (fs.existsSync(cleanTsxPath)) {
+    parentTsxPath = cleanTsxPath
+    parentCssPath = cleanCssPath
+  } else {
+    console.log(`    ⚠️  Component-optimized.tsx or Component-clean.tsx not found`)
     return
   }
 
@@ -635,7 +658,7 @@ async function generatePageFile(exportDir, distDir, config, extractedComponents)
     // 1. Extract classes used in Page.tsx
     const usedClasses = extractUsedClasses(pageCode)
 
-    // 2. Filter Component-clean.css to only keep used classes
+    // 2. Filter parent CSS (Component-optimized.css or Component-clean.css) to only keep used classes
     let scopedCSS = filterCSSByClasses(fullCSS, usedClasses)
 
     // 3. Optimize the scoped CSS
@@ -921,6 +944,11 @@ function transformToPageComponent(sourceCode, parentName, extractedComponents, e
     .map(name => `import ${name} from './components/${name}';`)
     .join('\n')
 
+  // Add CSS imports for each component
+  const cssImports = Array.from(componentsToImport)
+    .map(name => `import './components/${name}.css';`)
+    .join('\n')
+
   const header = `/**
  * Page Component
  * Main page orchestrating all subcomponents
@@ -930,14 +958,16 @@ function transformToPageComponent(sourceCode, parentName, extractedComponents, e
 
   finalCode = finalCode.replace(
     /import React from ['"]react['"];/,
-    `${header}import React from 'react';\nimport './Page.css';\n\n// ========================================\n// Component Imports\n// ========================================\n\n${imports}`
+    `${header}import React from 'react';\nimport './Page.css';\n${cssImports}\n\n// ========================================\n// Component Imports\n// ========================================\n\n${imports}`
   )
 
   // Remove CSS imports (already added above as './Page.css')
   // Remove parent function name CSS
   finalCode = finalCode.replace(`import './${parentName}.css';`, '')
   finalCode = finalCode.replace(`import "./${parentName}.css";`, '')
-  // Remove Component-clean.css (always present in source)
+  // Remove Component CSS imports (optimized or clean)
+  finalCode = finalCode.replace(`import './Component-optimized.css';`, '')
+  finalCode = finalCode.replace(`import "./Component-optimized.css";`, '')
   finalCode = finalCode.replace(`import './Component-clean.css';`, '')
   finalCode = finalCode.replace(`import "./Component-clean.css";`, '')
 
