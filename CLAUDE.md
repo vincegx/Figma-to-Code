@@ -91,9 +91,11 @@ docker exec mcp-figma-v1 node scripts/figma-export-reprocess.js node-8132-3793-1
 ```
 
 **What it does:**
-- Re-runs Phase 2: AST transformations + reports generation
-- Re-runs Phase 3: Web screenshot capture
-- Re-runs Phase 4: Component splitting + dist package generation
+- Re-runs Phase 2: AST transformations + CSS optimization
+- Re-runs Phase 3: Component splitting (modular files)
+- Re-runs Phase 4: Dist package generation
+- Re-runs Phase 5: Web screenshot capture (FINAL - after all processing)
+- Re-runs Phase 6: Reports generation (metadata, analysis, visual report)
 - Uses existing `Component.tsx` (no MCP calls to Figma)
 
 **Use cases:**
@@ -148,7 +150,7 @@ node scripts/responsive-css-compiler.js <mergeDir>
 
 ### High-Level Pipeline
 
-The system processes Figma designs through a 4-phase pipeline:
+The system processes Figma designs through a 6-phase pipeline:
 
 **Phase 1: Extraction (MCP)**
 - Connect to MCP Figma Desktop server (port 3845 on host)
@@ -170,13 +172,27 @@ The system processes Figma designs through a 4-phase pipeline:
 - If --clean flag: generate Component-clean.tsx/css (production version)
 - Fix CSS variables in SVG paths
 
-**Phase 3: Validation (Visual)**
+**Phase 3: Component Splitting**
+- Split optimized component into modular files
+- Extract individual React components
+- Extract semantic sections (Header, Footer, etc.)
+- Filter CSS per component (only used classes)
+- Generate `components/` directory
+
+**Phase 4: Dist Package Generation**
+- Copy TSX files to `dist/components/`
+- Reorganize CSS with logical section ordering
+- Generate `dist/Page.tsx` with component imports
+- Copy images to `dist/img/`
+- Create production-ready package
+
+**Phase 5: Validation (Visual) - FINAL STEP**
 - Launch Puppeteer with exact dimensions from metadata.xml
 - Navigate to preview URL (?export={exportId})
 - Wait for fonts and images to load
-- Capture web-render.png
+- Capture web-render.png with all transformations applied
 
-**Phase 4: Output (Reports)**
+**Phase 6: Report Generation**
 - Generate metadata.json (dashboard metadata)
 - Generate analysis.md (technical report with transform stats)
 - Generate report.html (visual comparison: Figma vs Web)
@@ -497,10 +513,12 @@ The CSS pipeline processes styles through 6 distinct phases:
 ### Modifying the Processing Pipeline
 
 **Entry point:** `scripts/figma-cli.js` (main orchestrator)
-- Phase 1 (lines ~200-400): MCP extraction
-- Phase 2 (lines ~400-600): AST processing loop
-- Phase 3 (lines ~600-700): Visual validation
-- Phase 4 (lines ~700-800): Report generation
+- Phase 1 (lines ~635-830): MCP extraction
+- Phase 2 (lines ~830-910): AST processing + optimization
+- Phase 3 (lines ~935-940): Component splitting
+- Phase 4 (lines ~940-950): Dist package generation
+- Phase 5 (lines ~890-910, executed at ~950): Visual validation (screenshot - FINAL)
+- Phase 6: Report generation (handled by unified-processor.js during Phase 2)
 
 **AST processing:** `scripts/unified-processor.js`
 - Detects processing mode:

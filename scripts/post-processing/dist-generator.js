@@ -434,8 +434,6 @@ export async function generateDist(exportDir, config) {
   const distDir = pathModule.join(exportDir, 'dist')
   const { type, componentName, breakpoints } = config
 
-  console.log(`  Creating dist/ structure...`)
-
   // 1. Create directory structure
   await createDistStructure(distDir)
 
@@ -464,7 +462,11 @@ export async function generateDist(exportDir, config) {
   // 7. Generate Docker configuration
   await generateDockerConfig(distDir, config)
 
-  console.log(`  ✅ dist/ package created`)
+  // Return stats for CLI display
+  return {
+    distDir,
+    componentsCount: extractedComponents.length
+  };
 }
 
 function createDistStructure(distDir) {
@@ -504,7 +506,6 @@ async function copyComponents(sourceDir, distDir, config) {
 
     // Skip parent component for single exports (will be transformed into Page.tsx)
     if (parentComponentName && file.startsWith(parentComponentName + '.')) {
-      console.log(`    ⏩ Skipping parent component: ${file} (will generate Page.tsx)`)
       continue
     }
 
@@ -707,7 +708,6 @@ function transformToPageComponent(sourceCode, parentName, extractedComponents, e
       const functionName = path.node.id?.name
       if (functionName && extractedComponents.includes(functionName)) {
         path.remove()
-        console.log(`    🗑️  Removed duplicate function: ${functionName}`)
       }
     }
   })
@@ -777,8 +777,6 @@ function transformToPageComponent(sourceCode, parentName, extractedComponents, e
             children: []
           })
 
-          const dataNameValue = dataNameAttr?.value?.value || 'unknown'
-          console.log(`    🔄 Replaced data-name="${dataNameValue}" with <${componentName} /> (matched by ${matchMethod})`)
         }
       }
     }
@@ -814,7 +812,6 @@ function transformToPageComponent(sourceCode, parentName, extractedComponents, e
       // Remove if not used in Page function
       if (!usedHelpers.has(functionName)) {
         path.remove()
-        console.log(`    🗑️  Removed unused helper: ${functionName}`)
       }
     }
   })
@@ -828,7 +825,6 @@ function transformToPageComponent(sourceCode, parentName, extractedComponents, e
         const componentName = typeName.replace(/Props$/, '')
         if (extractedComponents.includes(componentName)) {
           path.remove()
-          console.log(`    🗑️  Removed orphan type: ${typeName} (belongs to ${componentName})`)
         }
       }
     },
@@ -839,7 +835,6 @@ function transformToPageComponent(sourceCode, parentName, extractedComponents, e
         const componentName = interfaceName.replace(/Props$/, '')
         if (extractedComponents.includes(componentName)) {
           path.remove()
-          console.log(`    🗑️  Removed orphan interface: ${interfaceName} (belongs to ${componentName})`)
         }
       }
     }
@@ -897,9 +892,6 @@ function transformToPageComponent(sourceCode, parentName, extractedComponents, e
         // Only remove if NOT used in Page.tsx
         if (!usedImages.has(importName)) {
           path.remove()
-          console.log(`    🗑️  Removed image import: ${importName} (belongs to component)`)
-        } else {
-          console.log(`    ✅ Kept image import: ${importName} (used in Page.tsx)`)
         }
       }
     }

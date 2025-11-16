@@ -152,9 +152,8 @@ function convertToRelative(path, stats) {
   // Add relative positioning
   newClasses.push('relative')
 
-  // If element had coordinates, log warning
+  // If element had coordinates, track in stats
   if (hasCoords) {
-    console.warn(`⚠️  Converted absolute positioning to relative, coordinates removed`)
     stats.coordsRemoved++
   }
 

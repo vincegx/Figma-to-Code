@@ -233,10 +233,7 @@ function extractImages(ast, componentName, context = {}) {
         const importName = path.node.specifiers[0]?.local.name
         if (importName) {
           // Check if this is a Figma instance screenshot
-          if (isInstanceScreenshot(source, importName, context)) {
-            // Skip instance screenshots - they are visual representations of unfolded components
-            console.log(`   ⏭️  [extract-props] Skipped instance screenshot: ${importName} (${source})`)
-          } else {
+          if (!isInstanceScreenshot(source, importName, context)) {
             // Real image - add to extraction candidates
             imageImports.set(importName, source)
           }

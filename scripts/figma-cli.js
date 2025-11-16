@@ -885,10 +885,10 @@ class FigmaCLI {
   }
 
   /**
-   * PHASE 3: Capture web render
+   * PHASE 5: Capture web render (FINAL STEP - after all processing)
    */
-  async phase3_captureWebRender() {
-    log.phase('PHASE 3: CAPTURE WEB RENDER');
+  async phase5_captureWebRender() {
+    log.phase('PHASE 5: CAPTURE WEB RENDER (FINAL)');
 
     log.task('📸', 'Capture web-render.png');
 
@@ -930,22 +930,26 @@ class FigmaCLI {
 
       await this.phase1_extraction();
       await this.phase2_postProcessing();
-      await this.phase3_captureWebRender();
 
-      // Always generate components/
-      log.task('🔪', 'Splitting components');
+      // PHASE 3: Component Splitting
+      log.phase('PHASE 3: COMPONENT SPLITTING');
+      log.task('🔪', 'Extracting modular components');
       const { splitComponent } = await import('./post-processing/component-splitter.js');
-      await splitComponent(this.testDir);
-      log.success('components/ directory created\n');
+      const splitStats = await splitComponent(this.testDir);
+      log.success(`${splitStats.componentsCount} components extracted\n`);
 
-      // Generate dist/ package
+      // PHASE 4: Dist Package Generation
+      log.phase('PHASE 4: DIST PACKAGE GENERATION');
       log.task('📦', 'Generating developer-ready export');
       const { generateDist } = await import('./post-processing/dist-generator.js');
-      await generateDist(this.testDir, {
+      const distStats = await generateDist(this.testDir, {
         type: 'single',
         componentName: this.nodeName || 'Component'
       });
-      log.success('dist/ package ready\n');
+      log.success(`dist/ package ready (${distStats.componentsCount} components)\n`);
+
+      // PHASE 5: Visual Validation (screenshot)
+      await this.phase5_captureWebRender();
 
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 

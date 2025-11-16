@@ -22,8 +22,6 @@ import path from 'path'
  * @returns {Map<string, string>} transformMap - oldClass → newClass mappings
  */
 export async function syncOptimize(testDir) {
-  console.log('🔄 Synchronizing CSS + TSX optimizations...')
-
   // ===== STEP 1: Read INPUT files (clean versions) =====
   const cleanTsxPath = path.join(testDir, 'Component-clean.tsx')
   const cleanCssPath = path.join(testDir, 'Component-clean.css')
@@ -35,32 +33,17 @@ export async function syncOptimize(testDir) {
   let tsxCode = fs.readFileSync(cleanTsxPath, 'utf8')
   let cssCode = fs.readFileSync(cleanCssPath, 'utf8')
 
-  console.log('   ✅ Read Component-clean.tsx/css')
-
   // ===== STEP 2: Build transformation map from CSS analysis =====
   const transformMap = await buildTransformMap(cssCode)
-
-  console.log(`   ✅ Built transform map: ${transformMap.size} class transformations`)
 
   // ===== STEP 3: Transform CSS =====
   let optimizedCSS = await transformCSS(cssCode, transformMap)
 
-  console.log('   ✅ Transformed CSS')
-
   // ===== STEP 4: Transform TSX with SAME map =====
   let optimizedTSX = await transformTSX(tsxCode, transformMap)
 
-  console.log('   ✅ Transformed TSX')
-
   // ===== STEP 5: Validate synchronization =====
   const validation = validateSync(optimizedTSX, optimizedCSS, transformMap)
-
-  if (validation.missingClasses.length > 0) {
-    console.warn(`   ⚠️  Warning: ${validation.missingClasses.length} classes in TSX not found in CSS`)
-    console.warn(`      ${validation.missingClasses.slice(0, 5).join(', ')}${validation.missingClasses.length > 5 ? '...' : ''}`)
-  } else {
-    console.log('   ✅ Validated synchronization')
-  }
 
   // ===== STEP 6: Write OUTPUT files (optimized versions) =====
   const optimizedTsxPath = path.join(testDir, 'Component-optimized.tsx')
@@ -69,10 +52,7 @@ export async function syncOptimize(testDir) {
   fs.writeFileSync(optimizedTsxPath, optimizedTSX)
   fs.writeFileSync(optimizedCssPath, optimizedCSS)
 
-  console.log('   ✅ Wrote Component-optimized.tsx/css')
-  console.log(`   📊 Summary: ${transformMap.size} classes renamed, ${validation.tsxClasses} classes in TSX, ${validation.cssClasses} classes in CSS`)
-
-  return transformMap
+  return { transformMap, validation }
 }
 
 /**
@@ -375,8 +355,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
 
   syncOptimize(testDir)
-    .then((transformMap) => {
-      console.log(`\n✅ Synchronization complete: ${transformMap.size} transformations`)
+    .then(() => {
       process.exit(0)
     })
     .catch(err => {

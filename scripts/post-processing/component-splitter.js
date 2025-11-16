@@ -226,20 +226,16 @@ function detectLayoutWrappers(tsxCode, figmaComponents) {
  * Main entry point
  */
 export async function splitComponent(testDir) {
-  console.log('🔪 Splitting Component-optimized.tsx into components...\n');
-
   // 1. Read files (use optimized version - already synchronized)
   const optimizedPath = path.join(testDir, 'Component-optimized.tsx');
   const cssPath = path.join(testDir, 'Component-optimized.css');
 
   if (!fs.existsSync(optimizedPath)) {
-    console.error(`❌ Error: Component-optimized.tsx not found in ${testDir}`);
-    return;
+    throw new Error(`Component-optimized.tsx not found in ${testDir}`);
   }
 
   if (!fs.existsSync(cssPath)) {
-    console.error(`❌ Error: Component-optimized.css not found in ${testDir}`);
-    return;
+    throw new Error(`Component-optimized.css not found in ${testDir}`);
   }
 
   const cleanCode = fs.readFileSync(optimizedPath, 'utf8');
@@ -254,9 +250,6 @@ export async function splitComponent(testDir) {
 
   // 4. Detect sections using Figma data + wrapper detection
   const sections = detectSections(cleanCode, figmaComponents);
-
-  console.log(`   Found ${sections.length} sections:\n`);
-  sections.forEach(s => console.log(`     - ${s.name} (${s.type})`));
 
   // 3. Create components/ directory
   const componentsDir = path.join(testDir, 'components');
@@ -303,8 +296,6 @@ export async function splitComponent(testDir) {
 
     // Track images
     imageManifest[chunkName] = Array.from(usedImages);
-
-    console.log(`   ✅ ${chunkName}.tsx + .css (${cssSize}KB CSS)`);
   }
 
   // 6. Write image manifest
@@ -326,8 +317,11 @@ export async function splitComponent(testDir) {
     JSON.stringify(componentMapping, null, 2)
   );
 
-  console.log(`\n✅ Splitting complete: ${sections.length} chunks created`);
-  console.log(`📁 Output: ${componentsDir}\n`);
+  // Return stats for CLI display
+  return {
+    componentsCount: sections.length,
+    componentsDir
+  };
 }
 
 /**
