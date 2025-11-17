@@ -150,7 +150,37 @@
         "Check colors, spacing, and typography"
       ],
       "component_label": "Component:",
-      "react_tailwind": "React + Tailwind CSS"
+      "react_tailwind": "React + Tailwind CSS",
+      "version_info": {
+        "title": "Transformation Pipeline",
+        "stages": [
+          {
+            "name": "MCP",
+            "icon": "📄",
+            "description": "Raw Figma code via MCP SDK"
+          },
+          {
+            "name": "Fixed",
+            "icon": "⚛️",
+            "description": "Tailwind arbitrary values + AST fixes"
+          },
+          {
+            "name": "Clean",
+            "icon": "✨",
+            "description": "Pure CSS classes (no Tailwind)"
+          },
+          {
+            "name": "Optimized",
+            "icon": "⚡",
+            "description": "Synchronized TSX/CSS + mapping"
+          },
+          {
+            "name": "Export",
+            "icon": "📦",
+            "description": "Production package (modular)"
+          }
+        ]
+      }
     },
     "code": {
       "title": "📁 File navigation",

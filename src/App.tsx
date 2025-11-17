@@ -132,14 +132,6 @@ function PreviewMode({ exportId }: { exportId: string }) {
     return () => window.removeEventListener('message', handleMessage)
   }, [])
 
-  // Auto-hide navbar after 5 seconds when visible
-  useEffect(() => {
-    if (showNavbar) {
-      const timer = setTimeout(() => setShowNavbar(false), 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [showNavbar])
-
   const handleVersionChange = (newVersion: 'clean' | 'fixed' | 'optimized' | 'dist') => {
     const url = new URL(window.location.href)
     if (newVersion === 'fixed') {
@@ -244,14 +236,6 @@ function ResponsivePreviewMode({ mergeId }: { mergeId: string }) {
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
   }, [])
-
-  // Auto-hide navbar after 5 seconds when visible
-  useEffect(() => {
-    if (showNavbar) {
-      const timer = setTimeout(() => setShowNavbar(false), 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [showNavbar])
 
   const handleVersionChange = (newVersion: 'clean' | 'fixed' | 'optimized' | 'dist') => {
     const url = new URL(window.location.href)

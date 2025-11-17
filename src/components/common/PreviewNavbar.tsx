@@ -1,6 +1,10 @@
+import { useState, useEffect } from 'react'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { ResponsiveViewportControls } from './ResponsiveViewportControls'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Info } from 'lucide-react'
+import { useTranslation } from '@/i18n/I18nContext'
 
 type Version = 'clean' | 'fixed' | 'optimized' | 'dist'
 
@@ -33,17 +37,34 @@ export function PreviewNavbar({
   showColoredBreakpoints = false,
   isResponsiveMerge = false
 }: PreviewNavbarProps) {
+  const { translations } = useTranslation()
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false)
+
+  // Close popover when navbar hides
+  useEffect(() => {
+    if (!showNavbar) {
+      setIsPopoverOpen(false)
+    }
+  }, [showNavbar])
+
   return (
-    <div
-      className="fixed top-0 left-0 right-0 h-16 z-50"
-      onMouseEnter={() => onShowNavbar(true)}
-    >
+    <>
+      {/* Invisible trigger zone at top */}
+      <div
+        className="fixed top-0 left-0 right-0 h-4 z-50"
+        onMouseEnter={() => onShowNavbar(true)}
+      />
+
       {/* Navbar - hidden by default, shows on hover */}
-      <div className={`
-        absolute top-0 left-0 right-0
-        transition-all duration-300 ease-in-out
-        ${showNavbar ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}
-      `}>
+      <div
+        className={`
+          fixed top-0 left-0 right-0 z-50
+          transition-all duration-300 ease-in-out
+          ${showNavbar ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}
+        `}
+        onMouseEnter={() => onShowNavbar(true)}
+        onMouseLeave={() => onShowNavbar(false)}
+      >
         <div className="backdrop-blur-md bg-background/80 border-b border-border shadow-lg">
           <div className="container mx-auto px-4 py-3">
             {/* Top row: Navigation buttons, ID, and controls */}
@@ -174,6 +195,37 @@ export function PreviewNavbar({
                         </>
                       )}
                     </div>
+
+                    {/* Version Info Popover */}
+                    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground h-7 w-7 ml-1">
+                          <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-64 p-3">
+                        <div className="space-y-3">
+                          {/* Header */}
+                          <div className="space-y-1">
+                            <h4 className="text-sm font-medium leading-none">{translations.detail.preview.version_info.title}</h4>
+                            <p className="text-xs text-muted-foreground">Figma → Production</p>
+                          </div>
+
+                          {/* Pipeline Flow */}
+                          <div className="grid gap-1.5">
+                            {translations.detail.preview.version_info.stages.map((stage, index) => (
+                              <div key={index} className="flex items-center gap-2 rounded-md border px-2 py-1.5 transition-colors hover:bg-accent">
+                                <span className="text-base">{stage.icon}</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium">{stage.name}</p>
+                                  <p className="text-[10px] text-muted-foreground truncate">{stage.description}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 )}
 
@@ -205,6 +257,6 @@ export function PreviewNavbar({
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }

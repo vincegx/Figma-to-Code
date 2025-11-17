@@ -150,7 +150,37 @@
         "Vérifie les couleurs, espacements, et typographie"
       ],
       "component_label": "Composant :",
-      "react_tailwind": "React + Tailwind CSS"
+      "react_tailwind": "React + Tailwind CSS",
+      "version_info": {
+        "title": "Pipeline de Transformation",
+        "stages": [
+          {
+            "name": "MCP",
+            "icon": "📄",
+            "description": "Code brut Figma via MCP SDK"
+          },
+          {
+            "name": "Fixed",
+            "icon": "⚛️",
+            "description": "Valeurs arbitraires Tailwind + fixes AST"
+          },
+          {
+            "name": "Clean",
+            "icon": "✨",
+            "description": "Classes CSS pures (sans Tailwind)"
+          },
+          {
+            "name": "Optimized",
+            "icon": "⚡",
+            "description": "TSX/CSS synchronisés + mapping"
+          },
+          {
+            "name": "Export",
+            "icon": "📦",
+            "description": "Package production (modulaire)"
+          }
+        ]
+      }
     },
     "code": {
       "title": "📁 Navigation des fichiers",
