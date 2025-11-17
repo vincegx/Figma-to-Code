@@ -557,10 +557,19 @@ async function copyComponents(sourceDir, distDir, config) {
       } else {
         // No existing props - run extract-props
         // Disable transforms that are not needed during dist generation
+        // Components are already optimized in Component-optimized.tsx, so we only extract props
         const pipelineConfig = {
           'extract-props': { enabled: true },
           'add-missing-data-names': { enabled: false },
-          'svg-consolidation': { enabled: false }
+          'svg-consolidation': { enabled: false },
+          // Disable layout/styling transforms (already applied, avoid double transformation)
+          'position-fixes': { enabled: false },      // Already applied + loses parent context
+          'ast-cleaning': { enabled: false },        // Already applied
+          'auto-layout': { enabled: false },         // Already applied
+          'post-fixes': { enabled: false },          // Already applied
+          'stroke-alignment': { enabled: false },    // Already applied
+          'css-vars': { enabled: false },            // Already applied
+          'tailwind-optimizer': { enabled: false }   // Already applied
         }
         try {
           const result = await runPipeline(content, { componentName }, pipelineConfig)
