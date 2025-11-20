@@ -460,6 +460,12 @@ function consolidateGroup(group, testDir) {
 
   svgContent += '</svg>'
 
+  // Ensure directory exists before writing
+  const consolidatedDir = path.dirname(consolidatedPath)
+  if (!fs.existsSync(consolidatedDir)) {
+    fs.mkdirSync(consolidatedDir, { recursive: true })
+  }
+
   fs.writeFileSync(consolidatedPath, svgContent)
   console.log(`[svg-consolidation] Created ${consolidatedFilename} with ${svgGroups.length} groups (${totalPaths} paths)`)
 

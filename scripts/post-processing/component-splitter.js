@@ -231,7 +231,8 @@ export async function splitComponent(testDir) {
     const usedImages = extractUsedImages(section.jsx);
 
     // Extract helper functions used in this section
-    const helperFunctions = extractHelperFunctions(section.jsx, cleanCode);
+    // Pass sections to exclude functions that are extracted as separate components
+    const helperFunctions = extractHelperFunctions(section.jsx, cleanCode, sections);
 
     // Extract images from helper functions too
     const helperImages = extractUsedImages(helperFunctions);
@@ -283,6 +284,129 @@ export async function splitComponent(testDir) {
   return {
     componentsCount: sections.length,
     componentsDir
+  };
+}
+
+/**
+ * Check if a name is in PascalCase (component name)
+ */
+function isPascalCase(name) {
+  if (!name || typeof name !== 'string') return false;
+  return /^[A-Z][a-zA-Z0-9]*$/.test(name);
+}
+
+/**
+ * Find a function declaration by name in the AST
+ */
+function findFunctionByName(ast, functionName) {
+  let foundFunction = null;
+
+  traverse.default(ast, {
+    FunctionDeclaration(path) {
+      if (path.node.id?.name === functionName) {
+        foundFunction = path.node;
+        path.stop(); // Stop traversal once found
+      }
+    }
+  });
+
+  return foundFunction;
+}
+
+/**
+ * Extract the JSX return statement from a function
+ */
+function extractReturnJSX(functionNode) {
+  if (!functionNode || !functionNode.body || !functionNode.body.body) return null;
+
+  // Find return statement in function body (without traversal)
+  for (const statement of functionNode.body.body) {
+    if (statement.type === 'ReturnStatement' &&
+        statement.argument &&
+        statement.argument.type === 'JSXElement') {
+      return statement.argument;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Extract data-node-id from a JSX element
+ */
+function extractDataNodeId(jsxElement) {
+  if (!jsxElement || !jsxElement.openingElement) return null;
+
+  const nodeIdAttr = jsxElement.openingElement.attributes?.find(
+    attr => attr.type === 'JSXAttribute' && attr.name?.name === 'data-node-id'
+  );
+
+  return nodeIdAttr?.value?.type === 'StringLiteral' ? nodeIdAttr.value.value : null;
+}
+
+/**
+ * Extract data-name from a JSX element
+ */
+function extractDataName(jsxElement) {
+  if (!jsxElement || !jsxElement.openingElement) return null;
+
+  const dataNameAttr = jsxElement.openingElement.attributes?.find(
+    attr => attr.type === 'JSXAttribute' && attr.name?.name === 'data-name'
+  );
+
+  return dataNameAttr?.value?.type === 'StringLiteral' ? dataNameAttr.value.value : null;
+}
+
+/**
+ * Resolve a JSX element reference to its actual JSX content
+ * Follows function references to get the complete JSX tree
+ * @param {string} elementName - Name of the component (e.g., 'Header')
+ * @param {Object} ast - AST of the source code
+ * @param {Object} figmaComponents - Parsed Figma metadata
+ */
+function resolveJSXElement(elementName, ast, figmaComponents) {
+  // 1. Find the function definition
+  const functionDef = findFunctionByName(ast, elementName);
+  if (!functionDef) return null;
+
+  // 2. Extract the return JSX
+  const returnJSX = extractReturnJSX(functionDef);
+  if (!returnJSX) return null;
+
+  // 3. Extract data-name from function's return JSX
+  const dataName = extractDataName(returnJSX);
+
+  // 4. Find the corresponding instance in metadata by matching data-name
+  // Look for instances at L1 or L2 that match this component name
+  let nodeId = null;
+
+  if (dataName && figmaComponents && figmaComponents.hierarchy) {
+    // Search for an instance with matching name at top levels (L1-L2)
+    for (const [id, node] of figmaComponents.hierarchy.entries()) {
+      if (node.name === dataName &&
+          node.isInstance &&
+          node.level >= 1 &&
+          node.level <= 2) {
+        nodeId = id;
+        break;
+      }
+    }
+  }
+
+  // 5. Fallback: use master component node-id from return JSX
+  if (!nodeId) {
+    nodeId = extractDataNodeId(returnJSX);
+  }
+
+  // 6. Convert function to code string (preserves signature + parameters)
+  const jsxCode = generate.default(functionDef).code;
+
+  return {
+    jsx: jsxCode,
+    jsxNode: returnJSX,  // Keep returnJSX for analysis (data-name, node-id)
+    nodeId,
+    dataName,
+    functionName: elementName
   };
 }
 
@@ -373,6 +497,59 @@ function detectSections(tsxCode, figmaComponents) {
       }
 
       findSections(rootJSX);
+    }
+  });
+
+  // ========================================
+  // STEP 2: Detect Figma functions that should be extracted
+  // ========================================
+  const detectedFunctions = new Set(); // Avoid duplicates
+
+  traverse.default(ast, {
+    JSXElement(path) {
+      const openingElement = path.node.openingElement;
+      const elementName = openingElement.name?.name;
+
+      // Only process PascalCase components (not HTML elements like div, span)
+      if (!isPascalCase(elementName)) return;
+
+      // Skip if already detected
+      if (detectedFunctions.has(elementName)) return;
+
+      // Resolve the function to its JSX content
+      // Pass figmaComponents to find instance node-id by matching data-name
+      const resolved = resolveJSXElement(elementName, ast, figmaComponents);
+
+      // Skip if resolution failed or no node-id found
+      if (!resolved || !resolved.nodeId) {
+        return;
+      }
+
+      // Apply R1-R8 rules using metadata
+      const shouldExtractThis = shouldExtract(
+        resolved.dataName || resolved.functionName,
+        resolved.nodeId,
+        functionNames,
+        figmaComponents,
+        extractedNodes
+      );
+
+      if (shouldExtractThis) {
+        // Mark as detected to avoid duplicates
+        detectedFunctions.add(elementName);
+
+        // Add to sections
+        sections.push({
+          name: resolved.functionName,  // Already in PascalCase
+          type: 'function',  // Mark as function-based (vs 'inline' for divs)
+          jsx: resolved.jsx,
+          nodeId: resolved.nodeId,
+          originalName: resolved.dataName || resolved.functionName
+        });
+
+        // Track as extracted
+        extractedNodes.add(resolved.nodeId);
+      }
     }
   });
 
@@ -524,13 +701,21 @@ function extractUsedImages(jsx) {
  * Extract helper functions used in JSX from source code
  * INCLUDES: TypeScript types/interfaces + function declarations
  * RECURSIVE: Extracts helpers used by other helpers
+ * @param {string} jsx - JSX code to analyze
+ * @param {string} sourceCode - Full source code
+ * @param {Array} extractedSections - Array of sections that are extracted as separate components
  */
-function extractHelperFunctions(jsx, sourceCode) {
+function extractHelperFunctions(jsx, sourceCode, extractedSections = []) {
   // Parse source code once
   const ast = parse(sourceCode, {
     sourceType: 'module',
     plugins: ['jsx', 'typescript']
   });
+
+  // Build set of extracted function names to exclude
+  const extractedFunctionNames = new Set(
+    extractedSections.filter(s => s.type === 'function').map(s => s.name)
+  );
 
   // STEP 1: Find all component calls in initial JSX
   const componentRegex = /<([A-Z]\w+)[\s/>]/g;
@@ -538,7 +723,11 @@ function extractHelperFunctions(jsx, sourceCode) {
   let match;
 
   while ((match = componentRegex.exec(jsx)) !== null) {
-    usedComponents.add(match[1]);
+    const componentName = match[1];
+    // Skip if this component is extracted as a separate file
+    if (!extractedFunctionNames.has(componentName)) {
+      usedComponents.add(componentName);
+    }
   }
 
   if (usedComponents.size === 0) {
@@ -608,12 +797,16 @@ function extractHelperFunctions(jsx, sourceCode) {
   });
 
   // STEP 4: Extract ALL function declarations (including nested helpers)
+  // BUT exclude functions that are extracted as separate components
   traverse.default(ast, {
     FunctionDeclaration(path) {
       const functionName = path.node.id?.name;
       if (functionName && allHelpers.has(functionName)) {
-        const functionCode = generate.default(path.node).code;
-        helperFunctions.push(functionCode);
+        // Skip if this function is extracted as a separate component
+        if (!extractedFunctionNames.has(functionName)) {
+          const functionCode = generate.default(path.node).code;
+          helperFunctions.push(functionCode);
+        }
       }
     }
   });
