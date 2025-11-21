@@ -397,6 +397,22 @@ class FigmaCLI {
       }
     }
 
+    // Handle Figma informational messages (warnings, not errors)
+    if (code.includes('missing code connect mappings') ||
+        code.includes('not connected to your codebase')) {
+      const exportIndex = code.indexOf('export');
+      if (exportIndex !== -1) {
+        // Code found after warning, extract it
+        code = code.substring(exportIndex);
+      } else {
+        // Just a warning, no actual code generated
+        return {
+          valid: false,
+          reason: 'Figma info: Component uses instances (no code generated)'
+        };
+      }
+    }
+
     // Valid React code should have:
     // - export (function or default)
     // - JSX syntax or function/const
