@@ -85,6 +85,12 @@ export function execute(ast, context) {
         return;
       }
 
+      // Skip text elements - they should have natural width
+      const elementType = path.node.name?.name;
+      if (elementType && ['p', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(elementType)) {
+        return;
+      }
+
       // Get data-node-id
       const nodeIdAttr = attributes.find(
         attr => attr.type === 'JSXAttribute' && attr.name?.name === 'data-node-id'
