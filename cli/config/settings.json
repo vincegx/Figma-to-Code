@@ -42,6 +42,10 @@
       "usePostScriptName": true,
       "useTextStyleId": true
     },
+    "text-consolidation": {
+      "enabled": true,
+      "maxLength": 25
+    },
     "auto-layout": {
       "enabled": true,
       "fixMissingGap": true,
