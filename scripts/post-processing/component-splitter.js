@@ -77,6 +77,9 @@ function parseXMLHierarchy(xml) {
 
     if (!idMatch || !nameMatch) continue;
 
+    // Skip hidden elements (not rendered in final JSX)
+    if (line.includes('hidden="true"')) continue;
+
     const nodeId = idMatch[1];
     const name = nameMatch[1];
 
