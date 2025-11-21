@@ -651,12 +651,20 @@ function updateFunctionSignature(ast, componentName, extractedProps, existingPro
  * Deduplicate prop names to avoid conflicts
  * Strategy: If name collision detected:
  * - Images get "Image" suffix (e.g., sidemenu → sidemenuImage)
- * - Texts keep original name
+ * - Texts that conflict with image imports get "Text" suffix
  * - If still conflicts, add numeric suffix
  */
 function deduplicatePropNames(allProps) {
   const propNameCount = new Map() // propName → count
   const propNamesByType = new Map() // propName → [types]
+
+  // Collect all image import names to detect conflicts with text props
+  const imageImportNames = new Set()
+  for (const prop of allProps) {
+    if (prop.type === 'image' && prop.originalValue) {
+      imageImportNames.add(prop.originalValue)
+    }
+  }
 
   // First pass: detect duplicates
   for (const prop of allProps) {
@@ -672,6 +680,19 @@ function deduplicatePropNames(allProps) {
   const seenNames = new Set()
   for (const prop of allProps) {
     const originalName = prop.propName
+
+    // Check if text prop conflicts with an image import name
+    if (prop.type === 'text' && imageImportNames.has(originalName)) {
+      let newName = originalName + 'Text'
+      let counter = 2
+      while (seenNames.has(newName) || imageImportNames.has(newName)) {
+        newName = originalName + 'Text' + counter
+        counter++
+      }
+      seenNames.add(newName)
+      prop.propName = newName
+      continue
+    }
 
     // No conflict - keep original name
     if (propNameCount.get(originalName) === 1) {
