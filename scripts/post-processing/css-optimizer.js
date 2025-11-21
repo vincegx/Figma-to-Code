@@ -92,20 +92,57 @@ export function mapColorsToVariables(css) {
 
     // Replace color values in properties: #9DFFB9 → var(--brand)
     // Case-insensitive to handle both #9DFFB9 and #9dffb9
-    // BUT: Skip replacement inside :root section (to avoid --brand: var(--brand))
+    // BUT: Skip replacement inside :root section AND override classes
     const lines = css.split('\n')
     let inRoot = false
+    let inClass = false          // Track if we're inside ANY class
+    let isOverrideClass = false  // Track if current class is override type
+
     for (let i = 0; i < lines.length; i++) {
-      if (lines[i].startsWith(':root')) {
+      const line = lines[i]
+      const trimmed = line.trim()
+
+      // === :root section handling ===
+      if (line.startsWith(':root')) {
         inRoot = true
-      } else if (inRoot && lines[i].includes('}') && !lines[i].includes('{')) {
+      } else if (inRoot && trimmed === '}') {
         inRoot = false
-      } else if (!inRoot) {
-        // Only replace outside :root
+      }
+
+      // Skip :root content
+      if (inRoot) continue
+
+      // === Class detection ===
+      // Detect class entry: .classname {
+      const classMatch = line.match(/^\.([a-zA-Z0-9_-]+)\s*\{/)
+      if (classMatch) {
+        inClass = true
+        isOverrideClass = false  // Reset for new class
+        continue
+      }
+
+      // If we're in a class and haven't determined type yet,
+      // check if first property is a CSS variable definition
+      if (inClass && !isOverrideClass && trimmed && trimmed.startsWith('--')) {
+        // First property defines a CSS variable → this is an override class
+        isOverrideClass = true
+      }
+
+      // Detect class exit: }
+      if (inClass && trimmed === '}') {
+        inClass = false
+        isOverrideClass = false
+        continue
+      }
+
+      // === Color replacement ===
+      // Only replace if NOT in override class
+      if (!isOverrideClass) {
         const valueRegex = new RegExp(`:\\s*${color}\\b`, 'gi')
         lines[i] = lines[i].replace(valueRegex, `: var(--${varName})`)
       }
     }
+
     css = lines.join('\n')
   }
 

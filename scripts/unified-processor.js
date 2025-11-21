@@ -595,7 +595,7 @@ for (const [transformName, stats] of Object.entries(context.stats)) {
 
 console.log('\n🛡️  Applying safety net (CSS vars catch-all)...')
 
-safetyNet = cssVars.applySafetyNetRegex(outputCode)
+safetyNet = cssVars.applySafetyNetRegex(outputCode, cssVariables)
 outputCode = safetyNet.code
 
 if (safetyNet.varsFound > 0) {
@@ -779,7 +779,13 @@ if (context.customCSSClasses && context.customCSSClasses.size > 0) {
           }
           cssContent += `}\n`
         } else {
-          if (value) {
+          if (classData.isOverride) {
+            // Override mode: 2 lines (override variable + apply variable)
+            cssContent += `.${className} {\n`
+            cssContent += `  ${variable}: ${value};\n`
+            cssContent += `  ${property}: var(${variable});\n`
+            cssContent += `}\n`
+          } else if (value) {
             cssContent += `.${className} { ${property}: ${value}; }\n`
           } else {
             cssContent += `.${className} { ${property}: var(${variable}, ${fallback}); }\n`
@@ -809,7 +815,13 @@ if (context.customCSSClasses && context.customCSSClasses.size > 0) {
         cssContent += `}\n`
       } else {
         // Single property case
-        if (value) {
+        if (classData.isOverride) {
+          // Override mode: 2 lines (override variable + apply variable)
+          cssContent += `.${className} {\n`
+          cssContent += `  ${variable}: ${value};\n`
+          cssContent += `  ${property}: var(${variable});\n`
+          cssContent += `}\n`
+        } else if (value) {
           // Direct value (e.g., border-width: 0px 0px 2px)
           cssContent += `.${className} { ${property}: ${value}; }\n`
         } else {

@@ -253,33 +253,9 @@ function roundDecimalValuesInProperties(css) {
  * @returns {string} CSS with var() references
  */
 async function mapColorValuesToVars(css) {
-  // Import variable extraction
-  const { extractVariableMap } = await import('./css-optimizer.js')
-  const variableMap = extractVariableMap(css)
-
-  if (Object.keys(variableMap).length === 0) {
-    return css
-  }
-
-  // Replace color values in properties (skip :root section)
-  const lines = css.split('\n')
-  let inRoot = false
-
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith(':root')) {
-      inRoot = true
-    } else if (inRoot && lines[i].includes('}') && !lines[i].includes('{')) {
-      inRoot = false
-    } else if (!inRoot) {
-      // Replace hex colors with var() references
-      for (const [color, varName] of Object.entries(variableMap)) {
-        const valueRegex = new RegExp(`:\\s*${color}\\b`, 'gi')
-        lines[i] = lines[i].replace(valueRegex, `: var(--${varName})`)
-      }
-    }
-  }
-
-  return lines.join('\n')
+  // Use the centralized function with override class protection
+  const { mapColorsToVariables } = await import('./css-optimizer.js')
+  return mapColorsToVariables(css)
 }
 
 /**

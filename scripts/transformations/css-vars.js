@@ -58,14 +58,26 @@ const tailwindToCSSProperty = {
 }
 
 /**
+ * Clean value for use in class name
+ * #ffffff → ffffff, 32px → 32, etc.
+ */
+function cleanValue(value) {
+  return value
+    .replace(/^#/, '')           // #ffffff → ffffff
+    .replace(/px$/, '')          // 32px → 32
+    .replace(/[^a-z0-9]/gi, '')  // clean special chars
+    .toLowerCase()
+}
+
+/**
  * Convert CSS variables in className attributes (AST-based)
  * This runs during the AST traversal phase
  *
- * NEW STRATEGY: Generate custom CSS classes that use var()
- * p-[var(--margin\/r,32px)] → p-margin-r (custom class)
- * CSS generated: .p-margin-r { padding: var(--margin-r); }
+ * NEW STRATEGY: Generate custom CSS classes with override detection
+ * - If fallback === global: p-[var(--margin-r,32px)] → p-margin-r
+ * - If fallback ≠ global (override): p-[var(--margin-r,48px)] → margin-r-48
  */
-export function convertCSSVarsInClass(classString) {
+export function convertCSSVarsInClass(classString, globalVariables = {}) {
   let converted = classString
 
   // ═══════════════════════════════════════════════════════════
@@ -112,20 +124,40 @@ export function convertCSSVarsInClass(classString) {
       .toLowerCase()
       .trim()
 
-    // Generate custom class name based on type
-    const customClassName = cssType === 'color'
-      ? `text-${cleanVarName}`
-      : `text-size-${cleanVarName}`
+    const variable = `--${cleanVarName}`
+    const fallbackValue = fallback.trim()
+    const globalValue = globalVariables[variable]
+
+    // Check if this is an override (fallback !== global)
+    const isOverride = globalValue && fallbackValue !== globalValue
 
     // Get CSS property
     const cssProperty = cssType === 'color' ? 'color' : 'font-size'
 
-    // Store in Map for CSS generation
-    customCSSClasses.set(customClassName, {
-      property: cssProperty,
-      variable: `--${cleanVarName}`,
-      fallback: fallback.trim()
-    })
+    let customClassName
+    if (isOverride) {
+      // Generate variant class: textcolor-ffffff
+      customClassName = `${cleanVarName}-${cleanValue(fallbackValue)}`
+
+      // Store with override flag
+      customCSSClasses.set(customClassName, {
+        property: cssProperty,
+        variable,
+        value: fallbackValue,
+        isOverride: true
+      })
+    } else {
+      // Generate normal class: text-textcolor
+      customClassName = cssType === 'color'
+        ? `text-${cleanVarName}`
+        : `text-size-${cleanVarName}`
+
+      customCSSClasses.set(customClassName, {
+        property: cssProperty,
+        variable,
+        fallback: fallbackValue
+      })
+    }
 
     return customClassName
   })
@@ -145,22 +177,42 @@ export function convertCSSVarsInClass(classString) {
       .toLowerCase()
       .trim()
 
-    // Generate custom class name: p-margin-r
-    const customClassName = `${prefix}-${cleanVarName}`
+    const variable = `--${cleanVarName}`
+    const fallbackValue = fallback.trim()
+    const globalValue = globalVariables[variable]
+
+    // Check if this is an override (fallback !== global)
+    const isOverride = globalValue && fallbackValue !== globalValue
 
     // Get CSS property from Tailwind prefix
     const cssProperty = tailwindToCSSProperty[prefix]
 
-    if (cssProperty) {
-      // Store in Map for CSS generation
+    if (!cssProperty) {
+      // Unknown prefix - fallback to extracting the value (silently)
+      return `${prefix}-[${fallbackValue}]`
+    }
+
+    let customClassName
+    if (isOverride) {
+      // Generate variant class: margin-r-48
+      customClassName = `${cleanVarName}-${cleanValue(fallbackValue)}`
+
+      // Store with override flag
       customCSSClasses.set(customClassName, {
         property: cssProperty,
-        variable: `--${cleanVarName}`,
-        fallback: fallback.trim()
+        variable,
+        value: fallbackValue,
+        isOverride: true
       })
     } else {
-      // Unknown prefix - fallback to extracting the value (silently)
-      return `${prefix}-[${fallback.trim()}]`
+      // Generate normal class: p-margin-r
+      customClassName = `${prefix}-${cleanVarName}`
+
+      customCSSClasses.set(customClassName, {
+        property: cssProperty,
+        variable,
+        fallback: fallbackValue
+      })
     }
 
     return customClassName
@@ -170,28 +222,94 @@ export function convertCSSVarsInClass(classString) {
 }
 
 /**
+ * Convert rgba() color to hex format
+ * rgba(63, 63, 63, 1) → #3f3f3f
+ */
+function rgbaToHex(rgba) {
+  const match = rgba.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/)
+  if (!match) return null
+  const [, r, g, b] = match
+  return `#${[r, g, b].map(x => parseInt(x).toString(16).padStart(2, '0')).join('')}`
+}
+
+/**
  * Main execution function for CSS variables
  */
 export function execute(ast, context) {
   let varsConverted = 0
+  let inlineStylesConverted = 0
 
-  // Clear the customCSSClasses Map to avoid memory leaks between runs
+  // Clear Maps to avoid memory leaks between runs
   customCSSClasses.clear()
+
+  // Get global CSS variables from context
+  const globalVariables = context.cssVariables || {}
 
   traverse.default(ast, {
     JSXElement(path) {
       const attributes = path.node.openingElement.attributes
+
+      // ═════════════════════════════════════════════════════════
+      // 1. Handle className attribute (existing logic)
+      // ═════════════════════════════════════════════════════════
       const classNameAttr = attributes.find(
         attr => attr.name && attr.name.name === 'className'
       )
 
       if (classNameAttr && t.isStringLiteral(classNameAttr.value)) {
         const original = classNameAttr.value.value
-        const converted = convertCSSVarsInClass(original)
+
+        // Convert CSS vars to classes (with override detection)
+        const converted = convertCSSVarsInClass(original, globalVariables)
 
         if (converted !== original) {
           classNameAttr.value = t.stringLiteral(converted)
           varsConverted++
+        }
+      }
+
+      // ═════════════════════════════════════════════════════════
+      // 2. Handle inline style attribute (NEW)
+      // ═════════════════════════════════════════════════════════
+      const styleAttr = attributes.find(
+        attr => attr.name && attr.name.name === 'style'
+      )
+
+      if (styleAttr && t.isJSXExpressionContainer(styleAttr.value)) {
+        let expression = styleAttr.value.expression
+
+        // Handle TypeScript type assertions: { } as React.CSSProperties
+        // TSAsExpression wraps the ObjectExpression
+        if (t.isTSAsExpression(expression)) {
+          expression = expression.expression
+        }
+
+        if (t.isObjectExpression(expression)) {
+          expression.properties.forEach(prop => {
+            if (t.isObjectProperty(prop) && t.isStringLiteral(prop.key)) {
+              const key = prop.key.value
+
+              // Check for CSS custom properties like --fill-0, --stroke-0
+              if (key.startsWith('--') && t.isStringLiteral(prop.value)) {
+                const value = prop.value.value
+
+                // Convert rgba() to hex if needed
+                const hex = rgbaToHex(value)
+                if (hex) {
+                  // Check if this color matches a global variable
+                  for (const [varName, varValue] of Object.entries(globalVariables)) {
+                    if (varValue === hex) {
+                      // Replace hardcoded color with CSS variable reference
+                      // "--fill-0": "rgba(63, 63, 63, 1)" → "--fill-0": "var(--textcolor)"
+                      prop.value = t.stringLiteral(`var(${varName})`)
+                      inlineStylesConverted++
+                      break
+                    }
+                  }
+                }
+              }
+            }
+          })
         }
       }
     }
@@ -207,19 +325,24 @@ export function execute(ast, context) {
     context.customCSSClasses.set(className, classData)
   }
 
-  return { varsConverted, customClassesGenerated: customCSSClasses.size }
+  return {
+    varsConverted,
+    customClassesGenerated: customCSSClasses.size,
+    inlineStylesConverted
+  }
 }
 
 /**
  * SAFETY NET: Catch-all regex for CSS vars that escaped AST processing
  *
  * This function handles className patterns with var() that weren't caught during AST traversal.
- * Now generates custom CSS classes instead of extracting fallback values.
+ * Now generates custom CSS classes with override detection.
  *
  * @param {string} code - Generated code after AST processing
+ * @param {object} globalVariables - Global CSS variables for override detection
  * @returns {object} - { code: string, varsFound: number, varsFixed: number }
  */
-export function applySafetyNetRegex(code) {
+export function applySafetyNetRegex(code, globalVariables = {}) {
   // Count className patterns with var() (in arbitrary values like p-[var(...)])
   const varsBefore = (code.match(/className="[^"]*\[[^\]]*var\(--[^\)]+\)[^\]]*\]/g) || []).length
 
@@ -240,20 +363,39 @@ export function applySafetyNetRegex(code) {
         .toLowerCase()
         .trim()
 
-      // Generate custom class name
-      const customClassName = cssType === 'color'
-        ? `text-${cleanVarName}`
-        : `text-size-${cleanVarName}`
+      const variable = `--${cleanVarName}`
+      const fallbackValue = fallback.trim()
+      const globalValue = globalVariables[variable]
+
+      // Check if this is an override (fallback !== global)
+      const isOverride = globalValue && fallbackValue !== globalValue
 
       // Get CSS property
       const cssProperty = cssType === 'color' ? 'color' : 'font-size'
 
-      // Store in Map for CSS generation
-      customCSSClasses.set(customClassName, {
-        property: cssProperty,
-        variable: `--${cleanVarName}`,
-        fallback: fallback.trim()
-      })
+      let customClassName
+      if (isOverride) {
+        // Generate variant class: textcolor-ffffff
+        customClassName = `${cleanVarName}-${cleanValue(fallbackValue)}`
+
+        customCSSClasses.set(customClassName, {
+          property: cssProperty,
+          variable,
+          value: fallbackValue,
+          isOverride: true
+        })
+      } else {
+        // Generate normal class: text-textcolor
+        customClassName = cssType === 'color'
+          ? `text-${cleanVarName}`
+          : `text-size-${cleanVarName}`
+
+        customCSSClasses.set(customClassName, {
+          property: cssProperty,
+          variable,
+          fallback: fallbackValue
+        })
+      }
 
       return `${beforeClass}${customClassName}${afterClass}`
     }
@@ -276,25 +418,44 @@ export function applySafetyNetRegex(code) {
         .toLowerCase()
         .trim()
 
-      // Generate custom class name
-      const customClassName = `${prefix}-${cleanVarName}`
+      const variable = `--${cleanVarName}`
+      const fallbackValue = fallback.trim()
+      const globalValue = globalVariables[variable]
+
+      // Check if this is an override (fallback !== global)
+      const isOverride = globalValue && fallbackValue !== globalValue
 
       // Get CSS property
       const cssProperty = tailwindToCSSProperty[prefix]
 
-      if (cssProperty) {
-        // Store in Map for CSS generation
-        customCSSClasses.set(customClassName, {
-          property: cssProperty,
-          variable: `--${cleanVarName}`,
-          fallback: fallback.trim()
-        })
-
-        return `${beforeClass}${customClassName}${afterClass}`
+      if (!cssProperty) {
+        // Unknown prefix - extract fallback
+        return `${beforeClass}${prefix}-[${fallbackValue}]${afterClass}`
       }
 
-      // Unknown prefix - extract fallback
-      return `${beforeClass}${prefix}-[${fallback.trim()}]${afterClass}`
+      let customClassName
+      if (isOverride) {
+        // Generate variant class: margin-r-48
+        customClassName = `${cleanVarName}-${cleanValue(fallbackValue)}`
+
+        customCSSClasses.set(customClassName, {
+          property: cssProperty,
+          variable,
+          value: fallbackValue,
+          isOverride: true
+        })
+      } else {
+        // Generate normal class: p-margin-r
+        customClassName = `${prefix}-${cleanVarName}`
+
+        customCSSClasses.set(customClassName, {
+          property: cssProperty,
+          variable,
+          fallback: fallbackValue
+        })
+      }
+
+      return `${beforeClass}${customClassName}${afterClass}`
     }
   )
 
