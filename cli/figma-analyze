@@ -58,26 +58,50 @@ fi
 
 FIGMA_URL="$1"
 
-# Check Docker container is running
-if ! docker ps | grep -q mcp-figma-v1; then
-  echo -e "${YELLOW}⚠️  Docker container not running${NC}"
+# Detect Docker vs Electron mode
+# Check if Docker is available and docker-compose.yml exists
+if command -v docker &> /dev/null && [ -f "$(dirname "$0")/../docker-compose.yml" ]; then
+  # Docker mode: use container
+  echo -e "${GREEN}🐳 Docker mode detected${NC}"
   echo ""
-  echo "Starting container..."
-  docker-compose up -d
 
-  # Wait for container to be ready
-  echo "Waiting for startup (10s)..."
-  sleep 10
+  # Check Docker container is running
+  if ! docker ps | grep -q mcp-figma-v1; then
+    echo -e "${YELLOW}⚠️  Docker container not running${NC}"
+    echo ""
+    echo "Starting container..."
+    cd "$(dirname "$0")/.."
+    docker-compose up -d
+
+    # Wait for container to be ready
+    echo "Waiting for startup (10s)..."
+    sleep 10
+    cd - > /dev/null
+  fi
+
+  # Get absolute project path for MCP (runs on host, not in Docker)
+  PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+  # Run figma-cli.js in Docker
+  echo -e "${GREEN}🚀 Starting figma-analyze in Docker...${NC}"
+  echo ""
+
+  docker exec -e "PROJECT_ROOT=$PROJECT_ROOT" mcp-figma-v1 node scripts/figma-cli.js "$FIGMA_URL"
+else
+  # Electron mode: run directly on host
+  echo -e "${GREEN}💻 Electron mode detected${NC}"
+  echo ""
+
+  # Check if node_modules exists
+  if [ ! -d "$(dirname "$0")/../node_modules" ]; then
+    echo -e "${RED}❌ node_modules not found. Run 'npm install' first.${NC}"
+    exit 1
+  fi
+
+  # Run figma-cli.js directly with ELECTRON_MODE
+  cd "$(dirname "$0")/.."
+  ELECTRON_MODE=true node scripts/figma-cli.js "$FIGMA_URL"
 fi
-
-# Get absolute project path for MCP (runs on host, not in Docker)
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-
-# Run figma-cli.js in Docker
-echo -e "${GREEN}🚀 Starting figma-analyze in Docker...${NC}"
-echo ""
-
-docker exec -e "PROJECT_ROOT=$PROJECT_ROOT" mcp-figma-v1 node scripts/figma-cli.js "$FIGMA_URL"
 
 exit_code=$?
 

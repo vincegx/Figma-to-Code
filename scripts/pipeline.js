@@ -8,6 +8,7 @@ import parser from '@babel/parser'
 import generate from '@babel/generator'
 
 // Import all transforms
+import * as fixSvgImports from './transformations/fix-svg-imports.js'
 import * as addMissingDataNames from './transformations/add-missing-data-names.js'
 import * as fontDetection from './transformations/font-detection.js'
 import * as textConsolidation from './transformations/text-consolidation.js'
@@ -26,6 +27,7 @@ import * as extractProps from './transformations/extract-props.js'
 
 // Register all transforms
 const ALL_TRANSFORMS = [
+  fixSvgImports,
   addMissingDataNames,
   fontDetection,
   textConsolidation,

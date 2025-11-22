@@ -19,3 +19,15 @@ data/*
 
 # Personal Tailwind safelist (from local Figma exports)
 tailwind.safelist.json
+
+# Electron desktop app
+electron-app/node_modules/
+electron-app/package-lock.json
+electron-app/dist-electron/
+electron-app/server-bundle.js
+*.dmg
+*.exe
+*.AppImage
+*.deb
+*.rpm
+*.snap

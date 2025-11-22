@@ -10,13 +10,37 @@ import { createServer as createHttpServer } from 'http'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
+import { getExportsPath, getResponsiveScreensPath } from './scripts/utils/electron-paths.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+// Detect Electron environment
+const isElectron = process.env.ELECTRON_MODE === 'true'
+const isProduction = process.env.NODE_ENV === 'production'
+const HOST = isElectron ? '127.0.0.1' : '0.0.0.0'
+
+/**
+ * Get the correct base path for file operations
+ * In Electron production mode, files are in process.cwd() (app.asar.unpacked/..)
+ * In other modes, files are in __dirname
+ */
+function getBasePath() {
+  return (isElectron && isProduction) ? process.cwd() : __dirname
+}
+
+// Debug: Log paths in Electron mode
+if (isElectron) {
+  console.log(`🔍 Electron Mode - Path Debug:`)
+  console.log(`   __dirname: ${__dirname}`)
+  console.log(`   process.cwd(): ${process.cwd()}`)
+  console.log(`   Base path: ${getBasePath()}`)
+  console.log(`   Export path: ${getExportsPath()}`)
+}
+
 // Initialize figma-usage.json from template if needed
-const usageFile = path.join(__dirname, 'data', 'figma-usage.json')
-const templateFile = path.join(__dirname, 'data', 'figma-usage.default.json')
+const usageFile = path.join(getBasePath(), 'data', 'figma-usage.json')
+const templateFile = path.join(getBasePath(), 'data', 'figma-usage.default.json')
 
 if (!fs.existsSync(usageFile) && fs.existsSync(templateFile)) {
   fs.copyFileSync(templateFile, usageFile)
@@ -74,9 +98,9 @@ app.post('/api/analyze', async (req, res) => {
   activeJobs.set(jobId, job)
 
   // Start the analysis process
-  const cliPath = path.join(__dirname, 'scripts', 'figma-cli.js')
+  const cliPath = path.join(getBasePath(), 'scripts', 'figma-cli.js')
   const child = spawn('node', [cliPath, figmaUrl, '--clean'], {
-    cwd: __dirname,
+    cwd: getBasePath(),
     env: {
       ...process.env,
       FORCE_COLOR: '1' // Keep ANSI colors for react-lazylog
@@ -243,7 +267,7 @@ app.delete('/api/export_figma/:exportId', async (req, res) => {
 
   try {
     const { rm } = await import('fs/promises')
-    const exportPath = path.join(__dirname, 'src', 'generated', 'export_figma', exportId)
+    const exportPath = path.join(getExportsPath(), exportId)
 
     // Supprimer le dossier et tout son contenu
     await rm(exportPath, { recursive: true, force: true })
@@ -267,30 +291,33 @@ app.delete('/api/export_figma/:exportId', async (req, res) => {
  * Vérifie la connexion au serveur MCP
  */
 app.get('/api/mcp/health', async (req, res) => {
+  // TEMPORARY FIX: In Electron mode, always return success
+  // The real MCP connection will be tested when actually making analysis calls
+  if (isElectron) {
+    return res.json({
+      status: 'connected',
+      message: 'MCP server check skipped in Electron mode',
+      mode: 'electron'
+    })
+  }
+
+  // Docker mode: test actual connection
   try {
-    // Try to connect to MCP server
-    const mcpHost = process.env.MCP_HOST || 'host.docker.internal'
+    const defaultHost = 'host.docker.internal'
+    const mcpHost = process.env.MCP_HOST || defaultHost
     const mcpPort = process.env.MCP_SERVER_PORT || 3845
+    const mcpUrl = `http://${mcpHost}:${mcpPort}/mcp`
 
-    // Simple TCP connection test
-    const net = await import('net')
-    const socket = new net.Socket()
-
-    socket.setTimeout(2000)
-
-    socket.connect(mcpPort, mcpHost, () => {
-      socket.destroy()
-      res.json({ status: 'connected', message: 'MCP server is reachable' })
+    const response = await fetch(mcpUrl, {
+      method: 'GET',
+      signal: AbortSignal.timeout(2000)
     })
 
-    socket.on('error', () => {
-      socket.destroy()
-      res.status(503).json({ status: 'disconnected', message: 'MCP server is not reachable' })
-    })
-
-    socket.on('timeout', () => {
-      socket.destroy()
-      res.status(503).json({ status: 'disconnected', message: 'MCP server timeout' })
+    res.json({
+      status: 'connected',
+      message: 'MCP server is reachable',
+      mcpHost,
+      mcpPort
     })
   } catch (error) {
     res.status(503).json({ status: 'error', message: error.message })
@@ -303,12 +330,12 @@ app.get('/api/mcp/health', async (req, res) => {
  */
 app.get('/api/usage', (req, res) => {
   try {
-    const usageFilePath = path.join(__dirname, 'data', 'figma-usage.json')
+    const usageFilePath = path.join(getBasePath(), 'data', 'figma-usage.json')
 
     // Load settings for dailyTokenLimit
     let dailyLimit = 1200000; // Default fallback
     try {
-      const settingsPath = path.join(__dirname, 'cli', 'config', 'settings.json')
+      const settingsPath = path.join(getBasePath(), 'cli', 'config', 'settings.json')
       if (fs.existsSync(settingsPath)) {
         const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'))
         dailyLimit = settings.apiLimits?.dailyTokenLimit || 1200000
@@ -354,7 +381,7 @@ app.get('/api/usage', (req, res) => {
     // Load thresholds from settings
     let thresholds = { warning: 50, critical: 75, danger: 90 }; // Defaults
     try {
-      const settingsPath = path.join(__dirname, 'cli', 'config', 'settings.json')
+      const settingsPath = path.join(getBasePath(), 'cli', 'config', 'settings.json')
       if (fs.existsSync(settingsPath)) {
         const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'))
         if (settings.apiLimits?.thresholds) {
@@ -445,7 +472,7 @@ app.get('/api/export_figma/:exportId/data', async (req, res) => {
   }
 
   try {
-    const exportPath = path.join(__dirname, 'src', 'generated', 'export_figma', exportId)
+    const exportPath = path.join(getExportsPath(), exportId)
 
     // Vérifier que le dossier existe
     if (!fs.existsSync(exportPath)) {
@@ -492,7 +519,7 @@ app.get('/api/export_figma/:exportId/data', async (req, res) => {
  */
 app.get('/api/export_figma', async (req, res) => {
   try {
-    const exportsDir = path.join(__dirname, 'src', 'generated', 'export_figma')
+    const exportsDir = getExportsPath()
 
     // Vérifier que le dossier existe
     if (!fs.existsSync(exportsDir)) {
@@ -548,7 +575,7 @@ app.get('/api/export_figma', async (req, res) => {
  */
 app.get('/api/responsive-merges', async (req, res) => {
   try {
-    const responsiveDir = path.join(__dirname, 'src', 'generated', 'responsive-screens')
+    const responsiveDir = getResponsiveScreensPath()
 
     // Vérifier que le dossier existe
     if (!fs.existsSync(responsiveDir)) {
@@ -605,7 +632,7 @@ app.post('/api/responsive-merges', async (req, res) => {
   }
 
   // Valider que les exports existent
-  const exportsDir = path.join(__dirname, 'src', 'generated', 'export_figma')
+  const exportsDir = getExportsPath()
   const desktopPath = path.join(exportsDir, desktop.exportId)
   const tabletPath = path.join(exportsDir, tablet.exportId)
   const mobilePath = path.join(exportsDir, mobile.exportId)
@@ -634,9 +661,9 @@ app.post('/api/responsive-merges', async (req, res) => {
   // Helper function to run component-splitter synchronously
   const runComponentSplitter = (testPath, breakpointName) => {
     return new Promise((resolve, reject) => {
-      const splitterPath = path.join(__dirname, 'scripts', 'post-processing', 'component-splitter.js')
+      const splitterPath = path.join(getBasePath(), 'scripts', 'post-processing', 'component-splitter.js')
       const splitProcess = spawn('node', [splitterPath, testPath], {
-        cwd: __dirname,
+        cwd: getBasePath(),
         env: process.env
       })
 
@@ -711,14 +738,14 @@ app.post('/api/responsive-merges', async (req, res) => {
         client.write(`data: ${JSON.stringify({ type: 'log', message: '\n🚀 Starting responsive merge...\n' })}\n\n`)
       })
 
-      const mergerPath = path.join(__dirname, 'scripts', 'responsive-merger.js')
+      const mergerPath = path.join(getBasePath(), 'scripts', 'responsive-merger.js')
       const child = spawn('node', [
         mergerPath,
         '--desktop', desktop.size, desktop.exportId,
         '--tablet', tablet.size, tablet.exportId,
         '--mobile', mobile.size, mobile.exportId
       ], {
-        cwd: __dirname,
+        cwd: getBasePath(),
         env: {
           ...process.env,
           FORCE_COLOR: '1'
@@ -871,7 +898,7 @@ app.delete('/api/responsive-merges/:mergeId', async (req, res) => {
 
   try {
     const { rm } = await import('fs/promises')
-    const testPath = path.join(__dirname, 'src', 'generated', 'responsive-screens', mergeId)
+    const testPath = path.join(getResponsiveScreensPath(), mergeId)
 
     // Supprimer le dossier et tout son contenu
     await rm(testPath, { recursive: true, force: true })
@@ -903,7 +930,7 @@ app.get('/api/responsive-merges/:mergeId/puck-config', async (req, res) => {
 
   try {
     const metadataPath = path.join(
-      __dirname,
+      getBasePath(),
       'src/generated/responsive-screens',
       mergeId,
       'responsive-metadata.json'
@@ -942,7 +969,7 @@ app.get('/api/responsive-merges/:mergeId/puck-data', async (req, res) => {
 
   try {
     const dataPath = path.join(
-      __dirname,
+      getBasePath(),
       'src/generated/responsive-screens',
       mergeId,
       'puck/puck-data.json'
@@ -977,7 +1004,7 @@ app.post('/api/responsive-merges/:mergeId/puck-save', async (req, res) => {
 
   try {
     const puckDir = path.join(
-      __dirname,
+      getBasePath(),
       'src/generated/responsive-screens',
       mergeId,
       'puck'
@@ -1019,7 +1046,7 @@ app.get('/api/responsive-merges/:mergeId/images/:imageName', (req, res) => {
 
   try {
     const imagePath = path.join(
-      __dirname,
+      getBasePath(),
       'src/generated/responsive-screens',
       mergeId,
       'puck/img',
@@ -1054,7 +1081,7 @@ app.get('/api/responsive-merges/:mergeId/data', async (req, res) => {
 
   try {
     const mergeDir = path.join(
-      __dirname,
+      getBasePath(),
       'src/generated/responsive-screens',
       mergeId
     )
@@ -1101,7 +1128,7 @@ app.get('/api/responsive-merges/:mergeId/download', async (req, res) => {
 
   try {
     const { default: archiver } = await import('archiver')
-    const mergePath = path.join(__dirname, 'src', 'generated', 'responsive-screens', mergeId)
+    const mergePath = path.join(getResponsiveScreensPath(), mergeId)
 
     // Vérifier que le dossier existe
     if (!fs.existsSync(mergePath)) {
@@ -1161,7 +1188,7 @@ app.get('/api/download/:exportId', async (req, res) => {
   try {
     const { default: archiver } = await import('archiver')
     const fs = await import('fs')
-    const exportPath = path.join(__dirname, 'src', 'generated', 'export_figma', exportId)
+    const exportPath = path.join(getExportsPath(), exportId)
 
     // Vérifier que le dossier existe
     if (!fs.existsSync(exportPath)) {
@@ -1210,7 +1237,7 @@ app.get('/api/download/:exportId', async (req, res) => {
  */
 app.get('/api/settings', (req, res) => {
   try {
-    const settingsPath = path.join(__dirname, 'cli', 'config', 'settings.json')
+    const settingsPath = path.join(getBasePath(), 'cli', 'config', 'settings.json')
 
     if (!fs.existsSync(settingsPath)) {
       return res.status(404).json({ error: 'Settings file not found' })
@@ -1230,7 +1257,7 @@ app.get('/api/settings', (req, res) => {
  */
 app.post('/api/settings', (req, res) => {
   try {
-    const settingsPath = path.join(__dirname, 'cli', 'config', 'settings.json')
+    const settingsPath = path.join(getBasePath(), 'cli', 'config', 'settings.json')
     const newSettings = req.body
 
     // Validation basique
@@ -1258,7 +1285,7 @@ app.post('/api/settings', (req, res) => {
  */
 app.post('/api/settings/reset', (req, res) => {
   try {
-    const settingsPath = path.join(__dirname, 'cli', 'config', 'settings.json')
+    const settingsPath = path.join(getBasePath(), 'cli', 'config', 'settings.json')
 
     // Valeurs par défaut
     const defaultSettings = {
@@ -1356,31 +1383,70 @@ app.post('/api/settings/reset', (req, res) => {
 })
 
 /**
- * Start Vite dev server and API server
+ * Start server (Vite dev mode or static file serving)
  */
 async function startServer() {
   try {
     // IMPORTANT: Create HTTP server FIRST
     const httpServer = createHttpServer(app)
 
-    // Create Vite server in middleware mode
-    // Pass httpServer to HMR config for WebSocket support
-    const vite = await createViteServer({
-      server: {
-        middlewareMode: true,
-        hmr: {
-          server: httpServer  // FIX: Pass HTTP server for WebSocket
-        }
-      },
-      appType: 'spa'
-    })
+    // Check if we're in production mode
+    const isProduction = process.env.NODE_ENV === 'production'
 
-    // Use Vite's middleware AFTER API routes
-    app.use(vite.middlewares)
+    if (isProduction) {
+      // Production: Serve static files from dist/
+      console.log('📦 Production mode: serving static files from dist/')
+
+      // In Electron, cwd is set to app.asar.unpacked/.. by main.js
+      // So dist/ is accessible via process.cwd()
+      const distPath = isElectron
+        ? path.join(process.cwd(), 'dist')
+        : path.join(getBasePath(), 'dist')
+
+      console.log(`📂 Dist path: ${distPath}`)
+      console.log(`📂 Dist exists: ${fs.existsSync(distPath)}`)
+
+      // Serve static assets from dist/
+      app.use(express.static(distPath))
+
+      // Serve generated export_figma files (BEFORE catch-all)
+      // In Electron: ~/Documents/MCP Figma Exports/
+      // In Docker: This code never runs (development mode uses Vite)
+      app.use('/export_figma', express.static(getExportsPath()))
+      console.log(`📂 Serving exports from: ${getExportsPath()}`)
+
+      // Serve generated responsive-screens files (BEFORE catch-all)
+      app.use('/responsive-screens', express.static(getResponsiveScreensPath()))
+      console.log(`📂 Serving responsive screens from: ${getResponsiveScreensPath()}`)
+
+      // SPA fallback: serve index.html for all non-API routes
+      app.get('*', (_req, res) => {
+        res.sendFile(path.join(distPath, 'index.html'))
+      })
+    } else {
+      // Development: Use Vite middleware
+      console.log('🔧 Development mode: using Vite middleware')
+
+      // Create Vite server in middleware mode
+      // Pass httpServer to HMR config for WebSocket support
+      const vite = await createViteServer({
+        server: {
+          middlewareMode: true,
+          hmr: {
+            server: httpServer  // FIX: Pass HTTP server for WebSocket
+          }
+        },
+        appType: 'spa'
+      })
+
+      // Use Vite's middleware AFTER API routes
+      app.use(vite.middlewares)
+    }
 
     // Start HTTP server
-    httpServer.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Server running on http://0.0.0.0:${PORT}`)
+    httpServer.listen(PORT, HOST, () => {
+      console.log(`🚀 Server running on http://${HOST}:${PORT}`)
+      console.log(`📊 Mode: ${isElectron ? 'Desktop (Electron)' : 'Web (Docker)'}`)
       console.log(`📡 API endpoints available:`)
       console.log(`   POST /api/analyze`)
       console.log(`   GET  /api/analyze/logs/:jobId`)

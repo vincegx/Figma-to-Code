@@ -94,7 +94,8 @@ echo ""
 if [ -n "$DOCKER_CMD" ]; then
   $DOCKER_CMD node scripts/figma-export-reprocess.js "$EXPORT_ID" $CLEAN_FLAG
 else
-  node scripts/figma-export-reprocess.js "$EXPORT_ID" $CLEAN_FLAG
+  # Electron mode: set ELECTRON_MODE environment variable
+  ELECTRON_MODE=true node scripts/figma-export-reprocess.js "$EXPORT_ID" $CLEAN_FLAG
 fi
 
 # Success message

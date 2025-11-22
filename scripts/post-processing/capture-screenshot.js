@@ -21,8 +21,15 @@ async function captureWebScreenshot(testDir, port = 5173, fixedWidth = null, fix
   // Extract exportId from testDir (e.g., "src/generated/export_figma/node-6047-3245-1763118817" -> "node-6047-3245-1763118817")
   const exportId = path.basename(testDir);
 
+  // Detect Electron environment and configure Chromium path
+  const isElectron = process.env.ELECTRON_MODE === 'true';
+  const chromiumPath = isElectron
+    ? undefined  // Let Puppeteer find Chromium automatically (macOS/Windows/Linux)
+    : '/usr/bin/chromium';  // Docker path
+
   const browser = await puppeteer.launch({
     headless: true,
+    executablePath: chromiumPath,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 

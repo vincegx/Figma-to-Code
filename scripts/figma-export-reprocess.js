@@ -119,7 +119,7 @@ class ExportReprocessor {
       : 0;
 
     if (imageCount > 0) {
-      execSync(`node ${path.join(__dirname, 'post-processing/organize-images.js')} ${this.testDir}`);
+      execSync(`node "${path.join(__dirname, 'post-processing/organize-images.js')}" "${this.testDir}"`);
       log.success(`${imageCount} image(s) organisée(s)\n`);
     } else {
       log.info('Aucune image à organiser\n');
@@ -128,10 +128,10 @@ class ExportReprocessor {
     // 2. Unified processor (AST + reports)
     log.task('🔧', 'Transformations AST + génération rapports');
     execSync(
-      `node ${path.join(__dirname, 'unified-processor.js')} ` +
-      `${path.join(this.testDir, 'Component.tsx')} ` +
-      `${path.join(this.testDir, 'Component-fixed.tsx')} ` +
-      `${path.join(this.testDir, 'metadata.xml')} ` +
+      `node "${path.join(__dirname, 'unified-processor.js')}" ` +
+      `"${path.join(this.testDir, 'Component.tsx')}" ` +
+      `"${path.join(this.testDir, 'Component-fixed.tsx')}" ` +
+      `"${path.join(this.testDir, 'metadata.xml')}" ` +
       `"${this.figmaUrl}"`
     );
     log.success('Component-fixed.tsx + rapports générés\n');
@@ -140,10 +140,10 @@ class ExportReprocessor {
     if (this.cleanMode) {
       log.task('✨', 'Génération version production (clean)');
       execSync(
-        `node ${path.join(__dirname, 'unified-processor.js')} ` +
-        `${path.join(this.testDir, 'Component.tsx')} ` +
-        `${path.join(this.testDir, 'Component-clean.tsx')} ` +
-        `${path.join(this.testDir, 'metadata.xml')} ` +
+        `node "${path.join(__dirname, 'unified-processor.js')}" ` +
+        `"${path.join(this.testDir, 'Component.tsx')}" ` +
+        `"${path.join(this.testDir, 'Component-clean.tsx')}" ` +
+        `"${path.join(this.testDir, 'metadata.xml')}" ` +
         `"${this.figmaUrl}" ` +
         `--clean`
       );
@@ -152,14 +152,14 @@ class ExportReprocessor {
 
     // 2.5. Synchronize CSS + TSX (new phase)
     log.task('🔄', 'Synchronisation CSS + TSX optimisations');
-    execSync(`node ${path.join(__dirname, 'post-processing/sync-optimizer.js')} ${this.testDir}`);
+    execSync(`node "${path.join(__dirname, 'post-processing/sync-optimizer.js')}" "${this.testDir}"`);
     log.success('Component-optimized.tsx + Component-optimized.css synchronisés\n');
 
     // 3. Fix SVG vars
     const imgDir = path.join(this.testDir, 'img');
     if (fs.existsSync(imgDir)) {
       log.task('🎨', 'Correction variables CSS dans SVG');
-      execSync(`node ${path.join(__dirname, 'post-processing/fix-svg-vars.js')} ${imgDir}`);
+      execSync(`node "${path.join(__dirname, 'post-processing/fix-svg-vars.js')}" "${imgDir}"`);
       log.success('Variables SVG corrigées\n');
     }
   }
@@ -172,7 +172,7 @@ class ExportReprocessor {
     // Extract dimensions from metadata.xml
     const dimensions = this.parseNodeDimensions();
 
-    let command = `node ${path.join(__dirname, 'post-processing/capture-screenshot.js')} ${this.testDir} ${this.vitePort}`;
+    let command = `node "${path.join(__dirname, 'post-processing/capture-screenshot.js')}" "${this.testDir}" ${this.vitePort}`;
 
     if (dimensions) {
       log.info(`Using Figma node dimensions: ${dimensions.width}x${dimensions.height}`);

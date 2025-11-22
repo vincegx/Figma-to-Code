@@ -8,6 +8,8 @@ import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { UsageTracker } from './utils/usage-tracker.js';
 import { loadSettings, getMcpParams, getDirectories, getGenerationSettings } from './utils/settings-loader.js';
+import { getExportsPath } from './utils/electron-paths.js';
+import { patchJSONForFigma } from './utils/figma-mcp-transport.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -88,10 +90,16 @@ class FigmaCLI {
     // Track if MCP extraction succeeded (to avoid deleting files on post-processing errors)
     this.mcpSucceeded = false;
 
+    // Detect Electron environment and adapt MCP URL
+    const isElectron = process.env.ELECTRON_MODE === 'true';
+    const mcpUrl = isElectron
+      ? 'http://localhost:3845/mcp'  // Direct connection (macOS/Windows/Linux)
+      : this.settings.mcp.serverUrl;  // Docker connection (host.docker.internal)
+
     // Legacy config structure (for backward compatibility)
     this.config = {
       mcpServer: {
-        url: this.settings.mcp.serverUrl,
+        url: mcpUrl,
         transport: 'sse'
       },
       commonParams: {
@@ -148,10 +156,10 @@ class FigmaCLI {
     this.figmaUrl = url;
 
     // Create test directory (timestamp already initialized above)
+    // Use getExportsPath() to support both Docker and Electron environments
+    const exportsBasePath = getExportsPath();
     this.testDir = path.join(
-      __dirname,
-      '..',
-      this.config.directories.testsOutput,
+      exportsBasePath,
       `node-${this.nodeIdHyphen}-${this.timestamp}`
     );
 
@@ -197,6 +205,9 @@ class FigmaCLI {
     log.task('🔌', 'Connexion au MCP server');
 
     try {
+      // Apply Figma compatibility patch (fixes serverInfo.icons[].sizes format)
+      const restoreJSON = patchJSONForFigma();
+
       const transport = new StreamableHTTPClientTransport(
         new URL(this.config.mcpServer.url)
       );
@@ -212,6 +223,9 @@ class FigmaCLI {
       );
 
       await this.client.connect(transport);
+
+      // Restore original JSON.parse after connection
+      restoreJSON();
 
       // List available tools (concise)
       const toolsResult = await this.client.listTools();
@@ -539,7 +553,7 @@ class FigmaCLI {
     fs.mkdirSync(chunksDir, { recursive: true });
 
     const nodesOutput = execSync(
-      `node ${path.join(__dirname, 'utils/chunking.js')} extract-nodes ${path.join(this.testDir, 'metadata.xml')}`,
+      `node "${path.join(__dirname, 'utils/chunking.js')}" extract-nodes "${path.join(this.testDir, 'metadata.xml')}"`,
       { encoding: 'utf8' }
     );
 
@@ -626,7 +640,7 @@ class FigmaCLI {
       .join(' ');
 
     execSync(
-      `node ${path.join(__dirname, 'utils/chunking.js')} assemble-chunks ${this.testDir} Component ${chunkFiles}`
+      `node "${path.join(__dirname, 'utils/chunking.js')}" assemble-chunks "${this.testDir}" Component ${chunkFiles}`
     );
   }
 
@@ -855,7 +869,7 @@ class FigmaCLI {
       : 0;
 
     if (imageCount > 0) {
-      execSync(`node ${path.join(__dirname, 'post-processing/organize-images.js')} ${this.testDir}`);
+      execSync(`node "${path.join(__dirname, 'post-processing/organize-images.js')}" "${this.testDir}"`);
       log.success(`${imageCount} image(s) organisée(s)\n`);
     } else {
       log.info('Aucune image à organiser\n');
@@ -864,10 +878,10 @@ class FigmaCLI {
     // 2. Unified processor (AST + reports)
     log.task('🔧', 'Transformations AST + génération rapports');
     execSync(
-      `node ${path.join(__dirname, 'unified-processor.js')} ` +
-      `${path.join(this.testDir, 'Component.tsx')} ` +
-      `${path.join(this.testDir, 'Component-fixed.tsx')} ` +
-      `${path.join(this.testDir, 'metadata.xml')} ` +
+      `node "${path.join(__dirname, 'unified-processor.js')}" ` +
+      `"${path.join(this.testDir, 'Component.tsx')}" ` +
+      `"${path.join(this.testDir, 'Component-fixed.tsx')}" ` +
+      `"${path.join(this.testDir, 'metadata.xml')}" ` +
       `"${this.figmaUrl}"`
     );
     log.success('Component-fixed.tsx + rapports générés\n');
@@ -876,10 +890,10 @@ class FigmaCLI {
     if (this.cleanMode) {
       log.task('✨', 'Génération version production (clean)');
       execSync(
-        `node ${path.join(__dirname, 'unified-processor.js')} ` +
-        `${path.join(this.testDir, 'Component.tsx')} ` +
-        `${path.join(this.testDir, 'Component-clean.tsx')} ` +
-        `${path.join(this.testDir, 'metadata.xml')} ` +
+        `node "${path.join(__dirname, 'unified-processor.js')}" ` +
+        `"${path.join(this.testDir, 'Component.tsx')}" ` +
+        `"${path.join(this.testDir, 'Component-clean.tsx')}" ` +
+        `"${path.join(this.testDir, 'metadata.xml')}" ` +
         `"${this.figmaUrl}" ` +
         `--clean`
       );
@@ -888,14 +902,15 @@ class FigmaCLI {
 
     // 2.5. Synchronize CSS + TSX (new phase)
     log.task('🔄', 'Synchronisation CSS + TSX optimisations');
-    execSync(`node ${path.join(__dirname, 'post-processing/sync-optimizer.js')} ${this.testDir}`);
+    const { syncOptimize } = await import('./post-processing/sync-optimizer.js');
+    await syncOptimize(this.testDir);
     log.success('Component-optimized.tsx + Component-optimized.css synchronisés\n');
 
     // 3. Fix SVG vars
     const imgDir = path.join(this.testDir, 'img');
     if (fs.existsSync(imgDir)) {
       log.task('🎨', 'Correction variables CSS dans SVG');
-      execSync(`node ${path.join(__dirname, 'post-processing/fix-svg-vars.js')} ${imgDir}`);
+      execSync(`node "${path.join(__dirname, 'post-processing/fix-svg-vars.js')}" "${imgDir}"`);
       log.success('Variables SVG corrigées\n');
     }
   }
@@ -911,7 +926,7 @@ class FigmaCLI {
     // Extract dimensions from metadata.xml to match Figma screenshot size
     const dimensions = this.parseNodeDimensions();
 
-    let command = `node ${path.join(__dirname, 'post-processing/capture-screenshot.js')} ${this.testDir} ${this.config.docker.vitePort}`;
+    let command = `node "${path.join(__dirname, 'post-processing/capture-screenshot.js')}" "${this.testDir}" ${this.config.docker.vitePort}`;
 
     if (dimensions) {
       log.info(`Using Figma node dimensions: ${dimensions.width}x${dimensions.height}`);

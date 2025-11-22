@@ -68,54 +68,113 @@ TABLET_ID="$4"
 MOBILE_WIDTH="$5"
 MOBILE_ID="$6"
 
-# Check Docker container is running
-if ! docker ps | grep -q mcp-figma-v1; then
-  echo -e "${YELLOW}⚠️  Docker container not running${NC}"
+# Detect Docker vs Electron mode
+# Check if Docker is available and docker-compose.yml exists
+if command -v docker &> /dev/null && [ -f "$(dirname "$0")/../docker-compose.yml" ]; then
+  # Docker mode: use container
+  echo -e "${GREEN}🐳 Docker mode detected${NC}"
   echo ""
-  echo "Starting container..."
-  docker-compose up -d
 
-  # Wait for container to be ready
-  echo "Waiting for startup (10s)..."
-  sleep 10
+  # Check Docker container is running
+  if ! docker ps | grep -q mcp-figma-v1; then
+    echo -e "${YELLOW}⚠️  Docker container not running${NC}"
+    echo ""
+    echo "Starting container..."
+    cd "$(dirname "$0")/.."
+    docker-compose up -d
+
+    # Wait for container to be ready
+    echo "Waiting for startup (10s)..."
+    sleep 10
+    cd - > /dev/null
+  fi
+
+  # Get absolute project path
+  PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+  # Step 1: Split components for all 3 tests
+  echo -e "${CYAN}🔪 Step 1/4: Splitting Desktop components...${NC}"
+  docker exec mcp-figma-v1 node scripts/post-processing/component-splitter.js "/app/src/generated/export_figma/$DESKTOP_ID"
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Desktop split error${NC}"
+    exit 1
+  fi
+
+  echo ""
+  echo -e "${CYAN}🔪 Step 2/4: Splitting Tablet components...${NC}"
+  docker exec mcp-figma-v1 node scripts/post-processing/component-splitter.js "/app/src/generated/export_figma/$TABLET_ID"
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Tablet split error${NC}"
+    exit 1
+  fi
+
+  echo ""
+  echo -e "${CYAN}🔪 Step 3/4: Splitting Mobile components...${NC}"
+  docker exec mcp-figma-v1 node scripts/post-processing/component-splitter.js "/app/src/generated/export_figma/$MOBILE_ID"
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Mobile split error${NC}"
+    exit 1
+  fi
+
+  # Step 2: Run responsive-merger.js in Docker
+  echo ""
+  echo -e "${GREEN}🚀 Step 4/4: Starting Responsive Merger in Docker...${NC}"
+  echo ""
+
+  docker exec -e "PROJECT_ROOT=$PROJECT_ROOT" mcp-figma-v1 node scripts/responsive-merger.js \
+    --desktop "$DESKTOP_WIDTH" "$DESKTOP_ID" \
+    --tablet "$TABLET_WIDTH" "$TABLET_ID" \
+    --mobile "$MOBILE_WIDTH" "$MOBILE_ID"
+else
+  # Electron mode: run directly on host
+  echo -e "${GREEN}💻 Electron mode detected${NC}"
+  echo ""
+
+  # Check if node_modules exists
+  if [ ! -d "$(dirname "$0")/../node_modules" ]; then
+    echo -e "${RED}❌ node_modules not found. Run 'npm install' first.${NC}"
+    exit 1
+  fi
+
+  cd "$(dirname "$0")/.."
+
+  # Get exports path (will be ~/Documents/MCP Figma Exports in Electron mode)
+  EXPORTS_BASE="src/generated/export_figma"
+
+  # Step 1: Split components for all 3 tests
+  echo -e "${CYAN}🔪 Step 1/4: Splitting Desktop components...${NC}"
+  ELECTRON_MODE=true node scripts/post-processing/component-splitter.js "$EXPORTS_BASE/$DESKTOP_ID"
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Desktop split error${NC}"
+    exit 1
+  fi
+
+  echo ""
+  echo -e "${CYAN}🔪 Step 2/4: Splitting Tablet components...${NC}"
+  ELECTRON_MODE=true node scripts/post-processing/component-splitter.js "$EXPORTS_BASE/$TABLET_ID"
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Tablet split error${NC}"
+    exit 1
+  fi
+
+  echo ""
+  echo -e "${CYAN}🔪 Step 3/4: Splitting Mobile components...${NC}"
+  ELECTRON_MODE=true node scripts/post-processing/component-splitter.js "$EXPORTS_BASE/$MOBILE_ID"
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Mobile split error${NC}"
+    exit 1
+  fi
+
+  # Step 2: Run responsive-merger.js
+  echo ""
+  echo -e "${GREEN}🚀 Step 4/4: Starting Responsive Merger...${NC}"
+  echo ""
+
+  ELECTRON_MODE=true node scripts/responsive-merger.js \
+    --desktop "$DESKTOP_WIDTH" "$DESKTOP_ID" \
+    --tablet "$TABLET_WIDTH" "$TABLET_ID" \
+    --mobile "$MOBILE_WIDTH" "$MOBILE_ID"
 fi
-
-# Get absolute project path
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-
-# Step 1: Split components for all 3 tests
-echo -e "${CYAN}🔪 Step 1/4: Splitting Desktop components...${NC}"
-docker exec mcp-figma-v1 node scripts/post-processing/component-splitter.js "/app/src/generated/export_figma/$DESKTOP_ID"
-if [ $? -ne 0 ]; then
-  echo -e "${RED}❌ Desktop split error${NC}"
-  exit 1
-fi
-
-echo ""
-echo -e "${CYAN}🔪 Step 2/4: Splitting Tablet components...${NC}"
-docker exec mcp-figma-v1 node scripts/post-processing/component-splitter.js "/app/src/generated/export_figma/$TABLET_ID"
-if [ $? -ne 0 ]; then
-  echo -e "${RED}❌ Tablet split error${NC}"
-  exit 1
-fi
-
-echo ""
-echo -e "${CYAN}🔪 Step 3/4: Splitting Mobile components...${NC}"
-docker exec mcp-figma-v1 node scripts/post-processing/component-splitter.js "/app/src/generated/export_figma/$MOBILE_ID"
-if [ $? -ne 0 ]; then
-  echo -e "${RED}❌ Mobile split error${NC}"
-  exit 1
-fi
-
-# Step 2: Run responsive-merger.js in Docker
-echo ""
-echo -e "${GREEN}🚀 Step 4/4: Starting Responsive Merger in Docker...${NC}"
-echo ""
-
-docker exec -e "PROJECT_ROOT=$PROJECT_ROOT" mcp-figma-v1 node scripts/responsive-merger.js \
-  --desktop "$DESKTOP_WIDTH" "$DESKTOP_ID" \
-  --tablet "$TABLET_WIDTH" "$TABLET_ID" \
-  --mobile "$MOBILE_WIDTH" "$MOBILE_ID"
 
 exit_code=$?
 

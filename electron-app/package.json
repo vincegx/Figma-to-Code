@@ -1,0 +1,33 @@
+{
+  "name": "mcp-figma-desktop",
+  "version": "1.0.0",
+  "description": "MCP Figma to Code - Desktop Application",
+  "type": "module",
+  "main": "main.js",
+  "author": "MCP Figma Team",
+  "license": "MIT",
+  "scripts": {
+    "dev": "wait-on http://localhost:5173 && electron .",
+    "bundle": "node build-server.js",
+    "prebuild": "npm run clean:dmg",
+    "postbuild": "npm run clean:dmg",
+    "build": "npm run bundle && cd .. && ELECTRON=true npm run build && cd electron-app && npm_config_python=/usr/bin/python3 npx electron-builder",
+    "build:all": "npm run bundle && cd .. && ELECTRON=true npm run build && cd electron-app && npm_config_python=/usr/bin/python3 npx electron-builder -mwl",
+    "build:mac": "npm run build:mac:arm64 && npm run build:mac:x64 && npm run clean:dmg",
+    "build:mac:arm64": "npm run bundle && cd .. && ELECTRON=true npm run build && cd electron-app && npm_config_python=/usr/bin/python3 npx electron-builder --mac --arm64",
+    "build:mac:x64": "npm run clean:dmg && npm_config_python=/usr/bin/python3 npx electron-builder --mac --x64",
+    "build:win": "npm run bundle && cd .. && ELECTRON=true npm run build && cd electron-app && npm_config_python=/usr/bin/python3 npx electron-builder --win",
+    "build:linux": "npm run bundle && cd .. && ELECTRON=true npm run build && cd electron-app && npm_config_python=/usr/bin/python3 npx electron-builder --linux",
+    "clean:dmg": "./scripts/clean-dmg.sh"
+  },
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "electron": "33.2.1",
+    "electron-builder": "^25.1.8",
+    "esbuild": "^0.27.0",
+    "wait-on": "^8.0.1"
+  }
+}

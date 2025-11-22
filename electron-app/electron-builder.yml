@@ -1,0 +1,136 @@
+appId: com.mcp.figma-to-code
+productName: MCP Figma to Code
+copyright: Copyright © 2025 MCP Figma Team
+
+# Build directories
+directories:
+  output: dist-electron
+  buildResources: build
+
+# Files to include in the build (inside app.asar)
+files:
+  - "!**/.git"
+  - "!**/node_modules"
+  - "!**/*.md"
+  - "!**/docs"
+  - "!**/tmp"
+  - "!**/src/generated/**"
+  - "main.js"
+  - "preload.js"
+  - "server-bundle.cjs"
+
+# Additional resources (extracted outside asar for server access)
+extraResources:
+  - from: "../dist"
+    to: "dist"
+    filter:
+      - "**/*"
+  - from: "../scripts"
+    to: "scripts"
+    filter:
+      - "**/*"
+  - from: "../cli"
+    to: "cli"
+    filter:
+      - "**/*"
+  - from: "../data"
+    to: "data"
+    filter:
+      - "**/*"
+
+# macOS specific
+mac:
+  category: public.app-category.developer-tools
+  icon: build/Collections.icns
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+    - target: zip
+      arch:
+        - arm64
+        - x64
+  darkModeSupport: true
+  hardenedRuntime: true
+  gatekeeperAssess: false
+
+# DMG configuration
+dmg:
+  title: "${productName} ${version}"
+  icon: build/Collections.icns
+  background: build/background.png
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+  window:
+    width: 540
+    height: 380
+
+# Windows specific
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+
+# NSIS installer configuration
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: "${productName}"
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  license: ../LICENSE
+
+# Linux specific
+linux:
+  icon: build/icon_512x512.png
+  category: Development
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: deb
+      arch:
+        - x64
+  maintainer: MCP Figma Team
+  synopsis: Transform Figma designs into React components
+  description: |
+    MCP Figma to Code is a desktop application that transforms Figma designs
+    into pixel-perfect React + Tailwind CSS components using the Model Context Protocol.
+
+# AppImage configuration
+appImage:
+  license: ../LICENSE
+
+# Debian package configuration
+deb:
+  depends:
+    - gconf2
+    - gconf-service
+    - libnotify4
+    - libappindicator1
+    - libxtst6
+    - libnss3
+
+# Publish configuration (disabled for now)
+publish: null
+
+# Compression
+compression: normal
+
+# Files that need to be extracted from asar (cannot be executed from within asar)
+asarUnpack:
+  - "**/node_modules/puppeteer/**"
+  - "server-bundle.cjs"
